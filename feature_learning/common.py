@@ -99,6 +99,37 @@ def intensity_rank(peak_list, minimum_intensity=100.):
         p.rank = rank
 
 
+def peptide_mass_rank(mass):
+    unit = 121.6
+    ratio = (mass / unit)
+    if ratio < 9:
+        return 1
+    elif ratio < 13:
+        return 2
+    elif ratio < 17:
+        return 3
+    elif ratio < 20:
+        return 4
+    else:
+        return 5
+
+
+def glycan_peptide_ratio(glycan_mass, peptide_mass):
+    ratio = (glycan_mass / peptide_mass)
+    if ratio < 0.4:
+        return 0
+    elif 0.4 <= ratio < 0.8:
+        return 1
+    elif 0.8 <= ratio < 1.2:
+        return 2
+    elif 1.2 <= ratio < 1.6:
+        return 3
+    elif 1.6 <= ratio < 2.0:
+        return 4
+    elif ratio >= 2.0:
+        return 5
+
+
 class MatchedSpectrum(object):
 
     def __init__(self, gsm):
