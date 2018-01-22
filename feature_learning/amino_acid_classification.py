@@ -1,4 +1,5 @@
 from glycopeptidepy.structure import residue, fragment
+from glypy.utils import Enum
 
 R = residue.Residue
 
@@ -15,53 +16,75 @@ Asparagine = R("N")
 
 Histidine = R("H")
 
+Arginine = R("R")
+
+Lysine = R("K")
+
+
+class AminoAcidClassification(Enum):
+    pro = 0
+    gly = 1
+    ser_thr = 2
+    leu_iso_val = 3
+    asn = 4
+    his = 5
+    x = 6
+
+
+def proton_mobility(sequence):
+    p = 0
+    for res, mods in sequence:
+        if res.name in (Histidine, Lysine, Arginine):
+            p += 1
+    return p
+
 
 def classify_residue_frank(residue_):
     if residue_ == Proline:
-        return "pro"
+        return AminoAcidClassification.pro
     elif residue_ == Glycine:
-        return "gly"
+        return AminoAcidClassification.gly
     elif residue_ in (Serine, Threonine):
-        return "ser/thr"
+        return AminoAcidClassification.ser_thr
     elif residue_ in (Leucine, Isoleucine, Valine):
-        return "leu/iso/val"
+        return AminoAcidClassification.leu_iso_val
     elif residue_ == Asparagine:
-        return "asn"
+        return AminoAcidClassification.asn
     elif residue_ == Histidine:
-        return "his"
+        return AminoAcidClassification.his
     else:
-        return "X"
+        return AminoAcidClassification.x
 
 
 def classify_amide_bond_frank(n_term, c_term):
     if n_term == Proline:
-        return "pro", "X"
+        return AminoAcidClassification.pro, AminoAcidClassification.x
     elif c_term == Proline:
-        return "X", "pro"
+        return AminoAcidClassification.x, AminoAcidClassification.pro
 
     elif n_term == Glycine:
-        return "glycine", "X"
+        return AminoAcidClassification.gly, AminoAcidClassification.x
     elif c_term == Glycine:
-        return "X", "glycine"
+        return AminoAcidClassification.x, AminoAcidClassification.gly
 
     elif n_term in (Serine, Threonine):
-        return "ser/thr", "X"
+        return AminoAcidClassification.ser_thr, AminoAcidClassification.x
     elif c_term in (Serine, Threonine):
-        return "X", "ser/thr"
+        return AminoAcidClassification.x, AminoAcidClassification.ser_thr
 
     elif n_term in (Leucine, Isoleucine, Valine):
-        return "leu/iso/val", "X"
+        return AminoAcidClassification.leu_iso_val, AminoAcidClassification.x
     elif c_term in (Leucine, Isoleucine, Valine):
-        return "X", "leu/iso/val"
+        return AminoAcidClassification.x, AminoAcidClassification.leu_iso_val
 
     elif n_term == Asparagine:
-        return "asn", "X"
+        return AminoAcidClassification.asn, AminoAcidClassification.x
     elif c_term == Asparagine:
-        return "X", "asn"
+        return AminoAcidClassification.x, AminoAcidClassification.asn
 
     elif n_term == Histidine:
-        return "his", "X"
+        return AminoAcidClassification.his, AminoAcidClassification.x
     elif c_term == Histidine:
-        return "X", "his"
+        return AminoAcidClassification.x, AminoAcidClassification.his
 
-    return "X", "X"
+    return AminoAcidClassification.x, AminoAcidClassification.x

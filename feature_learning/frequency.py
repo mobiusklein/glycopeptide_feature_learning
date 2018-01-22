@@ -1,5 +1,6 @@
 # methods derived from:
 # https://github.com/PNNL-Comp-Mass-Spec/Informed-Proteomics/tree/master/InformedProteomics.Scoring/LikelihoodScoring
+import itertools
 
 from collections import defaultdict, namedtuple
 from functools import total_ordering
@@ -67,20 +68,19 @@ class IonType(namedtuple("IonType", ("series", "charge", "glycosylated", "neutra
             self.series.name, self.charge, self.glycosylated, self.neutral_loss)
         return text
 
+    @classmethod
+    def standard_ion_types(cls):
+        ion_types = []
+        args = ([IonSeries.b, IonSeries.y], [1, 2, 3, 4], [False, True])
+        for series, charge, is_glycosylated in itertools.product(*args):
+            ion_types.append(cls(series, charge, is_glycosylated, None))
+        for i in range(1, 6):
+            ion_types.append(cls(IonSeries.stub_glycopeptide, i, False, None))
 
-standard_ion_types = [
-    IonType(IonSeries.b, 1, False, None),
-    IonType(IonSeries.b, 1, True, None),
-    IonType(IonSeries.b, 2, False, None),
-    IonType(IonSeries.b, 2, True, None),
-    IonType(IonSeries.y, 1, False, None),
-    IonType(IonSeries.y, 1, True, None),
-    IonType(IonSeries.y, 2, False, None),
-    IonType(IonSeries.y, 2, True, None),
-    IonType(IonSeries.stub_glycopeptide, 1, False, None),
-    IonType(IonSeries.stub_glycopeptide, 2, False, None),
-    IonType(IonSeries.stub_glycopeptide, 3, False, None),
-]
+        return ion_types
+
+
+standard_ion_types = IonType.standard_ion_types()
 
 
 class IonSeriesModelBase(object):
@@ -291,4 +291,4 @@ class SpectrumMatchModel(object):
         rank_score = self.rank_score(ion_type, rank, charge, mass)
         mass_index = self.mass_intervals[charge].bin_index(mass)
         prob = self.ion_type_frequencies[charge][mass_index].probability(ion_type)
-        return -np.log(prob) + rank_score
+        return -np.log(1 - prob) + rank_score

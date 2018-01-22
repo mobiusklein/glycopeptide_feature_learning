@@ -10,6 +10,7 @@ from glycopeptidepy.utils import memoize
 from glypy.utils import opener
 
 from .common import intensity_rank
+from .matching import SpectrumMatchAnnotator
 
 
 class RankedPeak(DeconvolutedPeak):
@@ -63,6 +64,11 @@ class AnnotatedScan(ProcessedScan):
         copy = self.clone()
         copy._structure = reverse_preserve_sequon(copy.structure)
         return copy
+
+    def plot(self, ax=None):
+        art = SpectrumMatchAnnotator(self.match(), ax=ax)
+        art.draw()
+        return art
 
 
 class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):

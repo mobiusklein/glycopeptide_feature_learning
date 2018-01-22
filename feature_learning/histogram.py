@@ -20,6 +20,30 @@ class Histogram(object):
         if data is not None:
             self.update(data)
 
+    def dumps(self):
+        edge_string = ','.join(map(str, self.edges))
+        bin_buffer = []
+        for bin_ in self:
+            bin_buffer.append(','.join(map(str, self.edges)))
+        return "\n".join([edge_string] + bin_buffer + [''])
+
+    def dump(self, fp):
+        fp.write(self.dumps())
+
+    @classmethod
+    def load(cls, fp):
+        line = fp.readline().strip()
+        edges = list(map(float, line.split(",")))
+        line = fp.readline().strip()
+        bins = []
+        while line:
+            bins.append(list(map(float, line.split(","))))
+            line = fp.readline().strip()
+        inst = cls()
+        inst.bins = bins
+        inst.edges = edges
+        return inst
+
     def bin_index(self, value):
         i = 0
         for i, edge in enumerate(self.edges):
