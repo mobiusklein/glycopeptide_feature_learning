@@ -1,3 +1,5 @@
+import os
+
 from ms_deisotope import DeconvolutedPeak, DeconvolutedPeakSet, neutral_mass
 from ms_deisotope.data_source import ProcessedScan
 from ms_deisotope.output.mgf import ProcessedMGFDeserializer
@@ -60,6 +62,10 @@ class AnnotatedScan(ProcessedScan):
         except AttributeError:
             return None
 
+    @property
+    def mass_shift(self):
+        return self.annotations.get('mass_shift', "Unmodified")
+
     def decoy(self, method='reverse'):
         copy = self.clone()
         copy._structure = reverse_preserve_sequon(copy.structure)
@@ -86,6 +92,14 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
         peak_set.reindex()
         intensity_rank(peak_set)
         return peak_set
+
+    def _scan_title(self, scan):
+        title = super(AnnotatedMGFDeserializer, self)._scan_title(scan)
+        try:
+            fname = os.path.basename(self.source_file)
+        except Exception:
+            fname = ''
+        return "%s.%s" % (fname, title)
 
     def _make_scan(self, scan):
         scan = super(AnnotatedMGFDeserializer, self)._make_scan(scan)

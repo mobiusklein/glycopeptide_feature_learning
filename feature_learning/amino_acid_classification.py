@@ -8,6 +8,7 @@ Serine = R("S")
 Threonine = R("T")
 Glycine = R("G")
 
+Alanine = R("A")
 Leucine = R("L")
 Isoleucine = R("I")
 Valine = R("V")
@@ -15,20 +16,22 @@ Valine = R("V")
 Asparagine = R("N")
 
 Histidine = R("H")
-
 Arginine = R("R")
-
 Lysine = R("K")
+
+AsparticAcid = R("D")
+GlutamicAcid = R("E")
 
 
 class AminoAcidClassification(Enum):
     pro = 0
     gly = 1
     ser_thr = 2
-    leu_iso_val = 3
+    leu_iso_val_ala = 3
     asn = 4
     his = 5
-    x = 6
+    arg_lys = 6
+    x = 7
 
 
 def proton_mobility(sequence):
@@ -46,12 +49,14 @@ def classify_residue_frank(residue_):
         return AminoAcidClassification.gly
     elif residue_ in (Serine, Threonine):
         return AminoAcidClassification.ser_thr
-    elif residue_ in (Leucine, Isoleucine, Valine):
-        return AminoAcidClassification.leu_iso_val
+    elif residue_ in (Leucine, Isoleucine, Valine, Alanine):
+        return AminoAcidClassification.leu_iso_val_ala
     elif residue_ == Asparagine:
         return AminoAcidClassification.asn
     elif residue_ == Histidine:
         return AminoAcidClassification.his
+    elif residue_ in (Arginine, Lysine):
+        return AminoAcidClassification.arg_lys
     else:
         return AminoAcidClassification.x
 
@@ -72,10 +77,10 @@ def classify_amide_bond_frank(n_term, c_term):
     elif c_term in (Serine, Threonine):
         return AminoAcidClassification.x, AminoAcidClassification.ser_thr
 
-    elif n_term in (Leucine, Isoleucine, Valine):
-        return AminoAcidClassification.leu_iso_val, AminoAcidClassification.x
-    elif c_term in (Leucine, Isoleucine, Valine):
-        return AminoAcidClassification.x, AminoAcidClassification.leu_iso_val
+    elif n_term in (Leucine, Isoleucine, Valine, Alanine):
+        return AminoAcidClassification.leu_iso_val_ala, AminoAcidClassification.x
+    elif c_term in (Leucine, Isoleucine, Valine, Alanine):
+        return AminoAcidClassification.x, AminoAcidClassification.leu_iso_val_ala
 
     elif n_term == Asparagine:
         return AminoAcidClassification.asn, AminoAcidClassification.x
