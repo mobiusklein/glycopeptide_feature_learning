@@ -33,10 +33,11 @@ class FragmentTypeClassification(AminoAcidClassification):
 
 FragmentTypeClassification_max = max(FragmentTypeClassification, key=lambda x: x[1].value)[1].value
 
-
-# consider fragments of up to charge 3+
-FragmentCharge_max = 2
-# consider up to 11 monosaccharides of glycan still attached to a stub ion
+# consider fragments with up to 2 monosaccharides attached to a backbone fragment
+BackboneFragment_max_glycosylation_size = 2
+# consider fragments of up to charge 4+
+FragmentCharge_max = 3
+# consider up to 10 monosaccharides of glycan still attached to a stub ion
 StubFragment_max_glycosylation_size = 10
 
 _FragmentType = namedtuple(
@@ -44,13 +45,44 @@ _FragmentType = namedtuple(
         "nterm", "cterm", "series", "glycosylated", "charge", "peak_pair", "sequence"])
 
 
+def get_nterm_index_from_fragment(fragment, structure):
+    size = len(structure)
+    direction = fragment.series.direction
+    if direction < 0:
+        index = size + (fragment.series.direction * fragment.position + fragment.series.direction)
+    else:
+        index = fragment.position - 1
+    return index
+
+
+def get_cterm_index_from_fragment(fragment, structure):
+    size = len(structure)
+    direction = fragment.series.direction
+    if direction < 0:
+        index = size + (fragment.series.direction * fragment.position)
+    else:
+        index = fragment.position
+    return index
+
+
 class FragmentType(_FragmentType):
+
+    @property
+    def fragment(self):
+        return self.peak_pair.fragment
+
+    @property
+    def peak(self):
+        return self.peak_pair.peak
 
     def is_assigned(self):
         return self.series != FragmentSeriesClassification.unassigned
 
     def is_backbone(self):
         return (self.series != FragmentSeriesClassification.stub_glycopeptide) and self.is_assigned()
+
+    def is_stub_glycopeptide(self):
+        return (self.series == FragmentSeriesClassification.stub_glycopeptide)
 
     def as_feature_vector(self):
         k_ftypes = (FragmentTypeClassification_max + 1)
@@ -59,7 +91,7 @@ class FragmentType(_FragmentType):
         k_charge = FragmentCharge_max + 1
         k_charge_series = k_charge * k_series
 
-        k_glycosylated = 2
+        k_glycosylated = BackboneFragment_max_glycosylation_size + 1
 
         k = (
             (k_ftypes * 2) + k_series + k_unassigned + k_charge + k_charge_series +
@@ -96,7 +128,7 @@ class FragmentType(_FragmentType):
 
         # non-stub ion glycosylation
         if self.is_backbone():
-            X[offset + int(self.glycosylated)] = 1
+            X[offset + int(self.peak_pair.fragment.glycosylation_size)] = 1
         offset += k_glycosylated
 
         return X
@@ -127,7 +159,7 @@ class FragmentType(_FragmentType):
                     continue
                 names.append("series %s:charge %d" % (label, i + 1))
 
-        for i in range(2):
+        for i in range(BackboneFragment_max_glycosylation_size + 1):
             names.append("is_glycosylated %r" % (i))
         return names
 
@@ -136,6 +168,18 @@ class FragmentType(_FragmentType):
             self[0].name if self[0] else '',
             self[1].name if self[1] else '',
             self[2].name, self[3], self[4])
+
+    @classmethod
+    def from_peak_peptide_fragment_pair(cls, peak_fragment_pair, gpsm):
+        peak, fragment = peak_fragment_pair
+        nterm, cterm = classify_amide_bond_frank(*fragment.flanking_amino_acids)
+        glycosylation = bool(fragment.glycosylation) | bool(
+            set(fragment.modification_dict) & PeptideFragment.concerned_modifications)
+        inst = cls(
+            nterm, cterm, FragmentSeriesClassification[fragment.series],
+            glycosylation, min(peak.charge, FragmentCharge_max + 1),
+            peak_fragment_pair, gpsm.structure)
+        return inst
 
     @classmethod
     def build_fragment_intensity_matches(cls, gpsm):
@@ -159,15 +203,8 @@ class FragmentType(_FragmentType):
                         min(fragment.glycosylation_size, StubFragment_max_glycosylation_size),
                         min(peak.charge, FragmentCharge_max + 1), peak_fragment_pair, gpsm.structure))
                 continue
-            # nterm, cterm = map(classify_residue_frank, fragment.flanking_amino_acids)
-            nterm, cterm = classify_amide_bond_frank(*fragment.flanking_amino_acids)
-            glycosylation = bool(fragment.glycosylation) | bool(
-                set(fragment.modification_dict) & PeptideFragment.concerned_modifications)
-            fragment_classification.append(
-                cls(
-                    nterm, cterm, FragmentSeriesClassification[fragment.series],
-                    glycosylation, min(peak.charge, FragmentCharge_max + 1),
-                    peak_fragment_pair, gpsm.structure))
+            inst = cls.from_peak_peptide_fragment_pair(peak_fragment_pair, gpsm)
+            fragment_classification.append(inst)
 
         unassigned = total - matched_total
         ft = cls(None, None, FragmentSeriesClassification.unassigned, 0, 0, None, None)
@@ -199,9 +236,9 @@ class FragmentType(_FragmentType):
 
 class ProlineSpecializingModel(FragmentType):
     def specialize_proline(self):
-        k_charge_cterm_pro = (FragmentSeriesClassification_max + 1)
+        k_charge_cterm_pro = (FragmentCharge_max + 1)
         k_series_cterm_pro = (BackboneFragmentSeriesClassification_max + 1)
-        k_glycosylated_proline = 2
+        k_glycosylated_proline = BackboneFragment_max_glycosylation_size + 1
 
         k = (k_charge_cterm_pro + k_series_cterm_pro + k_glycosylated_proline)
 
@@ -218,7 +255,7 @@ class ProlineSpecializingModel(FragmentType):
         offset += k_series_cterm_pro
 
         if self.cterm == FragmentTypeClassification.pro:
-            X[offset + int(self.glycosylated)] = 1
+            X[offset + int(self.peak_pair.fragment.glycosylation_size)] = 1
         offset += k_glycosylated_proline
         return X
 
@@ -235,7 +272,7 @@ class ProlineSpecializingModel(FragmentType):
             if tp.value is None or label in ("unassigned", "stub_glycopeptide"):
                 continue
             names.append("series:c-term pro %s" % label)
-        for i in range(2):
+        for i in range(BackboneFragment_max_glycosylation_size + 1):
             names.append("is_glycosylated:c-term pro %r" % (i))
         return names
 
@@ -250,10 +287,10 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
         X = np.zeros(k, dtype=np.uint8)
         offset = 0
 
-        if self.series == FragmentSeriesClassification.stub_glycopeptide:
+        if self.is_stub_glycopeptide():
             X[offset + int(self.glycosylated)] = 1
         offset += k_glycosylated_stubs
-        if self.series == FragmentSeriesClassification.stub_glycopeptide:
+        if self.is_stub_glycopeptide():
             ctr = classify_sequence_by_residues(self.sequence)
             for tp, c in ctr:
                 X[offset + tp.value] = c
@@ -273,6 +310,86 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
             if tp.value is None:
                 continue
             names.append("stub glycopeptide:composition %s" % (label,))
+        return names
+
+
+class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
+    def encode_stub_fucosylation(self):
+        X = [0, 0]
+        if self.is_stub_glycopeptide():
+            i = int(self.peak_pair.fragment.glycosylation['Fuc'] > 0)
+            X[i] = 1
+        return np.array(X, dtype=np.uint8)
+
+    def as_feature_vector(self):
+        X = super(StubGlycopeptideFucosylationModel, self).as_feature_vector()
+        return np.hstack((X, self.encode_stub_fucosylation()))
+
+    @classmethod
+    def feature_names(self):
+        names = super(StubGlycopeptideFucosylationModel, self).feature_names()
+        for i in range(2):
+            names.append("stub glycopeptide:is_fucosylated %r" % (i))
+        return names
+
+
+class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
+    bond_offset_depth = 1
+
+    def get_nterm_neighbor(self, offset=1):
+        index = get_nterm_index_from_fragment(self.fragment, self.sequence)
+        index -= offset
+        if index < 0:
+            return None
+        else:
+            residue = self.sequence[index][0]
+            return classify_residue_frank(residue)
+
+    def get_cterm_neighbor(self, offset=1):
+        index = get_cterm_index_from_fragment(self.fragment, self.sequence)
+        index += offset
+        if index > len(self.sequence) - 1:
+            return None
+        else:
+            residue = self.sequence[index][0]
+            return classify_residue_frank(residue)
+
+    def encode_neighboring_residues(self):
+        k_ftypes = (FragmentTypeClassification_max + 1)
+        k = (k_ftypes * 2)
+
+        X = np.zeros(k, dtype=np.uint8)
+        offset = 0
+
+        if self.is_backbone():
+            nterm = self.get_nterm_neighbor(self.bond_offset_depth)
+            if nterm is not None:
+                X[nterm.value] = 1
+        offset += k_ftypes
+        if self.is_backbone():
+            cterm = self.get_cterm_neighbor(self.bond_offset_depth)
+            if cterm is not None:
+                X[offset + cterm.value] = 1
+        offset += k_ftypes
+        return X
+
+    def as_feature_vector(self):
+        X = super(NeighboringAminoAcidsModel, self).as_feature_vector()
+        return np.hstack((X, self.encode_neighboring_residues()))
+
+    @classmethod
+    def feature_names(cls):
+        names = super(NeighboringAminoAcidsModel, cls).feature_names()
+        for i in range(1, cls.bond_offset_depth + 1):
+            for label, tp in sorted(FragmentTypeClassification, key=lambda x: x[1].value):
+                if tp.value is None:
+                    continue
+                names.append("n-term - %d %s" % (i, label))
+        for i in range(1, cls.bond_offset_depth + 1):
+            for label, tp in sorted(FragmentTypeClassification, key=lambda x: x[1].value):
+                if tp.value is None:
+                    continue
+                names.append("c-term + %d %s" % (i, label))
         return names
 
 
@@ -356,7 +473,7 @@ def deviance_residuals(y, mu, wt):
     # from (yi - mu[i])
     residuals = []
     for i, yi in enumerate(y):
-        # this is similar to the unit deviance of the Poisson distribution?
+        # this is similar to the unit deviance of the Poisson distribution
         # "sub-residual", contributing to the total being the actual residual,
         # but these are not residuals themselves, the sum is, and that must be positive
         ym = np.where(yi == 0, 0, yi * np.log(yi / mu[i]))
@@ -568,8 +685,6 @@ class MultinomialRegressionFit(object):
         theor = (yhat)
 
         ratio = np.log(intens / theor)
-        mask = np.where(intens > theor, 0, 1)
-        ratio[mask] = np.log((intens[mask]) / (theor[mask]))
         G = intens.dot(ratio) + dc
         return G
 

@@ -49,6 +49,19 @@ def init_cell(breaks=None, matched=None, totals=None, subset=None, fit=None, spe
     return partition_cell(breaks or [], matched or [], totals or [], subset or [], fit, spec)
 
 
+def adjacent_specs(spec, charge=True):
+    adjacent = []
+    if charge:
+        min_charge = min(precursor_charges)
+        max_charge = max(precursor_charges)
+        current_charge = spec.charge
+        if current_charge > min_charge:
+            adjacent.append(spec._replace(charge=current_charge - 1))
+        if current_charge < max_charge:
+            adjacent.append(spec._replace(charge=current_charge + 1))
+    return adjacent
+
+
 class KFoldSplitter(object):
     def __init__(self, n_splits):
         self.n_splits = n_splits
