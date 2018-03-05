@@ -7,10 +7,24 @@ import numpy as np
 from glycopeptidepy.structure.glycan import GlycosylationType
 from glypy.utils import make_struct
 
+from .amino_acid_classification import proton_mobility
+
+
+def classify_proton_mobility(gpsm):
+    k = proton_mobility(gpsm.structure)
+    charge = gpsm.precursor_information.charge
+    if k < charge:
+        return 'mobile'
+    elif k == charge:
+        return 'partial'
+    else:
+        return 'immobile'
+
 
 partition_cell_spec = namedtuple("partition_cell_spec", ("peptide_length_range",
                                                          "glycan_size_range",
                                                          "charge",
+                                                         "proton_mobility",
                                                          "glycan_type",
                                                          "glycan_count"))
 
@@ -23,6 +37,8 @@ class partition_cell_spec(partition_cell_spec):
             return False
         if glycan_size > self.glycan_size_range[1] or glycan_size < self.glycan_size_range[0]:
             return False
+        if classify_proton_mobility(gpsm) != self.proton_mobility:
+            return False
         if gpsm.precursor_information.charge != self.charge:
             return False
         if gpsm.structure.glycosylation_manager.count_glycosylation_type(self.glycan_type) != self.glycan_count:
@@ -33,33 +49,82 @@ class partition_cell_spec(partition_cell_spec):
 peptide_backbone_length_ranges = [(a, a + 5) for a in range(0, 50, 5)]
 glycan_size_ranges = [(a, a + 4) for a in range(1, 20, 4)]
 precursor_charges = (2, 3, 4, 5, 6)
-glycosylation_type = tuple(GlycosylationType[i] for i in range(1, 4))
+proton_mobilities = ('mobile', 'partial', 'immobile')
+# glycosylation_type = tuple(GlycosylationType[i] for i in range(1, 4))
+glycosylation_type = (GlycosylationType.n_linked,)
 glycosylation_count = (1, 2,)
 
 
 partition_by = map(lambda x: partition_cell_spec(*x), itertools.product(
-    peptide_backbone_length_ranges, glycan_size_ranges, precursor_charges, glycosylation_type,
+    peptide_backbone_length_ranges, glycan_size_ranges, precursor_charges, proton_mobilities, glycosylation_type,
     glycosylation_count))
 
 
-partition_cell = make_struct("partition_cell", ("breaks", "matched", "totals", "subset", "fit", "spec"))
+partition_cell = make_struct("partition_cell", ("subset", "fit", "spec"))
 
 
-def init_cell(breaks=None, matched=None, totals=None, subset=None, fit=None, spec=None):
-    return partition_cell(breaks or [], matched or [], totals or [], subset or [], fit, spec)
+def init_cell(subset=None, fit=None, spec=None):
+    return partition_cell(subset or [], fit, spec)
 
 
-def adjacent_specs(spec, charge=True):
+def adjacent_specs(spec, charge=1, glycan_count=True):
     adjacent = []
+    charges = [spec.charge]
     if charge:
         min_charge = min(precursor_charges)
         max_charge = max(precursor_charges)
         current_charge = spec.charge
-        if current_charge > min_charge:
-            adjacent.append(spec._replace(charge=current_charge - 1))
-        if current_charge < max_charge:
-            adjacent.append(spec._replace(charge=current_charge + 1))
+        for i in range(1, charge + 1):
+            if current_charge - i > min_charge:
+                adjacent.append(spec._replace(charge=current_charge - i))
+                charges.append(current_charge - i)
+            if current_charge + i < max_charge:
+                adjacent.append(spec._replace(charge=current_charge + i))
+                charges.append(current_charge + i)
+
     return adjacent
+
+
+class PartitionMap(OrderedDict):
+
+    def adjacent(self, spec, charge=True, glycan_count=True):
+        cells = [self.get(spec)]
+        for other_spec in adjacent_specs(spec, charge=charge):
+            cells.append(self.get(other_spec))
+        matches = []
+        for cell in cells:
+            if cell is None:
+                continue
+            matches.extend(cell.subset)
+        return matches
+
+
+def partition_observations(gpsms, exclusive=True):
+    partition_map = PartitionMap()
+    j = 0
+    cnt = 0
+    interval = 250
+    for spec in partition_by:
+        rest = []
+        subset = []
+        j += 1
+        if j % interval == 0:
+            print(spec)
+        for i in range(len(gpsms)):
+            gpsm = gpsms[i]
+            if not spec.test(gpsm):
+                rest.append(gpsm)
+                continue
+            subset.append(gpsm)
+            cnt += 1
+        n = len(subset)
+        if j % interval == 0:
+            print(cnt)
+        if n > 0:
+            partition_map[spec] = init_cell(subset, {}, spec)
+        if exclusive:
+            gpsms = rest
+    return partition_map
 
 
 class KFoldSplitter(object):

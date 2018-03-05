@@ -1,7 +1,7 @@
 import os
 
 from ms_deisotope import DeconvolutedPeak, DeconvolutedPeakSet, neutral_mass
-from ms_deisotope.data_source import ProcessedScan
+from ms_deisotope.data_source import ProcessedScan, ActivationInformation
 from ms_deisotope.output.mgf import ProcessedMGFDeserializer
 
 from glycan_profiling.structure import FragmentCachingGlycopeptide
@@ -76,6 +76,17 @@ class AnnotatedScan(ProcessedScan):
         art.draw()
         return art
 
+    def rank(self, cache=True):
+        if 'ranked_peaks' not in self.annotations or not cache:
+            peaks = self.deconvoluted_peak_set
+            intensity_rank(peaks)
+            peaks = DeconvolutedPeakSet([p for p in peaks if p.rank > 0])
+            peaks.reindex()
+            if cache:
+                self.annotations['ranked_peaks'] = peaks
+            return peaks
+        return self.annotations['ranked_peaks']
+
 
 class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
     def _build_peaks(self, scan):
@@ -92,6 +103,11 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
         peak_set.reindex()
         intensity_rank(peak_set)
         return peak_set
+
+    def _activation(self, scan):
+        return ActivationInformation(
+            scan.get('annotations', {}).get('activation_method'),
+            scan.get('annotations', {}).get('activation_energy'))
 
     def _scan_title(self, scan):
         title = super(AnnotatedMGFDeserializer, self)._scan_title(scan)

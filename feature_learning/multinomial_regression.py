@@ -1,14 +1,15 @@
 import six
-from collections import namedtuple, defaultdict
+from collections import namedtuple, defaultdict, OrderedDict
 
 import numpy as np
 from scipy.stats import norm
-from scipy.linalg import solve_triangular, pinv
+from scipy.linalg import solve_triangular, pinv, cho_solve
 
 from glypy.utils import Enum
 from glycopeptidepy.structure.fragment import PeptideFragment
 
-from .amino_acid_classification import AminoAcidClassification, classify_amide_bond_frank, classify_residue_frank
+from .amino_acid_classification import (
+    AminoAcidClassification, classify_amide_bond_frank, classify_residue_frank, proton_mobility)
 
 
 class FragmentSeriesClassification(Enum):
@@ -36,7 +37,7 @@ FragmentTypeClassification_max = max(FragmentTypeClassification, key=lambda x: x
 # consider fragments with up to 2 monosaccharides attached to a backbone fragment
 BackboneFragment_max_glycosylation_size = 2
 # consider fragments of up to charge 4+
-FragmentCharge_max = 3
+FragmentCharge_max = 4
 # consider up to 10 monosaccharides of glycan still attached to a stub ion
 StubFragment_max_glycosylation_size = 10
 
@@ -83,6 +84,9 @@ class FragmentType(_FragmentType):
 
     def is_stub_glycopeptide(self):
         return (self.series == FragmentSeriesClassification.stub_glycopeptide)
+
+    def as_feature_dict(self):
+        return OrderedDict(zip(self.feature_names(), self.as_feature_vector()))
 
     def as_feature_vector(self):
         k_ftypes = (FragmentTypeClassification_max + 1)
@@ -188,13 +192,16 @@ class FragmentType(_FragmentType):
         matched_total = 0
         total = sum(p.intensity for p in gpsm.deconvoluted_peak_set)
         counted = set()
-        for peak_fragment_pair in gpsm.match().solution_map:
+        if gpsm.solution_map is None:
+            gpsm.match()
+        for peak_fragment_pair in gpsm.solution_map:
             peak, fragment = peak_fragment_pair
             if peak not in counted:
                 matched_total += peak.intensity
                 counted.add(peak)
             if fragment.series == 'oxonium_ion':
                 continue
+
             intensities.append(peak.intensity)
             if fragment.series == 'stub_glycopeptide':
                 fragment_classification.append(
@@ -220,18 +227,32 @@ class FragmentType(_FragmentType):
         return np.vstack(X)
 
     @classmethod
-    def fit_regression(cls, gpsms, **kwargs):
+    def fit_regression(cls, gpsms, reliability_model=None, **kwargs):
         breaks = []
         matched = []
         totals = []
+        reliabilities = []
         for gpsm in gpsms:
             c, y, t = cls.build_fragment_intensity_matches(gpsm)
             x = cls.encode_classification(c)
             breaks.append(x)
             matched.append(y)
             totals.append(t)
+            if reliability_model is None:
+                reliability = np.ones_like(y)
+            else:
+                reliability = np.zeros_like(y)
+                reliability_score_map = reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
+                for i, frag_spec in enumerate(c):
+                    peak_pair = frag_spec.peak_pair
+                    if peak_pair is None:
+                        reliability[i] = 1.0
+                    else:
+                        reliability[i] = reliability_score_map[peak_pair]
+
+            reliabilities.append(reliability)
         fit = multinomial_fit(breaks, matched, totals, **kwargs)
-        return MultinomialRegressionFit(model_type=cls, **fit)
+        return MultinomialRegressionFit(model_type=cls, reliability_model=reliability_model, **fit)
 
 
 class ProlineSpecializingModel(FragmentType):
@@ -356,21 +377,23 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
 
     def encode_neighboring_residues(self):
         k_ftypes = (FragmentTypeClassification_max + 1)
-        k = (k_ftypes * 2)
+        k = (k_ftypes * 2) * self.bond_offset_depth
 
         X = np.zeros(k, dtype=np.uint8)
         offset = 0
 
-        if self.is_backbone():
-            nterm = self.get_nterm_neighbor(self.bond_offset_depth)
-            if nterm is not None:
-                X[nterm.value] = 1
-        offset += k_ftypes
-        if self.is_backbone():
-            cterm = self.get_cterm_neighbor(self.bond_offset_depth)
-            if cterm is not None:
-                X[offset + cterm.value] = 1
-        offset += k_ftypes
+        for i in range(1, self.bond_offset_depth + 1):
+            if self.is_backbone():
+                nterm = self.get_nterm_neighbor(self.bond_offset_depth)
+                if nterm is not None:
+                    X[offset + nterm.value] = 1
+            offset += k_ftypes
+        for i in range(1, self.bond_offset_depth + 1):
+            if self.is_backbone():
+                cterm = self.get_cterm_neighbor(self.bond_offset_depth)
+                if cterm is not None:
+                    X[offset + cterm.value] = 1
+            offset += k_ftypes
         return X
 
     def as_feature_vector(self):
@@ -390,6 +413,92 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
                 if tp.value is None:
                     continue
                 names.append("c-term + %d %s" % (i, label))
+        return names
+
+
+class NeighboringAminoAcidsModelDepth2(NeighboringAminoAcidsModel):
+    bond_offset_depth = 2
+
+
+class NeighboringAminoAcidsModelDepth3(NeighboringAminoAcidsModel):
+    bond_offset_depth = 3
+
+
+class NeighboringAminoAcidsModelDepth4(NeighboringAminoAcidsModel):
+    bond_offset_depth = 4
+
+
+class GlycosylationSiteDistanceStubModel(NeighboringAminoAcidsModelDepth4):
+    max_glycosylation_site_distance = 10
+
+    def get_glycosylation_site_offset(self):
+        size = len(self.sequence)
+        sites = self.sequence.glycosylation_manager.keys()
+        distances = []
+        for s in sites:
+            distances.append(abs(s - (size / 2)))
+        distance = np.mean(distances)
+        return int(distance)
+
+    def encode_glycosylation_site_offset(self):
+        k_distance = self.max_glycosylation_site_distance + 1
+        k = k_distance
+        X = np.zeros(k, dtype=np.uint8)
+        offset = 0
+
+        if self.is_stub_glycopeptide():
+            distance = self.get_glycosylation_site_offset()
+            X[offset + min(distance, self.max_glycosylation_site_distance)] = 1
+        return X
+
+    def as_feature_vector(self):
+        X = super(GlycosylationSiteDistanceStubModel, self).as_feature_vector()
+        return np.hstack((X, self.encode_glycosylation_site_offset()))
+
+    @classmethod
+    def feature_names(cls):
+        names = super(GlycosylationSiteDistanceStubModel, cls).feature_names()
+        for i in range(cls.max_glycosylation_site_distance):
+            names.append("glycosylation site center offset:%d" % i)
+        return names
+
+
+class CleavageSiteCenterDistanceModel(GlycosylationSiteDistanceStubModel):
+    max_cleavage_site_distance_from_center = 10
+
+    def get_cleavage_site_distance_from_center(self):
+        index = get_cterm_index_from_fragment(self.fragment, self.sequence)
+        seq_size = len(self.sequence)
+        center = (seq_size / 2)
+        return abs(center - index)
+
+    def encode_cleavage_site_distance_from_center(self):
+        k_distance = self.max_cleavage_site_distance_from_center + 1
+        k_series = BackboneFragmentSeriesClassification_max + 1
+        k = k_distance * k_series
+        X = np.zeros(k, dtype=np.uint8)
+        offset = 0
+
+        if self.is_backbone():
+            distance = self.get_cleavage_site_distance_from_center()
+            distance = min(distance, self.max_cleavage_site_distance_from_center)
+            series_offset = self.series.value * k_distance
+            X[offset + series_offset + distance] = 1
+        offset += (k_distance * k_series)
+        return X
+
+    def as_feature_vector(self):
+        X = super(CleavageSiteCenterDistanceModel, self).as_feature_vector()
+        return np.hstack((X, self.encode_cleavage_site_distance_from_center()))
+
+    @classmethod
+    def feature_names(cls):
+        names = super(CleavageSiteCenterDistanceModel, cls).feature_names()
+        for label, tp in sorted(FragmentSeriesClassification, key=lambda x: x[1].value):
+            if tp.value is None or label in ("unassigned", "stub_glycopeptide"):
+                continue
+            for i in range(cls.max_cleavage_site_distance_from_center + 1):
+                names.append("cleavage site distance %d:series %r" % (i, label))
         return names
 
 
@@ -457,31 +566,55 @@ def multinomial_control(epsilon=1e-8, maxit=25, nsamples=1000, trace=False):
     return dict(epsilon=epsilon, maxit=maxit, nsamples=nsamples, trace=trace)
 
 
-def deviance(y, mu, wt):
+def deviance(y, mu, wt, reliabilities, unobserved_reliability=1.0):
+    # wt would be the total signal * reliabilities
     ys = np.array(list(map(np.sum, y)))
     ms = np.array(list(map(np.sum, mu)))
     # this is the leftover count after accounting for signal matched by
-    # the fragment
-    dc = np.where(wt == ys, 0, wt * (1 - ys) * np.log((1 - ys) / (1 - ms)))
+    # the fragment. Requires a reliability measure as well, use 0 until we have a better idea?
+    # when we use reliability, there is an extra wt (not the weight vector) that would be used
+    # here to reflect the weight leftover from the unmatched signal (total signal - matched signal)
+    # which used to be based upon the total signal in the spectrum.
+    dc = np.where(wt == ys, 0, wt * (1 - ys) * np.log((1 - ys) / (1 - ms + 1e-6)))
     return np.sum([
         # this inner sum is the squared residuals
-        a.sum() + (2 * dc[i]) for i, a in enumerate(deviance_residuals(y, mu, wt))])
+        a.sum() + (2 * dc[i]) for i, a in enumerate(deviance_residuals(y, mu, wt, reliabilities))])
 
 
-def deviance_residuals(y, mu, wt):
+def deviance_residuals(y, mu, wt, reliability=None):
     # returns the squared residual. The sign is lost? The sign can be regained
     # from (yi - mu[i])
     residuals = []
+    if reliability is None:
+        reliability = np.ones_like(y)
     for i, yi in enumerate(y):
         # this is similar to the unit deviance of the Poisson distribution
         # "sub-residual", contributing to the total being the actual residual,
         # but these are not residuals themselves, the sum is, and that must be positive
-        ym = np.where(yi == 0, 0, yi * np.log(yi / mu[i]))
+        ym = np.where(yi == 0, 0, yi * np.log(yi / mu[i]) * reliability[i])
         residuals.append(2 * wt[i] * ym)
     return residuals
 
 
-def multinomial_fit(x, y, weights, dispersion=1, adjust_dispersion=True, prior_coef=None, prior_disp=None, **control):
+def cho2inv(C, lower=False):
+    """Compute the inverse of a matrix from its Cholesky decomposition
+
+    Parameters
+    ----------
+    C : np.ndarray
+        The Cholesky decomposition of a matrix
+    lower : bool, optional
+        Whether this is an upper or lower (default) Cholesky decomposition
+
+    Returns
+    -------
+    nd.array
+        The inverse of the matrix whose Cholesky decomposition was ``C``
+    """
+    return cho_solve((C, lower), np.identity(C.shape[0]))
+
+
+def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_dispersion=True, prior_coef=None, prior_disp=None, **control):
     """Fit a multinomial generalized linear model to bond-type by intensity observations
     of glycopeptide fragmentation.
 
@@ -514,6 +647,8 @@ def multinomial_fit(x, y, weights, dispersion=1, adjust_dispersion=True, prior_c
     # make a copy of y and convert each observation
     # into an ndarray.
     y = list(map(np.array, y))
+    if reliabilities is None:
+        reliabilities = list(map(np.ones_like, y))
     n = weights
     lengths = np.array(list(map(len, y)))
     nvars = x[0].shape[1]
@@ -527,6 +662,8 @@ def multinomial_fit(x, y, weights, dispersion=1, adjust_dispersion=True, prior_c
     beta0 = S_inv0 * beta0
     nu = prior_disp['df']
     nu_tau2 = nu * prior_disp['scale']
+
+    beta = None
 
     phi = dispersion
     mu = [0 for _ in y]
@@ -542,23 +679,30 @@ def multinomial_fit(x, y, weights, dispersion=1, adjust_dispersion=True, prior_c
         eta[i] = np.log(mu[i]) + np.log(1 + np.exp(logit(np.sum(mu[i]))))
         assert not np.any(np.isnan(eta[i]))
 
-    dev = deviance(y, mu, n)
+    dev = deviance(y, mu, n, reliabilities)
     for iter_ in range(control['maxit']):
         if control['trace']:
             print("Iteration %d" % (iter_,))
         z = phi * beta0
         H = phi * np.diag(S_inv0)
+        if control['trace']:
+            assert not np.any(np.isnan(H))
         for i in range(len(y)):
+            reliability = reliabilities[i]
             # Variance of Y_i, multinomial, e.g. covariance matrix
             # Here an additional dimension is introduced to coerce mu[i] into
             # a matrix to match the behavior of tcrossprod
-            W = np.diag(mu[i]) - mu[i][:, None].dot(mu[i][:, None].T)
+            # pre-multiply with diagonal matrix of the reliabilities (instead of identity)?
+            W = reliability * np.diag(mu[i]) - mu[i][:, None].dot(mu[i][:, None].T)
             # Since both mu and y are on the same scale it is convenient to multiply both by the total
             # Here, x[i] is transposed to match the behavior of crossprod
             # Working Residual analog
             z += n[i] * x[i].T.dot(y[i] - mu[i] + W.dot(eta[i]))
             # Sum of covariances, close to the Hessian (log-likelihood)
             H += n[i] * x[i].T.dot(W.dot(x[i]))
+            if control['trace']:
+                assert not np.any(np.isnan(H))
+
         H += np.identity(H.shape[0])
         # H = CtC, H_inv = C_inv * Ct_inv
         # get the upper triangular Cholesky decomposition, s.t. C.T.dot(C) == H
@@ -566,17 +710,22 @@ def multinomial_fit(x, y, weights, dispersion=1, adjust_dispersion=True, prior_c
         C = np.linalg.cholesky(H).T
         # Solve for updated coefficients. Use back substitution algorithm.
         beta = solve_triangular(C, solve_triangular(C, z, trans="T"))
+        # if control['trace']:
+        #     assert np.all(np.abs(beta) < 1e3)
 
         for i in range(len(y)):
             # linear predictor
             eta[i] = x[i].dot(beta)
             # canonical poisson inverse link
+            if control['trace']:
+                mu_i_temp = np.exp(eta[i])
+                assert not np.any(np.isinf(mu_i_temp))
             mu[i] = np.exp(eta[i])
             # Apply a normalizing constraint for multinomial
             # inverse link to expected value from linear predictor
             mu[i] = mu[i] / (1 + mu[i].sum())
 
-        dev_new = deviance(y, mu, n)
+        dev_new = deviance(y, mu, n, reliabilities)
         if adjust_dispersion:
             phi = (nu_tau2 + dev_new) / (nu + np.sum(lengths))
         if control['trace']:
@@ -585,36 +734,19 @@ def multinomial_fit(x, y, weights, dispersion=1, adjust_dispersion=True, prior_c
         # converged?
         if (not np.isinf(dev)) and (rel_error < control["epsilon"]):
             break
+        if np.isinf(dev_new):
+            print("Infinite Deviance")
+            break
         dev = dev_new
     return dict(
         coef=beta, scaled_y=y, mu=mu, dispersion=dispersion, weights=np.array(n),
-        covariance_unscaled=pinv(C), iterations=iter_, deviance=dev,
+        covariance_unscaled=cho2inv(C, False), iterations=iter_, deviance=dev,
         H=H, C=C)
-
-
-def fit_matches(gpsms, **kwargs):
-    breaks = []
-    matched = []
-    totals = []
-    for gpsm in gpsms:
-        c, y, t = build_fragment_intensity_matches(gpsm)
-        x = encode_classification(c)
-        breaks.append(x)
-        matched.append(y)
-        totals.append(t)
-    fit = multinomial_fit(breaks, matched, totals, **kwargs)
-    return MultinomialRegressionFit(**fit)
-
-
-def multinomial_predict(x, weights, beta):
-    yhat = (x.dot(beta))
-    yhat /= (1 + yhat.sum())
-    return yhat
 
 
 class MultinomialRegressionFit(object):
     def __init__(self, coef, scaled_y, mu, dispersion, weights, covariance_unscaled,
-                 deviance, H, model_type=FragmentType, **info):
+                 deviance, H, model_type=FragmentType, reliability_model=None, **info):
         self.coef = coef
         self.scaled_y = scaled_y
         self.mu = mu
@@ -625,6 +757,7 @@ class MultinomialRegressionFit(object):
         self.H = H
         self.info = info
         self.model_type = model_type
+        self.reliability_model = reliability_model
 
     @property
     def hessian(self):
@@ -639,12 +772,13 @@ class MultinomialRegressionFit(object):
         return yhat
 
     def parameter_intervals(self):
-        return np.sqrt(np.diag(np.linalg.inv(self.hessian))) * np.sqrt((self.estimate_dispersion()))
+        return np.sqrt(np.diag(self.covariance_unscaled)) * np.sqrt((self.estimate_dispersion()))
 
     def residuals(self, gpsms, normalized=False):
         y = []
         total = []
         mu = []
+        reliabilities = []
         for gpsm in gpsms:
             c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
             X = self.model_type.encode_classification(c)
@@ -652,14 +786,26 @@ class MultinomialRegressionFit(object):
             y.append(intens / t)
             mu.append(yhat)
             total.append(t)
+            if self.reliability_model is None:
+                reliabilities.append(np.ones_like(yhat))
+            else:
+                reliability = np.zeros_like(yhat)
+                reliability_score_map = self.reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
+                for i, frag_spec in enumerate(c):
+                    peak_pair = frag_spec.peak_pair
+                    if peak_pair is None:
+                        reliability[i] = 1.0
+                    else:
+                        reliability[i] = reliability_score_map[peak_pair]
+                reliabilities.append(reliability)
         ys = np.array(list(map(np.sum, y)))
         ms = np.array(list(map(np.sum, mu)))
         sign = (ys - ms) / np.abs(ys - ms)
         wt = np.array(total)
         # this is the leftover count after accounting for signal matched by
         # the fragment
-        dc = np.where(wt == ys, 0, wt * (1 - ys) * np.log((1 - ys) / (1 - ms)))
-        as_ = deviance_residuals(y, mu, wt)
+        dc = np.where(wt == ys, 0, wt * (1 - ys) * np.log((1 - ys) / (1 - ms + 1e-6)))
+        as_ = deviance_residuals(y, mu, wt, reliabilities)
         return sign * np.sqrt(np.array([
             # this inner sum is the squared residuals
             a.sum() + (2 * dc[i]) for i, a in enumerate(as_)]))
@@ -668,7 +814,33 @@ class MultinomialRegressionFit(object):
         c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
         X = self.model_type.encode_classification(c)
         yhat = self.predict(X)
-        return deviance_residuals([intens / t], [yhat], [t])[0]
+        if self.reliability_model is None:
+            reliability = np.ones_like(yhat)
+        else:
+            reliability = np.zeros_like(yhat)
+            reliability_score_map = self.reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
+            for i, frag_spec in enumerate(c):
+                peak_pair = frag_spec.peak_pair
+                if peak_pair is None:
+                    reliability[i] = 1.0
+                else:
+                    reliability[i] = reliability_score_map[peak_pair]
+        return deviance_residuals([intens / t], [yhat], [t], [reliability])[0]
+
+    def _calculate_reliability(self, gpsm):
+        n = len(gpsm.solution_map) + 1
+        if self.reliability_model is None:
+            reliability = np.ones(n)
+        else:
+            reliability = np.zeros(n)
+            reliability_score_map = self.reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
+            for i, frag_spec in enumerate(gpsm.solution_map):
+                peak_pair = frag_spec
+                if peak_pair is None:
+                    reliability[i] = 1.0
+                else:
+                    reliability[i] = reliability_score_map[peak_pair]
+        return reliability
 
     def test_goodness_of_fit(self, gpsm):
         c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
@@ -679,7 +851,7 @@ class MultinomialRegressionFit(object):
         yhat *= 100
         intens = intens / t * 100
 
-        dc = (100 - intens.sum()) * np.log((100 - intens.sum()) / (100 - yhat.sum()))
+        dc = (100 - intens.sum()) * np.log((100 - intens.sum()) / (100 - yhat.sum() + 1e-6))
 
         intens = (intens)
         theor = (yhat)
@@ -714,6 +886,67 @@ class MultinomialRegressionFit(object):
         similarity[mask] = np.sqrt(1 - relative_diff_intens[mask])
         score = similarity.dot(np.sqrt(theor))
         return score
+
+    def pearson_residual_score(self, gpsm, weighted=False):
+        c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
+        X = self.model_type.encode_classification(c)
+        yhat = self.predict(X)
+
+        # standardize intensity
+        intens = intens / t
+        # remove the unassigned signal term
+        intens = intens[:-1]
+        yhat = yhat[:-1]
+
+        delta = (intens - yhat) ** 2
+        mask = intens > yhat
+        # reduce penalty for exceeding predicted intensity
+        delta[mask] = delta[mask] / 2.
+        denom = yhat * (1 - yhat)  # divide by the square root of the reliability
+        w = 1
+        if weighted:
+            w = t
+        return delta.dot(1.0 / denom) * w
+
+    def compound_score(self, gpsm):
+        '''
+        Score(s_j) = Coverage(s_j) * \left(\sum_{i}^{n_{s_j}}{
+            100 * y_i * \log_{10}\left(\frac{(y_i - \mu_i)^2}{\mu_i * (1 - \mu_i)}^{-1}\right)
+            }\right)
+        '''
+        c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
+        X = self.model_type.encode_classification(c)
+        yhat = self.predict(X)
+        if self.reliability_model is None:
+            reliability = np.ones_like(yhat)
+        else:
+            reliability = np.zeros_like(yhat)
+            reliability_score_map = self.reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
+            for i, frag_spec in enumerate(c):
+                peak_pair = frag_spec.peak_pair
+                if peak_pair is None:
+                    reliability[i] = 1.0
+                else:
+                    reliability[i] = reliability_score_map[peak_pair]
+
+        # standardize intensity
+        intens = intens / t
+        # remove the unassigned signal term
+        intens = intens[:-1]
+        yhat = yhat[:-1]
+
+        # basic sequence coverage
+        coverage = gpsm.matcher._coverage_score()
+
+        delta = (intens - yhat) ** 2
+        mask = intens > yhat
+        # reduce penalty for exceeding predicted intensity
+        delta[mask] = delta[mask] / 2.
+        denom = yhat * (1 - yhat)  # divide by the square root of the reliability
+        denom *= np.sqrt(reliability[:-1])
+        lg_inverted_pearson_residual_score = np.log10(1 / delta * (1.0 / denom))
+        signal_utilization = intens * 100
+        return (signal_utilization * lg_inverted_pearson_residual_score).sum() * coverage
 
     def describe(self):
         table = []
