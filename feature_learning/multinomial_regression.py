@@ -739,18 +739,20 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
             break
         dev = dev_new
     return dict(
-        coef=beta, scaled_y=y, mu=mu, dispersion=dispersion, weights=np.array(n),
+        coef=beta, scaled_y=y, mu=mu, reliabilities=reliabilities,
+        dispersion=dispersion, weights=np.array(n),
         covariance_unscaled=cho2inv(C, False), iterations=iter_, deviance=dev,
         H=H, C=C)
 
 
 class MultinomialRegressionFit(object):
-    def __init__(self, coef, scaled_y, mu, dispersion, weights, covariance_unscaled,
+    def __init__(self, coef, scaled_y, mu, reliabilities, dispersion, weights, covariance_unscaled,
                  deviance, H, model_type=FragmentType, reliability_model=None, **info):
         self.coef = coef
         self.scaled_y = scaled_y
         self.mu = mu
         self.weights = weights
+        self.reliabilities = reliabilities
         self.dispersion = dispersion
         self.covariance_unscaled = covariance_unscaled
         self.deviance = deviance
@@ -764,7 +766,8 @@ class MultinomialRegressionFit(object):
         return self.H
 
     def estimate_dispersion(self):
-        return deviance(self.scaled_y, self.mu, self.weights) / (len(self.scaled_y) - len(self.coef))
+        return deviance(self.scaled_y, self.mu, self.weights, self.reliabilities
+                        ) / (len(self.scaled_y) - len(self.coef))
 
     def predict(self, x):
         yhat = np.exp(x.dot(self.coef))
@@ -943,8 +946,8 @@ class MultinomialRegressionFit(object):
         # reduce penalty for exceeding predicted intensity
         delta[mask] = delta[mask] / 2.
         denom = yhat * (1 - yhat)  # divide by the square root of the reliability
-        denom *= np.sqrt(reliability[:-1])
-        lg_inverted_pearson_residual_score = np.log10(1 / delta * (1.0 / denom))
+        denom *= (reliability[:-1])
+        lg_inverted_pearson_residual_score = -np.log10(delta * (1.0 / denom))
         signal_utilization = intens * 100
         return (signal_utilization * lg_inverted_pearson_residual_score).sum() * coverage
 
