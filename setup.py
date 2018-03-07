@@ -27,7 +27,7 @@ def make_extensions():
     from Cython.Build import cythonize
     cython_directives = {
         'embedsignature': True,
-        "profile": True
+        "profile": False
     }
     extensions = cythonize([
         Extension(name='feature_learning._c.data_source', sources=["feature_learning/_c/data_source.pyx"],

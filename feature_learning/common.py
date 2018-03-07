@@ -1,39 +1,13 @@
-from __future__ import print_function
-from math import fabs
 import operator
 
 get_intensity = operator.attrgetter("intensity")
-
-
-def log(message, *args):
-    print(message % args)
 
 
 def ppm_error(x, y):
     return (x - y) / y
 
 
-def tol_ppm_error(x, y, tolerance):
-    err = (x - y) / y
-    if fabs(err) <= tolerance:
-        return err
-    else:
-        return None
-
-
-def mass_offset_match(mass, peak, offset=0., tolerance=2e-5):
-    return abs(ppm_error(mass + offset, peak.neutral_mass)) <= tolerance
-
-
 OUT_OF_RANGE_INT = -999
-
-
-def search_spectrum(peak, peak_list, feature, tolerance=2e-5):
-    matches = []
-    for peak2 in peak_list.all_peaks_for(peak.neutral_mass + feature.offset, tolerance):
-        if feature(peak, peak2) and peak is not peak2:
-            matches.append(peak2)
-    return matches
 
 
 def intensity_ratio_function(peak1, peak2):
@@ -84,34 +58,3 @@ def intensity_rank(peak_list, minimum_intensity=100.):
         if rank == 0:
             break
         p.rank = rank
-
-
-def peptide_mass_rank(mass):
-    unit = 121.6
-    ratio = (mass / unit)
-    if ratio < 9:
-        return 1
-    elif ratio < 13:
-        return 2
-    elif ratio < 17:
-        return 3
-    elif ratio < 20:
-        return 4
-    else:
-        return 5
-
-
-def glycan_peptide_ratio(glycan_mass, peptide_mass):
-    ratio = (glycan_mass / peptide_mass)
-    if ratio < 0.4:
-        return 0
-    elif 0.4 <= ratio < 0.8:
-        return 1
-    elif 0.8 <= ratio < 1.2:
-        return 2
-    elif 1.2 <= ratio < 1.6:
-        return 3
-    elif 1.6 <= ratio < 2.0:
-        return 4
-    elif ratio >= 2.0:
-        return 5
