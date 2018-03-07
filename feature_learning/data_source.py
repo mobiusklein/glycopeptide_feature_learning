@@ -2,7 +2,7 @@ import os
 
 from ms_deisotope import DeconvolutedPeak, DeconvolutedPeakSet, neutral_mass
 from ms_deisotope.data_source import ProcessedScan, ActivationInformation
-from ms_deisotope.output.mgf import ProcessedMGFDeserializer
+from ms_deisotope.output.mgf import ProcessedMGFDeserializer, pymgf
 
 from glycan_profiling.structure import FragmentCachingGlycopeptide
 from glycan_profiling.tandem.glycopeptide.scoring import CoverageWeightedBinomialScorer
@@ -13,6 +13,24 @@ from glypy.utils import opener
 
 from .common import intensity_rank
 from .matching import SpectrumMatchAnnotator
+
+
+def _parse_charge(z, use_list=False):
+    '''Pyteomics _parse_charge is very general-purpose, and
+    can't be sped up, so we monkey-patch it here.'''
+    try:
+        if not use_list:
+            return int(z.replace('+', ''))
+        else:
+            return map(_parse_charge, z.split(" "))
+    except Exception:
+        if '-' in z:
+            return int(z.replace("-", '')) * -1
+        else:
+            raise
+
+
+pymgf.aux._parse_charge = _parse_charge
 
 
 class RankedPeak(DeconvolutedPeak):
@@ -88,19 +106,24 @@ class AnnotatedScan(ProcessedScan):
         return self.annotations['ranked_peaks']
 
 
+def build_deconvoluted_peak_set_from_arrays(mz_array, intensity_array, charge_array):
+    peaks = []
+    for i in range(len(mz_array)):
+        peak = RankedPeak(
+            neutral_mass(mz_array[i], charge_array[i]), intensity_array[i], charge_array[i],
+            intensity_array[i], i)
+        peaks.append(peak)
+    peak_set = DeconvolutedPeakSet(peaks)
+    peak_set.reindex()
+    return peak_set
+
+
 class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
     def _build_peaks(self, scan):
         mz_array = scan['m/z array']
         intensity_array = scan["intensity array"]
         charge_array = scan['charge array']
-        peaks = []
-        for i in range(len(mz_array)):
-            peak = RankedPeak(
-                neutral_mass(mz_array[i], charge_array[i]), intensity_array[i], charge_array[i],
-                intensity_array[i], i)
-            peaks.append(peak)
-        peak_set = DeconvolutedPeakSet(peaks)
-        peak_set.reindex()
+        peak_set = build_deconvoluted_peak_set_from_arrays(mz_array, intensity_array, charge_array)
         intensity_rank(peak_set)
         return peak_set
 
@@ -114,7 +137,7 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
         try:
             fname = os.path.basename(self.source_file)
         except Exception:
-            fname = ''
+            fname = os.path.basename(self.source_file.name)
         return "%s.%s" % (fname, title)
 
     def _make_scan(self, scan):
@@ -136,3 +159,12 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
 
 def read(path):
     return AnnotatedMGFDeserializer(opener(path))
+
+
+try:
+    has_c = True
+    _RankedPeak = RankedPeak
+    _build_deconvoluted_peak_set_from_arrays = build_deconvoluted_peak_set_from_arrays
+    from feature_learning._c.data_source import RankedPeak, build_deconvoluted_peak_set_from_arrays
+except ImportError:
+    has_c = False

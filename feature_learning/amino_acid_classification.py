@@ -1,5 +1,6 @@
 from glycopeptidepy.structure import residue, fragment
 from glypy.utils import Enum
+from glycopeptidepy.utils import memoize
 
 R = residue.Residue
 
@@ -42,6 +43,7 @@ def proton_mobility(sequence):
     return p
 
 
+@memoize(100)
 def classify_residue_frank(residue_):
     if residue_ == Proline:
         return AminoAcidClassification.pro
@@ -61,6 +63,7 @@ def classify_residue_frank(residue_):
         return AminoAcidClassification.x
 
 
+@memoize(10000)
 def classify_amide_bond_frank(n_term, c_term):
     if n_term == Proline:
         return AminoAcidClassification.pro, AminoAcidClassification.x

@@ -18,7 +18,13 @@ class GammaFit(object):
         return ax
 
     def pdf(self, x):
-        return gamma.pdf(x, *self.args)
+        return gamma.pdf(x, *self.params)
+
+    def cdf(self, x):
+        return gamma.cdf(x, *self.params)
+
+    def sf(self, x):
+        return gamma.sf(x, *self.params)
 
 
 class GammaMixture(object):
@@ -32,3 +38,16 @@ class GammaMixture(object):
         mad = np.median(np.abs(self.data - median))
         self.fits.append(GammaFit(self.data[self.data <= median + mad]))
         self.fits.append(GammaFit(self.data[self.data >= median - mad]))
+
+    def cdf(self, x):
+        return np.min([f.cdf(x) for f in self.fits], axis=0)
+
+    def sf(self, x):
+        return np.max([f.sf(x) for f in self.fits], axis=0)
+
+    def plot(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(1)
+        for f in self.fits:
+            f.plot(ax)
+        return ax

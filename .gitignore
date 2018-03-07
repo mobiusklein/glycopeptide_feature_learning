@@ -1,1 +1,5 @@
 *.pyc
+*.pyd
+feature_learning/_c/*.c
+feature_learning/_c/*.html
+

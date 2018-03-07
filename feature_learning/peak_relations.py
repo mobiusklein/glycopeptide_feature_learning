@@ -242,11 +242,6 @@ class FeatureBase(object):
     def __ne__(self, other):
         return not (self == other)
 
-    def fit(self, gpsms, series=IonSeries.b, tolerance=None, preranked=True, verbose=False):
-        if tolerance is None:
-            tolerance = self.tolerance
-        return feature_function_estimator(gpsms, self, series, tolerance, preranked, verbose)
-
     def find_matches(self, peak, peak_list, structure=None):
         raise NotImplementedError()
 
@@ -277,6 +272,13 @@ class FeatureBase(object):
             return LinkFeature.from_json(d)
         else:
             return MassOffsetFeature.from_json(d)
+
+
+try:
+    _FeatureBase = FeatureBase
+    from feature_learning._c.peak_relations import FeatureBase
+except ImportError:
+    pass
 
 
 class MassOffsetFeature(FeatureBase):
@@ -363,6 +365,13 @@ class MassOffsetFeature(FeatureBase):
             d['offset'], d['tolerance'], d['name'], d['intensity_ratio'],
             d['from_charge'], d['to_charge'], d['feature_type'], d['terminal'])
         return inst
+
+
+try:
+    _MassOffsetFeature = MassOffsetFeature
+    from feature_learning._c.peak_relations import MassOffsetFeature
+except ImportError:
+    pass
 
 
 class LinkFeature(MassOffsetFeature):

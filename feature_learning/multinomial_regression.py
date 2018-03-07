@@ -68,6 +68,10 @@ def get_cterm_index_from_fragment(fragment, structure):
 
 class FragmentType(_FragmentType):
 
+    _is_backbone = None
+    _is_assigned = None
+    _is_stub_glycopeptide = None
+
     @property
     def fragment(self):
         return self.peak_pair.fragment
@@ -77,13 +81,19 @@ class FragmentType(_FragmentType):
         return self.peak_pair.peak
 
     def is_assigned(self):
-        return self.series != FragmentSeriesClassification.unassigned
+        if self._is_assigned is None:
+            self._is_assigned = self.series != FragmentSeriesClassification.unassigned
+        return self._is_assigned
 
     def is_backbone(self):
-        return (self.series != FragmentSeriesClassification.stub_glycopeptide) and self.is_assigned()
+        if self._is_backbone is None:
+            self._is_backbone = (self.series != FragmentSeriesClassification.stub_glycopeptide) and self.is_assigned()
+        return self._is_backbone
 
     def is_stub_glycopeptide(self):
-        return (self.series == FragmentSeriesClassification.stub_glycopeptide)
+        if self._is_stub_glycopeptide is None:
+            self._is_stub_glycopeptide = (self.series == FragmentSeriesClassification.stub_glycopeptide)
+        return self._is_stub_glycopeptide
 
     def as_feature_dict(self):
         return OrderedDict(zip(self.feature_names(), self.as_feature_vector()))
@@ -282,7 +292,7 @@ class ProlineSpecializingModel(FragmentType):
 
     def as_feature_vector(self):
         X = super(ProlineSpecializingModel, self).as_feature_vector()
-        return np.hstack((X, self.specialize_proline()))
+        return np.concatenate((X, self.specialize_proline()))
 
     @classmethod
     def feature_names(cls):
@@ -320,7 +330,7 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
 
     def as_feature_vector(self):
         X = super(StubGlycopeptideCompositionModel, self).as_feature_vector()
-        return np.hstack((X, self.encode_stub_information()))
+        return np.concatenate((X, self.encode_stub_information()))
 
     @classmethod
     def feature_names(self):
@@ -344,7 +354,7 @@ class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
 
     def as_feature_vector(self):
         X = super(StubGlycopeptideFucosylationModel, self).as_feature_vector()
-        return np.hstack((X, self.encode_stub_fucosylation()))
+        return np.concatenate((X, self.encode_stub_fucosylation()))
 
     @classmethod
     def feature_names(self):
@@ -398,7 +408,7 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
 
     def as_feature_vector(self):
         X = super(NeighboringAminoAcidsModel, self).as_feature_vector()
-        return np.hstack((X, self.encode_neighboring_residues()))
+        return np.concatenate((X, self.encode_neighboring_residues()))
 
     @classmethod
     def feature_names(cls):
@@ -453,7 +463,7 @@ class GlycosylationSiteDistanceStubModel(NeighboringAminoAcidsModelDepth4):
 
     def as_feature_vector(self):
         X = super(GlycosylationSiteDistanceStubModel, self).as_feature_vector()
-        return np.hstack((X, self.encode_glycosylation_site_offset()))
+        return np.concatenate((X, self.encode_glycosylation_site_offset()))
 
     @classmethod
     def feature_names(cls):
@@ -463,7 +473,7 @@ class GlycosylationSiteDistanceStubModel(NeighboringAminoAcidsModelDepth4):
         return names
 
 
-class CleavageSiteCenterDistanceModel(GlycosylationSiteDistanceStubModel):
+class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth4):
     max_cleavage_site_distance_from_center = 10
 
     def get_cleavage_site_distance_from_center(self):
@@ -489,7 +499,7 @@ class CleavageSiteCenterDistanceModel(GlycosylationSiteDistanceStubModel):
 
     def as_feature_vector(self):
         X = super(CleavageSiteCenterDistanceModel, self).as_feature_vector()
-        return np.hstack((X, self.encode_cleavage_site_distance_from_center()))
+        return np.concatenate((X, self.encode_cleavage_site_distance_from_center()))
 
     @classmethod
     def feature_names(cls):
@@ -526,7 +536,7 @@ class AmideBondCrossproductModel(StubGlycopeptideCompositionModel):
 
     def as_feature_vector(self):
         X = super(AmideBondCrossproductModel, self).as_feature_vector()
-        return np.hstack((X, self.specialize_fragmentation_site()))
+        return np.concatenate((X, self.specialize_fragmentation_site()))
 
     @classmethod
     def feature_names(self):
