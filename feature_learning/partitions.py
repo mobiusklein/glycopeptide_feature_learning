@@ -7,12 +7,13 @@ import numpy as np
 from glycopeptidepy.structure.glycan import GlycosylationType
 from glypy.utils import make_struct
 
+
 from .amino_acid_classification import proton_mobility
 
 
-def classify_proton_mobility(gpsm):
-    k = proton_mobility(gpsm.structure)
-    charge = gpsm.precursor_information.charge
+def classify_proton_mobility(scan, structure):
+    k = proton_mobility(structure)
+    charge = scan.precursor_information.charge
     if k < charge:
         return 'mobile'
     elif k == charge:
@@ -33,17 +34,58 @@ class partition_cell_spec(partition_cell_spec):
 
     def test(self, gpsm):
         glycan_size = sum(gpsm.structure.glycan_composition.values())
-        if len(gpsm.structure) > self.peptide_length_range[1] or len(gpsm.structure) < self.peptide_length_range[0]:
+        peptide_size = len(gpsm.structure)
+        if peptide_size < self.peptide_length_range[0] or peptide_size > self.peptide_length_range[1]:
             return False
-        if glycan_size > self.glycan_size_range[1] or glycan_size < self.glycan_size_range[0]:
+        if glycan_size < self.glycan_size_range[0] or glycan_size > self.glycan_size_range[1]:
             return False
-        if classify_proton_mobility(gpsm) != self.proton_mobility:
+        if classify_proton_mobility(gpsm, gpsm.structure) != self.proton_mobility:
             return False
         if gpsm.precursor_information.charge != self.charge:
             return False
         if gpsm.structure.glycosylation_manager.count_glycosylation_type(self.glycan_type) != self.glycan_count:
             return False
         return True
+
+    def test_peptide_size(self, scan, structure, *args, **kwargs):
+        peptide_size = len(structure)
+        invalid = (peptide_size < self.peptide_length_range[0] or
+                   peptide_size > self.peptide_length_range[1])
+        return not invalid
+
+    def test_glycan_size(self, scan, structure, *args, **kwargs):
+        glycan_size = sum(structure.glycan_composition.values())
+        invalid = (glycan_size < self.glycan_size_range[0] or
+                   glycan_size > self.glycan_size_range[1])
+        return not invalid
+
+    def test_proton_mobility(self, scan, structure, *args, **kwargs):
+        pm = classify_proton_mobility(scan, structure)
+        return self.proton_mobility == pm
+
+    def test_charge(self, scan, structure, *args, **kwargs):
+        return scan.precursor_information.charge == self.charge
+
+    def test_glycan_count(self, scan, structure, *args, **kwargs):
+        count = structure.structure.glycosylation_manager.count_glycosylation_type(self.glycan_type)
+        return count == self.glycan_count
+
+    def to_json(self):
+        d = {}
+        d['peptide_length_range'] = self.peptide_length_range
+        d['glycan_size_range'] = self.glycan_size_range
+        d['charge'] = self.charge
+        d['proton_mobility'] = self.proton_mobility
+        d['glycan_type'] = str(self.glycan_type.name)
+        d['glycan_count'] = self.glycan_count
+        return d
+
+    @classmethod
+    def from_json(cls, d):
+        d['glycan_type'] = GlycosylationType[d['glycan_type']]
+        d['peptide_length_range'] = tuple(d['peptide_length_range'])
+        d['glycan_size_range'] = tuple(d['glycan_size_range'])
+        return cls(**d)
 
 
 peptide_backbone_length_ranges = [(a, a + 5) for a in range(0, 50, 5)]

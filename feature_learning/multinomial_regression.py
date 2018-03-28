@@ -1,15 +1,30 @@
 import six
+import base64
+import json
+import io
+
 from collections import namedtuple, defaultdict, OrderedDict
 
 import numpy as np
 from scipy.stats import norm
-from scipy.linalg import solve_triangular, pinv, cho_solve
+from scipy.linalg import solve_triangular, cho_solve
 
 from glypy.utils import Enum
-from glycopeptidepy.structure.fragment import PeptideFragment
+from glycopeptidepy.utils import memoize
+from glycopeptidepy.structure.fragment import PeptideFragment, IonSeries
+
+from glycan_profiling.structure.fragment_match_map import PeakFragmentPair
+from ms_deisotope import DeconvolutedPeak
 
 from .amino_acid_classification import (
-    AminoAcidClassification, classify_amide_bond_frank, classify_residue_frank, proton_mobility)
+    AminoAcidClassification, classify_amide_bond_frank, classify_residue_frank)
+from .approximation import PearsonResidualCDF
+from .peak_relations import FragmentationModelCollection
+
+
+array_dtype = np.dtype("<d")
+
+PEARSON_BIAS = 3.3
 
 
 class FragmentSeriesClassification(Enum):
@@ -66,6 +81,26 @@ def get_cterm_index_from_fragment(fragment, structure):
     return index
 
 
+class FragmentTypeMeta(type):
+    type_cache = dict()
+
+    def __new__(cls, name, parents, attrs):
+        new_type = type.__new__(cls, name, parents, attrs)
+        new_type._feature_count = None
+        cls.type_cache[name] = new_type
+        return new_type
+
+    @property
+    def feature_count(self):
+        if self._feature_count is None:
+            self._feature_count = len(self.feature_names())
+        return self._feature_count
+
+    def get_model_by_name(self, name):
+        return self.type_cache[name]
+
+
+@six.add_metaclass(FragmentTypeMeta)
 class FragmentType(_FragmentType):
 
     _is_backbone = None
@@ -184,7 +219,7 @@ class FragmentType(_FragmentType):
             self[2].name, self[3], self[4])
 
     @classmethod
-    def from_peak_peptide_fragment_pair(cls, peak_fragment_pair, gpsm):
+    def from_peak_peptide_fragment_pair(cls, peak_fragment_pair, structure):
         peak, fragment = peak_fragment_pair
         nterm, cterm = classify_amide_bond_frank(*fragment.flanking_amino_acids)
         glycosylation = bool(fragment.glycosylation) | bool(
@@ -192,7 +227,7 @@ class FragmentType(_FragmentType):
         inst = cls(
             nterm, cterm, FragmentSeriesClassification[fragment.series],
             glycosylation, min(peak.charge, FragmentCharge_max + 1),
-            peak_fragment_pair, gpsm.structure)
+            peak_fragment_pair, structure)
         return inst
 
     @classmethod
@@ -220,7 +255,7 @@ class FragmentType(_FragmentType):
                         min(fragment.glycosylation_size, StubFragment_max_glycosylation_size),
                         min(peak.charge, FragmentCharge_max + 1), peak_fragment_pair, gpsm.structure))
                 continue
-            inst = cls.from_peak_peptide_fragment_pair(peak_fragment_pair, gpsm)
+            inst = cls.from_peak_peptide_fragment_pair(peak_fragment_pair, gpsm.structure)
             fragment_classification.append(inst)
 
         unassigned = total - matched_total
@@ -237,7 +272,7 @@ class FragmentType(_FragmentType):
         return np.vstack(X)
 
     @classmethod
-    def fit_regression(cls, gpsms, reliability_model=None, **kwargs):
+    def fit_regression(cls, gpsms, reliability_model=None, base_reliability=0., **kwargs):
         breaks = []
         matched = []
         totals = []
@@ -252,17 +287,68 @@ class FragmentType(_FragmentType):
                 reliability = np.ones_like(y)
             else:
                 reliability = np.zeros_like(y)
+                remaining_reliability = 1 - base_reliability
                 reliability_score_map = reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
                 for i, frag_spec in enumerate(c):
                     peak_pair = frag_spec.peak_pair
                     if peak_pair is None:
                         reliability[i] = 1.0
                     else:
-                        reliability[i] = reliability_score_map[peak_pair]
+                        reliability[i] = (remaining_reliability * reliability_score_map[peak_pair]
+                                          ) + base_reliability
 
             reliabilities.append(reliability)
-        fit = multinomial_fit(breaks, matched, totals, **kwargs)
+        try:
+            fit = multinomial_fit(breaks, matched, totals, reliabilities=reliabilities, **kwargs)
+        except np.linalg.LinAlgError:
+            fit = multinomial_fit(breaks, matched, totals, reliabilities=None, **kwargs)
         return MultinomialRegressionFit(model_type=cls, reliability_model=reliability_model, **fit)
+
+    @classmethod
+    def generate_all_products(cls, solution_map, structure, charge_max=FragmentCharge_max):
+        elements = []
+        for frags in structure.get_fragments(IonSeries.b):
+            for frag in frags:
+                peaks = {p.charge: p for p in solution_map.peaks_for(frag)}
+                for charge in range(1, charge_max + 2):
+                    try:
+                        peak = peaks[charge]
+                    except KeyError:
+                        peak = DeconvolutedPeak(frag.mass, 1, charge, 1, -1, 0, 0)
+                    pfp = PeakFragmentPair(peak, frag)
+                    elements.append(cls.from_peak_peptide_fragment_pair(pfp, structure))
+        for frags in structure.get_fragments(IonSeries.y):
+            for frag in frags:
+                peaks = {p.charge: p for p in solution_map.peaks_for(frag)}
+                for charge in range(1, charge_max + 2):
+                    try:
+                        peak = peaks[charge]
+                    except KeyError:
+                        peak = DeconvolutedPeak(frag.mass, 1, charge, 1, -1, 0, 0)
+                    pfp = PeakFragmentPair(peak, frag)
+                    elements.append(cls.from_peak_peptide_fragment_pair(pfp, structure))
+
+        # stubs may be duplicated
+        seen = set()
+        for frag in structure.stub_fragments(True):
+            if frag.name in seen:
+                continue
+            seen.add(frag.name)
+            peaks = {p.charge: p for p in solution_map.peaks_for(frag)}
+            for charge in range(1, charge_max + 2):
+                try:
+                    peak = peaks[charge]
+                except KeyError:
+                    peak = DeconvolutedPeak(frag.mass, 1, charge, 1, -1, 0, 0)
+                pfp = PeakFragmentPair(peak, frag)
+                inst = cls(
+                    None, None, FragmentSeriesClassification.stub_glycopeptide,
+                    min(frag.glycosylation_size, StubFragment_max_glycosylation_size),
+                    min(peak.charge, FragmentCharge_max + 1), pfp, structure)
+                assert inst not in elements
+                elements.append(inst)
+        elements.append(cls(None, None, FragmentSeriesClassification.unassigned, 0, 0, None, None))
+        return elements
 
 
 class ProlineSpecializingModel(FragmentType):
@@ -347,9 +433,10 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
 class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
     def encode_stub_fucosylation(self):
         X = [0, 0]
+        offset = 0
         if self.is_stub_glycopeptide():
             i = int(self.peak_pair.fragment.glycosylation['Fuc'] > 0)
-            X[i] = 1
+            X[offset + i] = 1
         return np.array(X, dtype=np.uint8)
 
     def as_feature_vector(self):
@@ -551,6 +638,7 @@ class AmideBondCrossproductModel(StubGlycopeptideCompositionModel):
         return names
 
 
+# @memoize.memoize(1000000)
 def classify_sequence_by_residues(sequence):
     ctr = defaultdict(int)
     for res, mods in sequence:
@@ -771,6 +859,12 @@ class MultinomialRegressionFit(object):
         self.model_type = model_type
         self.reliability_model = reliability_model
 
+    def copy(self):
+        return self.__class__(
+            self.coef, self.scaled_y, self.mu, self.reliabilities, self.dispersion,
+            self.weights, self.covariance_unscaled, self.deviance, self.H, self.model_type,
+            self.reliability_model, **self.info)
+
     @property
     def hessian(self):
         return self.H
@@ -840,19 +934,22 @@ class MultinomialRegressionFit(object):
                     reliability[i] = reliability_score_map[peak_pair]
         return deviance_residuals([intens / t], [yhat], [t], [reliability])[0]
 
-    def _calculate_reliability(self, gpsm):
-        n = len(gpsm.solution_map) + 1
+    def _calculate_reliability(self, gpsm, fragment_specs, base_reliability=0.0):
+        n = len(fragment_specs)
         if self.reliability_model is None:
             reliability = np.ones(n)
         else:
             reliability = np.zeros(n)
+            remaining_reliability = 1 - base_reliability
             reliability_score_map = self.reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
-            for i, frag_spec in enumerate(gpsm.solution_map):
-                peak_pair = frag_spec
+            for i, frag_spec in enumerate(fragment_specs):
+                peak_pair = frag_spec.peak_pair
                 if peak_pair is None:
                     reliability[i] = 1.0
                 else:
-                    reliability[i] = reliability_score_map[peak_pair]
+                    reliability[i] = (remaining_reliability * reliability_score_map[peak_pair]
+                                      ) + base_reliability
+
         return reliability
 
     def test_goodness_of_fit(self, gpsm):
@@ -872,33 +969,6 @@ class MultinomialRegressionFit(object):
         ratio = np.log(intens / theor)
         G = intens.dot(ratio) + dc
         return G
-
-    def test_goodness_of_fit2(self, gpsm):
-        c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
-        X = self.model_type.encode_classification(c)
-        yhat = self.predict(X)
-
-        # standardize intensity
-        yhat *= 100
-        intens = intens / t * 100
-
-        # drop the unassigned point
-        intens = (intens)[:-1]
-        theor = (yhat)[:-1]
-
-        relative_diff_intens = (intens - theor) / intens
-        relative_diff_theor = (theor - intens) / intens
-
-        mask = intens >= theor
-        similarity = np.zeros_like(intens)
-        nmask = ~mask
-
-        nmask = nmask & (relative_diff_theor < 1)
-        mask = mask & (relative_diff_intens < 1)
-        similarity[nmask] = (1 - relative_diff_theor[nmask])
-        similarity[mask] = np.sqrt(1 - relative_diff_intens[mask])
-        score = similarity.dot(np.sqrt(theor))
-        return score
 
     def pearson_residual_score(self, gpsm, weighted=False):
         c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
@@ -921,45 +991,77 @@ class MultinomialRegressionFit(object):
             w = t
         return delta.dot(1.0 / denom) * w
 
-    def compound_score(self, gpsm):
+    def _get_predicted_intensities(self, gpsm, all_fragments=False):
+        c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
+        X = self.model_type.encode_classification(c)
+        yhat_unnormed = np.exp(X.dot(self.coef))
+        if not all_fragments:
+            # this branch is identical to :meth:`predict`
+            # predict normalizes by the sum, which can make removing a low quality peak
+            # increasing the score by virtue of making the remaining yhat values larger
+            yhat = yhat_unnormed / (1 + yhat_unnormed.sum())
+        else:
+            # this branch attempts to correct for inconsistencies caused
+            # by predict when a peak match is omitted, increasing the value
+            # of the peaks matched by reducing the size of the sum in the normalizing
+            # expression (1 + yhat.sum())
+            c_all = self.model_type.generate_all_products(gpsm.solution_map, gpsm.structure)
+            X_all = self.model_type.encode_classification(c_all)
+            yhat_all = np.exp(X_all.dot(self.coef))
+            #
+            yhat = yhat_unnormed / (1 + yhat_all.sum())
+        return c, intens, t, yhat
+
+    def compound_score(self, gpsm, use_reliability=True, base_reliability=0.0, pearson_bias=PEARSON_BIAS,
+                       series_weights=None, normalized=False, all_fragments=False):
         '''
-        Score(s_j) = Coverage(s_j) * \left(\sum_{i}^{n_{s_j}}{
+        Score(s_j) = \left(\sum_{i}^{n_{s_j}}{
             100 * y_i * \log_{10}\left(\frac{(y_i - \mu_i)^2}{\mu_i * (1 - \mu_i)}^{-1}\right)
             }\right)
         '''
-        c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
-        X = self.model_type.encode_classification(c)
-        yhat = self.predict(X)
-        if self.reliability_model is None:
+        c, intens, t, yhat = self._get_predicted_intensities(gpsm, all_fragments)
+        W = np.ones_like(intens)
+        # if series_weights is None:
+        #     series_weights = defaultdict(lambda: 1.0, {'stub_glycopeptide': 0.2})
+        # for i, ci in enumerate(c):
+        #     W[i] = series_weights[ci.series]
+        if self.reliability_model is None or not use_reliability:
             reliability = np.ones_like(yhat)
         else:
-            reliability = np.zeros_like(yhat)
-            reliability_score_map = self.reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
-            for i, frag_spec in enumerate(c):
-                peak_pair = frag_spec.peak_pair
-                if peak_pair is None:
-                    reliability[i] = 1.0
-                else:
-                    reliability[i] = reliability_score_map[peak_pair]
-
+            reliability = self._calculate_reliability(
+                gpsm, c, base_reliability=base_reliability)
         # standardize intensity
         intens = intens / t
         # remove the unassigned signal term
+        W = W[:-1]
         intens = intens[:-1]
         yhat = yhat[:-1]
-
-        # basic sequence coverage
-        coverage = gpsm.matcher._coverage_score()
+        if normalized:
+            k = least_squares_scale_coefficient(yhat, intens)
+            yhat *= k
 
         delta = (intens - yhat) ** 2
         mask = intens > yhat
         # reduce penalty for exceeding predicted intensity
         delta[mask] = delta[mask] / 2.
-        denom = yhat * (1 - yhat)  # divide by the square root of the reliability
-        denom *= (reliability[:-1])
-        lg_inverted_pearson_residual_score = -np.log10(delta * (1.0 / denom))
+        denom = yhat * (1 - yhat)
+        denom *= (reliability[:-1])  # divide by the reliability
+        pearson_residual_score = delta * (1.0 / denom)
+        lg_inverted_pearson_residual_score = -np.log10(
+            PearsonResidualCDF(pearson_residual_score / pearson_bias) + 1e-6)
+
+        lg_inverted_pearson_residual_score[lg_inverted_pearson_residual_score < 0] = 1e-6
+        if np.any(lg_inverted_pearson_residual_score < 0):
+            raise ValueError("lg_inverted_pearson_residual_score is negative")
         signal_utilization = intens * 100
-        return (signal_utilization * lg_inverted_pearson_residual_score).sum() * coverage
+        return (W * signal_utilization * lg_inverted_pearson_residual_score).sum()
+
+    def coverage_compound_score(self, gpsm, use_reliability=True, base_reliability=0.0, pearson_bias=PEARSON_BIAS,
+                                series_weights=None, normalized=False, all_fragments=False):
+        score = self.compound_score(
+            gpsm, use_reliability, base_reliability, pearson_bias,
+            series_weights, normalized, all_fragments)
+        return gpsm.matcher._coverage_score() * score
 
     def describe(self):
         table = []
@@ -984,3 +1086,90 @@ class MultinomialRegressionFit(object):
                 output_buffer.write(col)
             output_buffer.write("\n")
         return output_buffer.getvalue()
+
+    def to_json(self, include_fit_source=True):
+        d = {}
+        d['coef'] = save_array(self.coef)
+        d['covariance_unscaled'] = save_array(self.covariance_unscaled)
+        d['hessian'] = save_array(self.H)
+        d['mu'] = save_array_list(self.mu) if include_fit_source else []
+        d['scaled_y'] = save_array_list(self.scaled_y) if include_fit_source else []
+        d['weights'] = save_array(self.weights) if include_fit_source else ""
+        d['reliabilities'] = save_array_list(self.reliabilities) if include_fit_source else []
+        d['deviance'] = self.deviance
+        d['reliability_model'] = self.reliability_model.to_json() if self.reliability_model else None
+        d['dispersion'] = self.dispersion
+        d['model_type'] = self.model_type.__name__
+        return d
+
+    @classmethod
+    def from_json(cls, d):
+        fit_coef = load_array(d['coef'])
+        fit_covariance_unscaled = load_array(d['covariance_unscaled'])
+        fit_H = load_array(d['hessian'])
+        fit_mu = load_array_list(d['mu'])
+        fit_scaled_y = load_array_list(d['scaled_y'])
+        fit_weights = load_array(d['weights'])
+        fit_reliabilities = load_array_list(d['reliabilities'])
+        fit_deviance = d['deviance']
+        fit_dispersion = d['dispersion']
+        fit_reliability_model = d['reliability_model']
+        if fit_reliability_model is not None:
+            fit_reliability_model = FragmentationModelCollection.from_json(fit_reliability_model)
+        fit_model_type_name = FragmentType.get_model_by_name(d['model_type'])
+        fit = cls(
+            coef=fit_coef,
+            scaled_y=fit_scaled_y,
+            mu=fit_mu,
+            reliabilities=fit_reliabilities,
+            dispersion=fit_dispersion,
+            weights=fit_weights,
+            covariance_unscaled=fit_covariance_unscaled,
+            deviance=fit_deviance,
+            H=fit_H,
+            model_type=fit_model_type_name,
+            reliability_model=fit_reliability_model)
+        return fit
+
+    def __eq__(self, other):
+        if not np.allclose(self.coef, other.coef):
+            return False
+        if self.reliability_model != other.reliability_model:
+            return False
+        if self.model_type != other.model_type:
+            return False
+        return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
+def save_array(a):
+    buf = io.BytesIO()
+    np.save(buf, a, False)
+    return base64.standard_b64encode(buf.getvalue())
+
+
+def save_array_list(a_list):
+    return [save_array(a) for a in a_list]
+
+
+def load_array(bytestring):
+    if not bytestring:
+        return None
+    try:
+        decoded_string = bytestring.encode("ascii")
+    except AttributeError:
+        decoded_string = bytestring
+    decoded_string = base64.decodestring(decoded_string)
+    buf = io.BytesIO(decoded_string)
+    array = np.load(buf)
+    return array
+
+
+def load_array_list(bytestring_list):
+    return [load_array(a) for a in bytestring_list]
+
+
+def least_squares_scale_coefficient(x, y):
+    return x.dot(y) / x.dot(x)

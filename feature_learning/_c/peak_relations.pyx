@@ -53,7 +53,7 @@ cdef class FeatureBase(object):
     def __init__(self, tolerance=2e-5, name=None, intensity_ratio=OUT_OF_RANGE_INT,
                  from_charge=OUT_OF_RANGE_INT, to_charge=OUT_OF_RANGE_INT, feature_type='',
                  terminal=''):
-        self.name = name
+        self.name = str(name)
         self.tolerance = tolerance
         self.intensity_ratio = intensity_ratio
         self.from_charge = from_charge
@@ -102,13 +102,14 @@ cdef class FeatureBase(object):
         d['terminal'] = self.terminal
         return d
 
-    # @classmethod
-    # def from_json(cls, d):
-    #     feature_type = d['feature_type']
-    #     if feature_type == LinkFeature.feature_type:
-    #         return LinkFeature.from_json(d)
-    #     else:
-    #         return MassOffsetFeature.from_json(d)
+    @classmethod
+    def from_json(cls, d):
+        # feature_type = d['feature_type']
+        # if feature_type == LinkFeature.feature_type:
+        #     return LinkFeature.from_json(d)
+        # else:
+        #     return MassOffsetFeature.from_json(d)
+        raise NotImplementedError()
 
 
 cdef class MassOffsetFeature(FeatureBase):

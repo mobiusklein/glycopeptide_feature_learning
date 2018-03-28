@@ -93,4 +93,9 @@ def status_msgs(*msgs):
 setup(name='feature_learning',
       packages=find_packages(),
       ext_modules=make_extensions(),
+      include_package_data=True,
+      package_data={
+          "feature_learning": ["feature_learning/data/*"],
+      },
+
       cmdclass=cmdclass)

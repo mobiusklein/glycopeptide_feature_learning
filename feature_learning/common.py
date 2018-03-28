@@ -58,3 +58,10 @@ def intensity_rank(peak_list, minimum_intensity=100.):
         if rank == 0:
             break
         p.rank = rank
+
+
+try:
+    _intensity_ratio_function = intensity_ratio_function
+    from ._c.peak_relations import intensity_ratio_function
+except ImportError:
+    pass

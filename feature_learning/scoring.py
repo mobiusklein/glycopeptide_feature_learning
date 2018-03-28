@@ -1,26 +1,43 @@
 import math
 
-from glycan_profiling.tandem.spectrum_matcher_base import SpectrumMatcherBase
+from collections import defaultdict
+
+import numpy as np
+
 from glycan_profiling.tandem.glycopeptide.scoring.simple_score import SimpleCoverageScorer
 from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial import (
     FragmentMatchMap)
 
+from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase, ChemicalShift
+from glycan_profiling.tandem.glycopeptide.scoring.glycan_signature_ions import GlycanCompositionSignatureMatcher
+from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial import accuracy_bias
+from glycan_profiling.tandem.spectrum_match import ModelTreeNode, Unmodified
+
+
 from .peak_relations import probability_of_peak_explained, fragmentation_probability
+from .multinomial_regression import PEARSON_BIAS, MultinomialRegressionFit
+from .partitions import classify_proton_mobility, partition_cell_spec
 
 
-class FragmentFrequencyScorer(SpectrumMatcherBase):
-    def __init__(self, scan, sequence, models=None):
-        if models is None:
-            models = dict()
-        super(FragmentFrequencyScorer, self).__init__(scan, sequence)
-        self._sanitized_spectrum = set(self.spectrum)
-        self.models = models
+class MultinomialRegressionScorer(SimpleCoverageScorer, GlycanCompositionSignatureMatcher):
+    accuracy_bias = accuracy_bias
+
+    def __init__(self, scan, sequence, mass_shift=None, multinomial_model=None):
+        super(MultinomialRegressionScorer, self).__init__(scan, sequence, mass_shift)
+        self.structure = self.target
+        self.model_fit = multinomial_model
+        self._init_signature_matcher()
 
     def match(self, error_tolerance=2e-5, *args, **kwargs):
+        GlycanCompositionSignatureMatcher.match(self, error_tolerance=error_tolerance)
+
         solution_map = FragmentMatchMap()
         spectrum = self.spectrum
         n_theoretical = 0
+        backbone_mass_series = []
+        neutral_losses = tuple(kwargs.pop("neutral_losses", []))
 
+        masked_peaks = set()
         for frag in self.target.glycan_fragments(
                 all_series=False, allow_ambiguous=False,
                 include_large_glycan_fragments=False,
@@ -28,82 +45,208 @@ class FragmentFrequencyScorer(SpectrumMatcherBase):
             peak = spectrum.has_peak(frag.mass, error_tolerance)
             if peak:
                 solution_map.add(peak, frag)
-                try:
-                    self._sanitized_spectrum.remove(peak)
-                except KeyError:
-                    continue
+                masked_peaks.add(peak.index.neutral_mass)
+                # try:
+                #     self._sanitized_spectrum.remove(peak)
+                # except KeyError:
+                #     continue
+        if self.mass_shift.tandem_mass != 0:
+            chemical_shift = ChemicalShift(
+                self.mass_shift.name, self.mass_shift.tandem_composition)
+        else:
+            chemical_shift = None
+        for frag in self.target.stub_fragments(extended=True):
+            for peak in spectrum.all_peaks_for(frag.mass, error_tolerance):
+                # should we be masking these? peptides which have amino acids which are
+                # approximately the same mass as a monosaccharide unit at ther terminus
+                # can produce cases where a stub ion and a backbone fragment match the
+                # same peak.
+                #
+                masked_peaks.add(peak.index.neutral_mass)
+                solution_map.add(peak, frag)
+
+            # If the precursor match was caused by a mass shift, that mass shift may
+            # be associated with stub fragments.
+            if chemical_shift is not None:
+                shifted_mass = frag.mass + self.mass_shift.tandem_mass
+                for peak in spectrum.all_peaks_for(shifted_mass, error_tolerance):
+                    masked_peaks.add(peak.index.neutral_mass)
+                    shifted_frag = frag.clone()
+                    shifted_frag.chemical_shift = chemical_shift
+                    shifted_frag.name += "+ %s" % (self.mass_shift.name,)
+                    solution_map.add(peak, shifted_frag)
 
         n_glycosylated_b_ions = 0
-        for frags in self.target.get_fragments('b'):
+        for frags in self.target.get_fragments('b', neutral_losses):
             glycosylated_position = False
             n_theoretical += 1
             for frag in frags:
+                backbone_mass_series.append(frag)
                 glycosylated_position |= frag.is_glycosylated
                 for peak in spectrum.all_peaks_for(frag.mass, error_tolerance):
+                    if peak.index.neutral_mass in masked_peaks:
+                        continue
                     solution_map.add(peak, frag)
             if glycosylated_position:
                 n_glycosylated_b_ions += 1
 
         n_glycosylated_y_ions = 0
-        for frags in self.target.get_fragments('y'):
+        for frags in self.target.get_fragments('y', neutral_losses):
             glycosylated_position = False
             n_theoretical += 1
             for frag in frags:
+                backbone_mass_series.append(frag)
                 glycosylated_position |= frag.is_glycosylated
                 for peak in spectrum.all_peaks_for(frag.mass, error_tolerance):
+                    if peak.index.neutral_mass in masked_peaks:
+                        continue
                     solution_map.add(peak, frag)
             if glycosylated_position:
                 n_glycosylated_y_ions += 1
-
-        for frag in self.target.stub_fragments(extended=True):
-            for peak in spectrum.all_peaks_for(frag.mass, error_tolerance):
-                solution_map.add(peak, frag)
 
         self.n_theoretical = n_theoretical
         self.glycosylated_b_ion_count = n_glycosylated_b_ions
         self.glycosylated_y_ion_count = n_glycosylated_y_ions
         self.solution_map = solution_map
+        self._backbone_mass_series = backbone_mass_series
         return solution_map
 
-    def locate_model(self, peak, fragment, charge_specific=True):
-        if charge_specific:
-            return self.models[(fragment.series, peak.charge)]
+    def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
+                        glycosylated_weight=None, stub_weight=None,
+                        use_reliability=True, base_reliability=0.5,
+                        pearson_bias=1.0,
+                        *args, **kwargs):
+        assert self.model_fit is not None
+
+        model_score = self.model_fit.compound_score(
+            self, use_reliability=use_reliability,
+            base_reliability=base_reliability,
+            pearson_bias=pearson_bias)
+        coverage_score = self._coverage_score(backbone_weight, glycosylated_weight, stub_weight)
+        offset = self.determine_precursor_offset()
+        mass_accuracy = -10 * math.log10(
+            1 - self.accuracy_bias.score(self.precursor_mass_accuracy(offset)))
+        signature_component = GlycanCompositionSignatureMatcher.calculate_score(self)
+        self._score = (model_score * coverage_score) + mass_accuracy + signature_component
+        return self._score
+
+
+class ShortPeptideMultinomialRegressionScorer(MultinomialRegressionScorer):
+    stub_weight = 0.75
+
+
+class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
+    def __init__(self, tp, *args, **kwargs):
+        self.tp = tp
+        self.args = args
+        self.kwargs = kwargs
+
+    def __repr__(self):
+        return "ModelBindingScorer(%s)" % (repr(self.tp),)
+
+    def __call__(self, scan, target, *args, **kwargs):
+        mass_shift = kwargs.pop("mass_shift", Unmodified)
+        kwargs.update(self.kwargs)
+        args = self.args + args
+        return self.tp(scan, target, mass_shift=mass_shift, *args, **kwargs)
+
+    def evaluate(self, scan, target, *args, **kwargs):
+        mass_shift = kwargs.pop("mass_shift", Unmodified)
+        inst = self.tp(scan, target, mass_shift=mass_shift, *self.args, **self.kwargs)
+        inst.match(*args, **kwargs)
+        inst.calculate_score(*args, **kwargs)
+        return inst
+
+    def __reduce__(self):
+        return self.__class__, (self.tp, self.args, self.kwargs)
+
+
+class DummyScorer(GlycopeptideSpectrumMatcherBase):
+    def __init__(self, *args, **kwargs):
+        raise TypeError("DummyScorer should not be instantiated!")
+
+
+class PartitionTree(DummyScorer):
+    def __init__(self, root):
+        self.root = root
+        self.size = 5
+
+    def get_model_for(self, scan, structure, *args, **kwargs):
+        i = 0
+        layer = self.root
+        glycan_size = sum(structure.glycan_composition.values())
+        peptide_size = len(structure)
+        precursor_charge = scan.precursor_information.charge
+        mobility = classify_proton_mobility(scan, structure)
+        while i < self.size:
+            for key, branch in layer.items():
+                if i == 0:
+                    if key[0] <= peptide_size <= key[1]:
+                        layer = branch
+                        i += 1
+                        break
+                if i == 1:
+                    if key[0] <= glycan_size <= key[1]:
+                        layer = branch
+                        i += 1
+                        break
+                if i == 2:
+                    if key == precursor_charge:
+                        layer = branch
+                        i += 1
+                        break
+                if i == 3:
+                    if key == mobility:
+                        layer = branch
+                        i += 1
+                        break
+                elif i == 4:
+                    count = structure.glycosylation_manager.count_glycosylation_type(key)
+                    if count != 0:
+                        try:
+                            return branch[count]
+                        except KeyError:
+                            raise ValueError("Could Not Find Leaf")
+        raise ValueError("Could Not Find Leaf %d" % i)
+
+    def evaluate(self, scan, target, *args, **kwargs):
+        model = self.get_model_for(scan, target, *args, **kwargs)
+        return model.evaluate(scan, target, *args, **kwargs)
+
+    def __call__(self, scan, target, *args, **kwargs):
+        model = self.get_model_for(scan, target, *args, **kwargs)
+        return model(scan, target, *args, **kwargs)
+
+    @classmethod
+    def build_tree(cls, key_tuples, i, n, solution_map):
+        aggregate = defaultdict(list)
+        for key in key_tuples:
+            aggregate[key[i]].append(key)
+        if i < n:
+            result = dict()
+            for k, vs in aggregate.items():
+                result[k] = cls.build_tree(vs, i + 1, n, solution_map)
+            return result
         else:
-            return self.models[(fragment.series, None)]
+            result = dict()
+            for k, vs in aggregate.items():
+                if len(vs) > 1:
+                    raise ValueError("Multiple specifications at a leaf node")
+                result[k] = solution_map[vs[0]]
+            return result
 
-    def _probability_of(self, peak, fragment, charge_specific=True):
-        offset_frequency, unknown_peak_rate, prior_fragment_probability = self.locate_model(
-            peak, fragment, charge_specific)
-        probability_of_explained = probability_of_peak_explained(
-            offset_frequency, unknown_peak_rate, prior_fragment_probability)
-        probability_of_fragment = fragmentation_probability(None, probability_of_explained, [])
-        return probability_of_fragment
+    @classmethod
+    def from_json(cls, d):
+        arranged_data = dict()
+        for spec_d, model_d in d:
+            spec = partition_cell_spec.from_json(spec_d)
+            model = MultinomialRegressionFit.from_json(model_d)
+            arranged_data[spec] = ModelBindingScorer(MultinomialRegressionScorer, multinomial_model=model)
+        root = cls.build_tree(arranged_data, 0, 5, arranged_data)
+        return cls(root)
 
-    def calculate_score(self, models=None, charge_specific=True, *args, **kwargs):
-        if models is not None:
-            self.models.update(models)
-        running_score = 0.0
-        for peak, fragment in self.solution_map:
-            if fragment.series == 'oxonium_ion':
-                continue
-            prob = self._probability_of(peak, fragment, charge_specific)
-            running_score += math.log10(prob)
-        self._score = -running_score
-        return self._score
+    def __reduce__(self):
+        return self.__class__, (self.root,)
 
-
-class CoverageWeightedFragmentFrequencyScorer(FragmentFrequencyScorer, SimpleCoverageScorer):
-    def __init__(self, scan, sequence, models=None):
-        if models is None:
-            models = dict()
-        super(FragmentFrequencyScorer, self).__init__(scan, sequence)
-        self._sanitized_spectrum = set(self.spectrum)
-        self.models = models
-        self.glycosylated_b_ion_count = 0
-        self.glycosylated_y_ion_count = 0
-
-    def calculate_score(self, models=None, *args, **kwargs):
-        freq_score = FragmentFrequencyScorer.calculate_score(self, models=models)
-        coverage_score = SimpleCoverageScorer.calculate_score(self)
-        self._score = freq_score * coverage_score
-        return self._score
+    def __repr__(self):
+        return "PartitionTree(%d)" % (len(self.root),)

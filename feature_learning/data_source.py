@@ -84,10 +84,13 @@ class AnnotatedScan(ProcessedScan):
     def mass_shift(self):
         return self.annotations.get('mass_shift', "Unmodified")
 
-    def decoy(self, method='reverse'):
-        copy = self.clone()
-        copy._structure = reverse_preserve_sequon(copy.structure)
-        return copy
+    def decoy(self):
+        if '_decoy' not in self.annotations:
+            copy = self.clone()
+            copy._structure = reverse_preserve_sequon(copy.structure)
+            self.annotations['_decoy'] = copy
+            return copy
+        return self.annotations['_decoy']
 
     def plot(self, ax=None):
         art = SpectrumMatchAnnotator(self.match(), ax=ax)

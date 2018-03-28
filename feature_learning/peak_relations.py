@@ -209,6 +209,14 @@ def fragmentation_probability(peak, probability_of_fragment, features):
     return numer / denom
 
 
+def _load_feature_from_json(cls, d):
+    feature_type = d['feature_type']
+    if feature_type == LinkFeature.feature_type:
+        return LinkFeature.from_json(d)
+    else:
+        return MassOffsetFeature.from_json(d)
+
+
 class FeatureBase(object):
     def __init__(self, tolerance=2e-5, name=None, intensity_ratio=OUT_OF_RANGE_INT,
                  from_charge=OUT_OF_RANGE_INT, to_charge=OUT_OF_RANGE_INT, feature_type='',
@@ -265,18 +273,16 @@ class FeatureBase(object):
         d['terminal'] = self.terminal
         return d
 
-    @classmethod
-    def from_json(cls, d):
-        feature_type = d['feature_type']
-        if feature_type == LinkFeature.feature_type:
-            return LinkFeature.from_json(d)
-        else:
-            return MassOffsetFeature.from_json(d)
+    from_json = classmethod(_load_feature_from_json)
 
 
 try:
     _FeatureBase = FeatureBase
-    from feature_learning._c.peak_relations import FeatureBase
+    from feature_learning._c.peak_relations import FeatureBase as CFeatureBase
+
+    class FeatureBase(CFeatureBase):
+        from_json = classmethod(_load_feature_from_json)
+
 except ImportError:
     pass
 
@@ -771,6 +777,7 @@ class FragmentationModel(object):
 
     def find_matches(self, scan, solution_map, structure):
         matches_to_features = defaultdict(list)
+        deconvoluted_peak_set = scan.deconvoluted_peak_set
         for peak_fragment in solution_map:
             peak = peak_fragment.peak
             fragment = peak_fragment.fragment
@@ -778,7 +785,7 @@ class FragmentationModel(object):
                 continue
             for feature in self.features:
                 if feature.from_charge == peak.charge:
-                    matches = feature.find_matches(peak, scan.deconvoluted_peak_set, structure)
+                    matches = feature.find_matches(peak, deconvoluted_peak_set, structure)
                     for match in matches:
                         if feature.is_valid_match(peak, match, solution_map, structure):
                             matches_to_features[peak].append(
@@ -875,6 +882,27 @@ class FragmentationModel(object):
                     "{self.offset_probability:g}|{self.prior_probability_of_match})")
         return template.format(self=self)
 
+    def __eq__(self, other):
+        if self.series != other.series:
+            return False
+        if not np.isclose(self.error_tolerance, other.error_tolerance):
+            return False
+        # alpha
+        if not np.isclose(self.on_frequency, other.on_frequency):
+            return False
+        # beta
+        if not np.isclose(self.off_frequency, other.off_frequency):
+            return False
+        # p
+        if not np.isclose(self.prior_probability_of_match, other.prior_probability_of_match):
+            return False
+        # gamma
+        if not np.isclose(self.offset_probability, other.offset_probability):
+            return False
+        if self.features != other.features:
+            return False
+        return True
+
     def to_json(self):
         d = {}
         d['series'] = self.series.name
@@ -952,3 +980,23 @@ class FragmentationModelCollection(object):
     def __repr__(self):
         template = "{self.__class__.__name__}({self.models})"
         return template.format(self=self)
+
+    def __eq__(self, other):
+        if self.models == other.models:
+            return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def to_json(self):
+        d = {}
+        for series, model in self.models.items():
+            d[str(series)] = model.to_json()
+        return d
+
+    @classmethod
+    def from_json(cls, d):
+        models = {}
+        for series, model in d.items():
+            models[IonSeries(series)] = FragmentationModel.from_json(model)
+        return cls(models)
