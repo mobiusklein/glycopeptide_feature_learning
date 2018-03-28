@@ -144,6 +144,9 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
     def __repr__(self):
         return "ModelBindingScorer(%s)" % (repr(self.tp),)
 
+    def __eq__(self, other):
+        return (self.tp == other.tp) and (self.args == other.args) and (self.kwargs == other.kwargs)
+
     def __call__(self, scan, target, *args, **kwargs):
         mass_shift = kwargs.pop("mass_shift", Unmodified)
         kwargs.update(self.kwargs)
@@ -166,6 +169,124 @@ class DummyScorer(GlycopeptideSpectrumMatcherBase):
         raise TypeError("DummyScorer should not be instantiated!")
 
 
+class PredicateBase(object):
+    def __init__(self, root):
+        self.root = root
+
+    def value_for(self, scan, structure, *args, **kwargs):
+        raise NotImplementedError()
+
+    def query(self, point, *args, **kwargs):
+        raise NotImplementedError()
+
+    def find_nearest(self, point, *args, **kwargs):
+        raise NotImplementedError()
+
+    def get(self, scan, structure, *args, **kwargs):
+        value = self.value_for(scan, structure, *args, **kwargs)
+        try:
+            result = self.query(value, *args, **kwargs)
+            if result is None:
+                result = self.find_nearest(value, *args, **kwargs)
+        except (ValueError, KeyError):
+            result = self.find_nearest(value, *args, **kwargs)
+        return result
+
+    def __call__(self, scan, structure, *args, **kwargs):
+        return self.get(scan, structure, *args, **kwargs)
+
+
+class IntervalPredicate(PredicateBase):
+
+    def query(self, point, *args, **kwargs):
+        for key, branch in self.root.items():
+            if key[0] <= point <= key[1]:
+                return branch
+        return None
+
+    def find_nearest(self, point, *args, **kwargs):
+        best_key = None
+        best_distance = float('inf')
+        for key, branch in self.root.items():
+            centroid = (key[0] + key[1]) / 2.
+            distance = math.sqrt((centroid - point) ** 2)
+            if distance < best_distance:
+                best_distance = distance
+                best_key = key
+        return self.root[best_key]
+
+
+class PeptideLengthPredicate(IntervalPredicate):
+    def value_for(self, scan, structure, *args, **kwargs):
+        peptide_size = len(structure)
+        return peptide_size
+
+
+class GlycanSizePredicate(IntervalPredicate):
+    def value_for(self, scan, structure, *args, **kwargs):
+        glycan_size = sum(structure.glycan_composition.values())
+        return glycan_size
+
+
+class MappingPredicate(PredicateBase):
+    def query(self, point, *args, **kwargs):
+        try:
+            return self.root[point]
+        except KeyError:
+            return None
+
+    def find_nearest(self, point, *args, **kwargs):
+        best_key = None
+        best_distance = float('inf')
+        for key, branch in self.root.items():
+            distance = math.sqrt((key - point) ** 2)
+            if distance < best_distance:
+                best_distance = distance
+                best_key = key
+        return self.root[best_key]
+
+
+class ChargeStatePredicate(MappingPredicate):
+    def value_for(self, scan, structure, *args, **kwargs):
+        charge = scan.precursor_information.charge
+        return charge
+
+
+class ProtonMobilityPredicate(MappingPredicate):
+    def value_for(self, scan, structure, *args, **kwargs):
+        return classify_proton_mobility(scan, structure)
+
+
+class GlycanTypeCountPredicate(PredicateBase):
+    def value_for(self, scan, structure, *args, **kwargs):
+        return structure.glycosylation_manager
+
+    def query(self, point, *args, **kwargs):
+        glycosylation_manager = point
+        for key, branch in self.root.items():
+            count = glycosylation_manager.count_glycosylation_type(key)
+            if count != 0:
+                try:
+                    return branch[count]
+                except KeyError:
+                    raise ValueError("Could Not Find Leaf")
+        return None
+
+    def find_nearest(self, point, *args, **kwargs):
+        best_key = None
+        best_distance = float('inf')
+        glycosylation_manager = point
+        for key, branch in self.root.items():
+            count = glycosylation_manager.count_glycosylation_type(key)
+            if count != 0:
+                for cnt, value in branch.items():
+                    distance = math.sqrt((count - cnt) ** 2)
+                    if distance < best_distance:
+                        best_distance = distance
+                        best_key = (key, cnt)
+        return self.root[best_key[0]][best_key[1]]
+
+
 class PartitionTree(DummyScorer):
     def __init__(self, root):
         self.root = root
@@ -179,6 +300,28 @@ class PartitionTree(DummyScorer):
         precursor_charge = scan.precursor_information.charge
         mobility = classify_proton_mobility(scan, structure)
         while i < self.size:
+            if i == 0:
+                predicate = PeptideLengthPredicate(layer)
+                layer = predicate(scan, structure, *args, **kwargs)
+                i += 1
+            if i == 1:
+                predicate = GlycanSizePredicate(layer)
+                layer = predicate(scan, structure, *args, **kwargs)
+                i += 1
+            if i == 2:
+                predicate = ChargeStatePredicate(layer)
+                layer = predicate(scan, structure, *args, **kwargs)
+                i += 1
+            if i == 3:
+                predicate = ProtonMobilityPredicate(layer)
+                layer = predicate(scan, structure, *args, **kwargs)
+                i += 1
+            if i == 4:
+                predicate = GlycanTypeCountPredicate(layer)
+                layer = predicate(scan, structure, *args, **kwargs)
+                i += 1
+                return layer
+
             for key, branch in layer.items():
                 if i == 0:
                     if key[0] <= peptide_size <= key[1]:
