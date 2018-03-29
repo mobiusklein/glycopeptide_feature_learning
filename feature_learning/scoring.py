@@ -386,7 +386,11 @@ class PartitionTree(DummyScorer):
         for spec_d, model_d in d:
             spec = partition_cell_spec.from_json(spec_d)
             model = MultinomialRegressionFit.from_json(model_d)
-            arranged_data[spec] = ModelBindingScorer(MultinomialRegressionScorer, multinomial_model=model)
+            if spec.peptide_length_range[1] <= 10:
+                scorer_type = ShortPeptideMultinomialRegressionScorer
+            else:
+                scorer_type = MultinomialRegressionScorer
+            arranged_data[spec] = ModelBindingScorer(scorer_type, multinomial_model=model)
         root = cls.build_tree(arranged_data, 0, 5, arranged_data)
         return cls(root)
 
