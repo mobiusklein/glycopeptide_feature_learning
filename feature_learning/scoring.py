@@ -295,10 +295,10 @@ class PartitionTree(DummyScorer):
     def get_model_for(self, scan, structure, *args, **kwargs):
         i = 0
         layer = self.root
-        glycan_size = sum(structure.glycan_composition.values())
-        peptide_size = len(structure)
-        precursor_charge = scan.precursor_information.charge
-        mobility = classify_proton_mobility(scan, structure)
+        # glycan_size = sum(structure.glycan_composition.values())
+        # peptide_size = len(structure)
+        # precursor_charge = scan.precursor_information.charge
+        # mobility = classify_proton_mobility(scan, structure)
         while i < self.size:
             if i == 0:
                 predicate = PeptideLengthPredicate(layer)
@@ -321,35 +321,37 @@ class PartitionTree(DummyScorer):
                 layer = predicate(scan, structure, *args, **kwargs)
                 i += 1
                 return layer
+            else:
+                raise ValueError("Could Not Find Leaf %d" % i)
 
-            for key, branch in layer.items():
-                if i == 0:
-                    if key[0] <= peptide_size <= key[1]:
-                        layer = branch
-                        i += 1
-                        break
-                if i == 1:
-                    if key[0] <= glycan_size <= key[1]:
-                        layer = branch
-                        i += 1
-                        break
-                if i == 2:
-                    if key == precursor_charge:
-                        layer = branch
-                        i += 1
-                        break
-                if i == 3:
-                    if key == mobility:
-                        layer = branch
-                        i += 1
-                        break
-                elif i == 4:
-                    count = structure.glycosylation_manager.count_glycosylation_type(key)
-                    if count != 0:
-                        try:
-                            return branch[count]
-                        except KeyError:
-                            raise ValueError("Could Not Find Leaf")
+            # for key, branch in layer.items():
+            #     if i == 0:
+            #         if key[0] <= peptide_size <= key[1]:
+            #             layer = branch
+            #             i += 1
+            #             break
+            #     if i == 1:
+            #         if key[0] <= glycan_size <= key[1]:
+            #             layer = branch
+            #             i += 1
+            #             break
+            #     if i == 2:
+            #         if key == precursor_charge:
+            #             layer = branch
+            #             i += 1
+            #             break
+            #     if i == 3:
+            #         if key == mobility:
+            #             layer = branch
+            #             i += 1
+            #             break
+            #     elif i == 4:
+            #         count = structure.glycosylation_manager.count_glycosylation_type(key)
+            #         if count != 0:
+            #             try:
+            #                 return branch[count]
+            #             except KeyError:
+            #                 raise ValueError("Could Not Find Leaf")
         raise ValueError("Could Not Find Leaf %d" % i)
 
     def evaluate(self, scan, target, *args, **kwargs):
