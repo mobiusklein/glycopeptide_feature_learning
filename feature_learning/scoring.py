@@ -235,11 +235,14 @@ class MappingPredicate(PredicateBase):
         except KeyError:
             return None
 
+    def _distance(self, x, y):
+        return x - y
+
     def find_nearest(self, point, *args, **kwargs):
         best_key = None
         best_distance = float('inf')
         for key, branch in self.root.items():
-            distance = math.sqrt((key - point) ** 2)
+            distance = math.sqrt(self._distance(key, point) ** 2)
             if distance < best_distance:
                 best_distance = distance
                 best_key = key
@@ -253,6 +256,11 @@ class ChargeStatePredicate(MappingPredicate):
 
 
 class ProtonMobilityPredicate(MappingPredicate):
+
+    def _distance(self, x, y):
+        enum = {'mobile': 0, 'partial': 1, 'immobile': 2}
+        return enum[x] - enum[y]
+
     def value_for(self, scan, structure, *args, **kwargs):
         return classify_proton_mobility(scan, structure)
 
