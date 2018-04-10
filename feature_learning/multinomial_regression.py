@@ -970,10 +970,14 @@ class MultinomialRegressionFit(object):
         G = intens.dot(ratio) + dc
         return G
 
-    def pearson_residual_score(self, gpsm, weighted=False):
-        c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
-        X = self.model_type.encode_classification(c)
-        yhat = self.predict(X)
+    def _calculate_pearson_residuals(self, gpsm, use_reliability=True, base_reliability=0.0):
+        c, intens, t, yhat = self._get_predicted_intensities(gpsm)
+
+        if self.reliability_model is None or not use_reliability:
+            reliability = np.ones_like(yhat)
+        else:
+            reliability = self._calculate_reliability(
+                gpsm, c, base_reliability=base_reliability)
 
         # standardize intensity
         intens = intens / t
@@ -985,11 +989,13 @@ class MultinomialRegressionFit(object):
         mask = intens > yhat
         # reduce penalty for exceeding predicted intensity
         delta[mask] = delta[mask] / 2.
-        denom = yhat * (1 - yhat)  # divide by the square root of the reliability
-        w = 1
-        if weighted:
-            w = t
-        return delta.dot(1.0 / denom) * w
+        denom = yhat * (1 - yhat)
+        denom *= (reliability[:-1])  # divide by the reliability
+        return delta / denom
+
+    def pearson_residual_score(self, gpsm, use_reliability=True, base_reliability=0.0):
+        residuals = self._calculate_pearson_residuals(gpsm, use_reliability, base_reliability)
+        return residuals.sum()
 
     def _get_predicted_intensities(self, gpsm, all_fragments=False):
         c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
@@ -1012,17 +1018,9 @@ class MultinomialRegressionFit(object):
             yhat = yhat_unnormed / (1 + yhat_all.sum())
         return c, intens, t, yhat
 
-    def compound_score(self, gpsm, use_reliability=True, base_reliability=0.0, pearson_bias=PEARSON_BIAS,
-                       series_weights=None, normalized=False, all_fragments=False):
-        '''
-        Score(s_j) = \left(\sum_{i}^{n_{s_j}}{
-            100 * y_i * \log_{10}\left(\frac{(y_i - \mu_i)^2}{\mu_i * (1 - \mu_i)}^{-1}\right)
-            }\right)
-        '''
-        c, intens, t, yhat = self._get_predicted_intensities(gpsm, all_fragments)
+    def compound_score(self, gpsm, use_reliability=True, base_reliability=0.0, pearson_bias=PEARSON_BIAS):
+        c, intens, t, yhat = self._get_predicted_intensities(gpsm)
         W = np.ones_like(intens)
-        # if series_weights is None:
-        #     series_weights = defaultdict(lambda: 1.0, {'stub_glycopeptide': 0.2})
         # for i, ci in enumerate(c):
         #     W[i] = series_weights[ci.series]
         if self.reliability_model is None or not use_reliability:
@@ -1036,9 +1034,6 @@ class MultinomialRegressionFit(object):
         W = W[:-1]
         intens = intens[:-1]
         yhat = yhat[:-1]
-        if normalized:
-            k = least_squares_scale_coefficient(yhat, intens)
-            yhat *= k
 
         delta = (intens - yhat) ** 2
         mask = intens > yhat
@@ -1056,11 +1051,9 @@ class MultinomialRegressionFit(object):
         signal_utilization = intens * 100
         return (W * signal_utilization * lg_inverted_pearson_residual_score).sum()
 
-    def coverage_compound_score(self, gpsm, use_reliability=True, base_reliability=0.0, pearson_bias=PEARSON_BIAS,
-                                series_weights=None, normalized=False, all_fragments=False):
+    def coverage_compound_score(self, gpsm, use_reliability=True, base_reliability=0.0, pearson_bias=PEARSON_BIAS):
         score = self.compound_score(
-            gpsm, use_reliability, base_reliability, pearson_bias,
-            series_weights, normalized, all_fragments)
+            gpsm, use_reliability, base_reliability, pearson_bias)
         return gpsm.matcher._coverage_score() * score
 
     def describe(self):

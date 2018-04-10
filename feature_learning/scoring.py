@@ -6,27 +6,25 @@ import numpy as np
 
 from glycan_profiling.tandem.glycopeptide.scoring.simple_score import SimpleCoverageScorer
 from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial import (
-    FragmentMatchMap)
+    FragmentMatchMap, accuracy_bias, BinomialSpectrumMatcher)
 
 from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase, ChemicalShift
 from glycan_profiling.tandem.glycopeptide.scoring.glycan_signature_ions import GlycanCompositionSignatureMatcher
-from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial import accuracy_bias
-from glycan_profiling.tandem.spectrum_match import ModelTreeNode, Unmodified
+from glycan_profiling.tandem.spectrum_match import Unmodified
 
+from ms_deisotope.data_source import ChargeNotProvided
 
-from .peak_relations import probability_of_peak_explained, fragmentation_probability
-from .multinomial_regression import PEARSON_BIAS, MultinomialRegressionFit
+from .multinomial_regression import MultinomialRegressionFit, PearsonResidualCDF
 from .partitions import classify_proton_mobility, partition_cell_spec
 
 
-class MultinomialRegressionScorer(SimpleCoverageScorer, GlycanCompositionSignatureMatcher):
+class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher, GlycanCompositionSignatureMatcher):
     accuracy_bias = accuracy_bias
 
     def __init__(self, scan, sequence, mass_shift=None, multinomial_model=None):
         super(MultinomialRegressionScorer, self).__init__(scan, sequence, mass_shift)
         self.structure = self.target
         self.model_fit = multinomial_model
-        self._init_signature_matcher()
 
     def match(self, error_tolerance=2e-5, *args, **kwargs):
         GlycanCompositionSignatureMatcher.match(self, error_tolerance=error_tolerance)
@@ -111,28 +109,36 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, GlycanCompositionSignatu
         self._backbone_mass_series = backbone_mass_series
         return solution_map
 
+    def _calculate_pearson_residual_score(self, use_reliability=True, base_reliability=0.5, pearson_bias=1.0):
+        pearson_residual_score = self.model_fit._calculate_pearson_residuals(
+            self,
+            use_reliability=use_reliability,
+            base_reliability=base_reliability)
+        model_score = -np.log10(PearsonResidualCDF(pearson_residual_score / pearson_bias) + 1e-6).sum()
+        return model_score
+
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
                         glycosylated_weight=None, stub_weight=None,
                         use_reliability=True, base_reliability=0.5,
-                        pearson_bias=1.0,
-                        *args, **kwargs):
+                        pearson_bias=1.0, *args, **kwargs):
         assert self.model_fit is not None
-
-        model_score = self.model_fit.compound_score(
-            self, use_reliability=use_reliability,
-            base_reliability=base_reliability,
+        model_score = self._calculate_pearson_residual_score(
+            use_reliability=use_reliability, base_reliability=base_reliability,
             pearson_bias=pearson_bias)
+        intensity = -math.log10(BinomialSpectrumMatcher._intensity_component_binomial(self))
+        fragments_matched = -math.log10(BinomialSpectrumMatcher._fragment_matched_binomial(self))
         coverage_score = self._coverage_score(backbone_weight, glycosylated_weight, stub_weight)
         offset = self.determine_precursor_offset()
         mass_accuracy = -10 * math.log10(
             1 - self.accuracy_bias.score(self.precursor_mass_accuracy(offset)))
         signature_component = GlycanCompositionSignatureMatcher.calculate_score(self)
-        self._score = (model_score * coverage_score) + mass_accuracy + signature_component
+        self._score = ((intensity + fragments_matched + model_score) * coverage_score
+                       ) + mass_accuracy + signature_component
         return self._score
 
 
 class ShortPeptideMultinomialRegressionScorer(MultinomialRegressionScorer):
-    stub_weight = 0.75
+    stub_weight = 0.65
 
 
 class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
@@ -254,6 +260,17 @@ class ChargeStatePredicate(MappingPredicate):
         charge = scan.precursor_information.charge
         return charge
 
+    def find_nearest(self, point, *args, **kwargs):
+        try:
+            return super(ChargeStatePredicate, self).find_nearest(point, *args, **kwargs)
+        except TypeError:
+            if point == ChargeNotProvided:
+                keys = sorted(self.root.keys())
+                n = len(keys)
+                if n > 0:
+                    return self.root[keys[int(n / 2)]]
+                raise
+
 
 class ProtonMobilityPredicate(MappingPredicate):
 
@@ -303,10 +320,6 @@ class PartitionTree(DummyScorer):
     def get_model_for(self, scan, structure, *args, **kwargs):
         i = 0
         layer = self.root
-        # glycan_size = sum(structure.glycan_composition.values())
-        # peptide_size = len(structure)
-        # precursor_charge = scan.precursor_information.charge
-        # mobility = classify_proton_mobility(scan, structure)
         while i < self.size:
             if i == 0:
                 predicate = PeptideLengthPredicate(layer)
@@ -331,35 +344,6 @@ class PartitionTree(DummyScorer):
                 return layer
             else:
                 raise ValueError("Could Not Find Leaf %d" % i)
-
-            # for key, branch in layer.items():
-            #     if i == 0:
-            #         if key[0] <= peptide_size <= key[1]:
-            #             layer = branch
-            #             i += 1
-            #             break
-            #     if i == 1:
-            #         if key[0] <= glycan_size <= key[1]:
-            #             layer = branch
-            #             i += 1
-            #             break
-            #     if i == 2:
-            #         if key == precursor_charge:
-            #             layer = branch
-            #             i += 1
-            #             break
-            #     if i == 3:
-            #         if key == mobility:
-            #             layer = branch
-            #             i += 1
-            #             break
-            #     elif i == 4:
-            #         count = structure.glycosylation_manager.count_glycosylation_type(key)
-            #         if count != 0:
-            #             try:
-            #                 return branch[count]
-            #             except KeyError:
-            #                 raise ValueError("Could Not Find Leaf")
         raise ValueError("Could Not Find Leaf %d" % i)
 
     def evaluate(self, scan, target, *args, **kwargs):

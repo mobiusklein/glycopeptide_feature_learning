@@ -1,15 +1,17 @@
 import pkg_resources
 
 import numpy as np
-from scipy.stats import gamma
+from scipy.stats import gamma, gengamma
 
 from matplotlib import pyplot as plt
 
 
 class GammaFit(object):
+    _model_type = gamma
+
     def __init__(self, data):
         self.data = np.array(data)
-        self.params = gamma.fit(data)
+        self.params = self._model_type.fit(data)
 
     def plot(self, ax=None):
         if ax is None:
@@ -20,16 +22,20 @@ class GammaFit(object):
         return ax
 
     def nnlf(self):
-        return gamma.nnlf(self.data, self.params)
+        return self._model_type.nnlf(self.data, self.params)
 
     def pdf(self, x):
-        return gamma.pdf(x, *self.params)
+        return self._model_type.pdf(x, *self.params)
 
     def cdf(self, x):
-        return gamma.cdf(x, *self.params)
+        return self._model_type.cdf(x, *self.params)
 
     def sf(self, x):
-        return gamma.sf(x, *self.params)
+        return self._model_type.sf(x, *self.params)
+
+
+class GeneralizedGammaFit(GammaFit):
+    _model_type = gengamma
 
 
 # derived from statsmodels
