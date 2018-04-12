@@ -124,13 +124,15 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         model_score = -np.log10(PearsonResidualCDF(pearson_residual_score / pearson_bias) + 1e-6).sum()
         return model_score
 
-    def _calculate_correlation_coef(self, normalized=False):
+    def _calculate_correlation_coef(self, normalized=False, base_reliability=0.5):
         c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
         p = (intens / t)[:-1]
         yhat = yhat[:-1]
         if normalized:
-            p = t * p / np.sqrt(t * p * (1 - p))
-            yhat = t * yhat / np.sqrt(t * yhat * (1 - yhat))
+            reliability = self.model_fit._calculate_reliability(
+                self, c, base_reliability=base_reliability)
+            p = t * p / np.sqrt(t * reliability * p * (1 - p))
+            yhat = t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat))
         return np.corrcoef(p, yhat)[0, 1]
 
     def _get_predicted_peaks(self, scaled=True):
