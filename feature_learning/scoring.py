@@ -6,7 +6,12 @@ import numpy as np
 
 from glycan_profiling.tandem.glycopeptide.scoring.simple_score import SimpleCoverageScorer
 from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial import (
-    FragmentMatchMap, accuracy_bias, BinomialSpectrumMatcher)
+    FragmentMatchMap, accuracy_bias)
+
+from glycan_profiling.tandem.glycopeptide.scoring.binomial_score import (
+    binomial_fragments_matched,
+    BinomialSpectrumMatcher
+)
 
 from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase, ChemicalShift
 from glycan_profiling.tandem.glycopeptide.scoring.glycan_signature_ions import GlycanCompositionSignatureMatcher
@@ -14,7 +19,9 @@ from glycan_profiling.tandem.spectrum_match import Unmodified
 
 from ms_deisotope.data_source import ChargeNotProvided
 
-from .multinomial_regression import MultinomialRegressionFit, PearsonResidualCDF
+from .multinomial_regression import (MultinomialRegressionFit,
+                                     PearsonResidualCDF,
+                                     least_squares_scale_coefficient)
 from .partitions import classify_proton_mobility, partition_cell_spec
 
 
@@ -117,16 +124,32 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         model_score = -np.log10(PearsonResidualCDF(pearson_residual_score / pearson_bias) + 1e-6).sum()
         return model_score
 
+    def _calculate_correlation_coef(self, normalized=False):
+        c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
+        p = (intens / t)[:-1]
+        yhat = yhat[:-1]
+        if normalized:
+            p = t * p / np.sqrt(t * p * (1 - p))
+            yhat = t * yhat / np.sqrt(t * yhat * (1 - yhat))
+        return np.corrcoef(p, yhat)[0, 1]
+
+    def _get_predicted_peaks(self, scaled=True):
+        c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
+        mz = [ci.peak.mz for ci in c if ci.peak_pair]
+        intensities = yhat[:-1] * (least_squares_scale_coefficient(yhat, intens) if scaled else 1.0)
+        return zip(mz, intensities)
+
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
                         glycosylated_weight=None, stub_weight=None,
                         use_reliability=True, base_reliability=0.5,
                         pearson_bias=1.0, *args, **kwargs):
         assert self.model_fit is not None
         model_score = self._calculate_pearson_residual_score(
-            use_reliability=use_reliability, base_reliability=base_reliability,
+            use_reliability=use_reliability,
+            base_reliability=base_reliability,
             pearson_bias=pearson_bias)
-        intensity = -math.log10(BinomialSpectrumMatcher._intensity_component_binomial(self))
-        fragments_matched = -math.log10(BinomialSpectrumMatcher._fragment_matched_binomial(self))
+        intensity = -math.log10(self._intensity_component_binomial())
+        fragments_matched = -math.log10(self._fragment_matched_binomial())
         coverage_score = self._coverage_score(backbone_weight, glycosylated_weight, stub_weight)
         offset = self.determine_precursor_offset()
         mass_accuracy = -10 * math.log10(
@@ -313,6 +336,10 @@ class GlycanTypeCountPredicate(PredicateBase):
 
 
 class PartitionTree(DummyScorer):
+
+    _scorer_type = MultinomialRegressionScorer
+    _short_peptide_scorer_type = ShortPeptideMultinomialRegressionScorer
+
     def __init__(self, root):
         self.root = root
         self.size = 5
@@ -376,15 +403,24 @@ class PartitionTree(DummyScorer):
     def from_json(cls, d):
         arranged_data = dict()
         for spec_d, model_d in d:
-            spec = partition_cell_spec.from_json(spec_d)
             model = MultinomialRegressionFit.from_json(model_d)
-            if spec.peptide_length_range[1] <= 10:
-                scorer_type = ShortPeptideMultinomialRegressionScorer
-            else:
-                scorer_type = MultinomialRegressionScorer
-            arranged_data[spec] = ModelBindingScorer(scorer_type, multinomial_model=model)
+            spec = partition_cell_spec.from_json(spec_d)
+            scorer_type = cls._scorer_type_for_spec(spec)
+            arranged_data[spec] = cls._bind_model_scorer(scorer_type, model)
         root = cls.build_tree(arranged_data, 0, 5, arranged_data)
         return cls(root)
+
+    @classmethod
+    def _scorer_type_for_spec(cls, spec):
+        if spec.peptide_length_range[1] <= 10:
+            scorer_type = cls._short_peptide_scorer_type
+        else:
+            scorer_type = cls._scorer_type
+        return scorer_type
+
+    @classmethod
+    def _bind_model_scorer(cls, scorer_type, model):
+        return ModelBindingScorer(scorer_type, multinomial_model=model)
 
     def __reduce__(self):
         return self.__class__, (self.root,)
