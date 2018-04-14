@@ -130,7 +130,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         yhat = yhat[:-1]
         if normalized:
             reliability = self.model_fit._calculate_reliability(
-                self, c, base_reliability=base_reliability)
+                self, c, base_reliability=base_reliability)[:-1]
             p = t * p / np.sqrt(t * reliability * p * (1 - p))
             yhat = t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat))
         return np.corrcoef(p, yhat)[0, 1]
