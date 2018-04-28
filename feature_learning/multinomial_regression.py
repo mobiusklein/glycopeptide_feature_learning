@@ -1051,11 +1051,6 @@ class MultinomialRegressionFit(object):
         signal_utilization = intens * 100
         return (W * signal_utilization * lg_inverted_pearson_residual_score).sum()
 
-    def coverage_compound_score(self, gpsm, use_reliability=True, base_reliability=0.0, pearson_bias=PEARSON_BIAS):
-        score = self.compound_score(
-            gpsm, use_reliability, base_reliability, pearson_bias)
-        return gpsm.matcher._coverage_score() * score
-
     def describe(self):
         table = []
         header = ['Name', 'Value', 'SE', "Z", "p-value"]

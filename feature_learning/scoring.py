@@ -1,6 +1,6 @@
 import math
 
-from collections import defaultdict
+from collections import defaultdict, deque
 
 import numpy as np
 
@@ -28,16 +28,18 @@ from .partitions import classify_proton_mobility, partition_cell_spec
 class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher, GlycanCompositionSignatureMatcher):
     accuracy_bias = accuracy_bias
 
-    def __init__(self, scan, sequence, mass_shift=None, multinomial_model=None):
+    def __init__(self, scan, sequence, mass_shift=None, multinomial_model=None, partition=None):
         super(MultinomialRegressionScorer, self).__init__(scan, sequence, mass_shift)
         self.structure = self.target
         self.model_fit = multinomial_model
+        self.partition = partition
 
     def match(self, error_tolerance=2e-5, *args, **kwargs):
         GlycanCompositionSignatureMatcher.match(self, error_tolerance=error_tolerance)
 
         solution_map = FragmentMatchMap()
         spectrum = self.spectrum
+        # this does not include stub glycopeptides
         n_theoretical = 0
         backbone_mass_series = []
         neutral_losses = tuple(kwargs.pop("neutral_losses", []))
@@ -128,6 +130,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
         p = (intens / t)[:-1]
         yhat = yhat[:-1]
+        if len(p) == 1:
+            return 0
         if normalized:
             reliability = self.model_fit._calculate_reliability(
                 self, c, base_reliability=base_reliability)[:-1]
@@ -135,10 +139,17 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             yhat = t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat))
         return np.corrcoef(p, yhat)[0, 1]
 
+    def _transform_correlation(self, normalized=False, base_reliability=0.5):
+        r = self._calculate_correlation_coef(normalized=normalized, base_reliability=base_reliability)
+        if np.isnan(r):
+            r = -0.5
+        c = (r + 1) / 2.
+        return c
+
     def _get_predicted_peaks(self, scaled=True):
         c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
         mz = [ci.peak.mz for ci in c if ci.peak_pair]
-        intensities = yhat[:-1] * (least_squares_scale_coefficient(yhat, intens) if scaled else 1.0)
+        intensities = yhat[:-1] * (least_squares_scale_coefficient(yhat[:-1], intens[:-1]) if scaled else 1.0)
         return zip(mz, intensities)
 
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
@@ -408,7 +419,7 @@ class PartitionTree(DummyScorer):
             model = MultinomialRegressionFit.from_json(model_d)
             spec = partition_cell_spec.from_json(spec_d)
             scorer_type = cls._scorer_type_for_spec(spec)
-            arranged_data[spec] = cls._bind_model_scorer(scorer_type, model)
+            arranged_data[spec] = cls._bind_model_scorer(scorer_type, model, spec)
         root = cls.build_tree(arranged_data, 0, 5, arranged_data)
         return cls(root)
 
@@ -420,9 +431,23 @@ class PartitionTree(DummyScorer):
             scorer_type = cls._scorer_type
         return scorer_type
 
+    def __iter__(self):
+        work = deque()
+        work.extend(self.root.values())
+        while work:
+            item = work.popleft()
+            if isinstance(item, dict):
+                work.extend(item.values())
+            else:
+                yield item
+
+    def __len__(self):
+        return len(list(iter(self)))
+
     @classmethod
-    def _bind_model_scorer(cls, scorer_type, model):
-        return ModelBindingScorer(scorer_type, multinomial_model=model)
+    def _bind_model_scorer(cls, scorer_type, model, partition=None):
+        return ModelBindingScorer(
+            scorer_type, multinomial_model=model, partition=partition)
 
     def __reduce__(self):
         return self.__class__, (self.root,)
