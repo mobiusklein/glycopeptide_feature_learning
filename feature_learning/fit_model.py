@@ -125,9 +125,15 @@ def fit_regression_model(partition_map, regression_model=None):
 @click.option('-t', '--threshold', type=float, default=50.0)
 @click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option('-o', '--output-path', type=click.Path())
-def main(paths, threshold=50.0, output_path=None, blacklist_path=None):
+@click.option('-m', '--error-tolerance', type=float, default=2e-5)
+def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5):
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
+    click.echo("Matching peaks")
+    for i, match in enumerate(training_instances):
+        if i % 1000 == 0:
+            click.echo("%d matches calculated" % (i, ))
+        match.match(error_tolerance=error_tolerance)
     click.echo("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(training_instances)
     click.echo("Fitting Peak Relation Features")
