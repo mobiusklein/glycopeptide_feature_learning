@@ -110,9 +110,13 @@ def fit_regression_model(partition_map, regression_model=None):
     for spec, cell in partition_map.items():
         print(spec, len(cell.subset))
         fm = peak_relations.FragmentationModelCollection(cell.fit)
-        fit = regression_model.fit_regression(
-            cell.subset, reliability_model=fm, base_reliability=0.5)
-        if np.isinf(fit.estimate_dispersion()):
+        try:
+            fit = regression_model.fit_regression(
+                cell.subset, reliability_model=fm, base_reliability=0.5)
+            if np.isinf(fit.estimate_dispersion()):
+                fit = regression_model.fit_regression(
+                    cell.subset, reliability_model=None)
+        except ValueError:
             fit = regression_model.fit_regression(
                 cell.subset, reliability_model=None)
         print(fit.deviance)
