@@ -123,7 +123,7 @@ def fit_regression_model(partition_map, regression_model=None):
 @click.command('fit-glycopeptide-regression-model')
 @click.argument('paths', metavar='PATH', type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @click.option('-t', '--threshold', type=float, default=50.0)
-@click.option('--blacklist', type=click.Path(exists=True, dir_okay=False), default=None)
+@click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option('-o', '--output-path', type=click.Path())
 def main(paths, threshold=50.0, output_path=None, blacklist_path=None):
     click.echo("Loading data from %s" % (', '.join(paths)))
