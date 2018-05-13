@@ -30,11 +30,11 @@ def distcorr(X, Y, pval=False, nruns=500):
     dcov2_yy = (B * B).sum() / float(n * n)
     dcor = np.sqrt(dcov2_xy) / np.sqrt(np.sqrt(dcov2_xx) * np.sqrt(dcov2_yy))
     if pval:
-            greater = 0
-            for i in range(nruns):
-                Y_r = Y_.copy()
-                random.shuffle(Y_r)
-                if distcorr(X_, Y_r, pval=False) > dcor:
-                    greater += 1
-            return (dcor, greater / float(nruns))
+        greater = 0
+        for i in range(nruns):
+            Y_r = Y_.copy()
+            random.shuffle(Y_r)
+            if distcorr(X_, Y_r, pval=False) > dcor:
+                greater += 1
+        return (dcor, greater / float(nruns))
     return dcor

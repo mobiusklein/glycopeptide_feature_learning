@@ -23,6 +23,7 @@ from .multinomial_regression import (MultinomialRegressionFit,
                                      PearsonResidualCDF,
                                      least_squares_scale_coefficient)
 from .partitions import classify_proton_mobility, partition_cell_spec
+from .utils import distcorr
 
 
 class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher, GlycanCompositionSignatureMatcher):
@@ -126,7 +127,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         model_score = -np.log10(PearsonResidualCDF(pearson_residual_score / pearson_bias) + 1e-6).sum()
         return model_score
 
-    def _calculate_correlation_coef(self, normalized=False, base_reliability=0.5):
+    def _get_intensity_observed_expected(self, normalized=False, base_reliability=0.5):
         c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
         p = (intens / t)[:-1]
         yhat = yhat[:-1]
@@ -137,12 +138,27 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
                 self, c, base_reliability=base_reliability)[:-1]
             p = t * p / np.sqrt(t * reliability * p * (1 - p))
             yhat = t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat))
+        return p, yhat
+
+    def _calculate_correlation_coef(self, normalized=False, base_reliability=0.5):
+        p, yhat = self._get_intensity_observed_expected(normalized, base_reliability)
         return np.corrcoef(p, yhat)[0, 1]
+
+    def _calculate_correlation_distance(self, normalized=False, base_reliability=0.5):
+        p, yhat = self._get_intensity_observed_expected(normalized, base_reliability)
+        return distcorr(p, yhat)
 
     def _transform_correlation(self, normalized=False, base_reliability=0.5):
         r = self._calculate_correlation_coef(normalized=normalized, base_reliability=base_reliability)
         if np.isnan(r):
             r = -0.5
+        c = (r + 1) / 2.
+        return c
+
+    def _transform_correlation_distance(self, normalized=False, base_reliability=0.5):
+        r = self._calculate_correlation_distance(normalized=normalized, base_reliability=base_reliability)
+        if np.isnan(r):
+            r = 0
         c = (r + 1) / 2.
         return c
 
@@ -155,7 +171,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
                         glycosylated_weight=None, stub_weight=None,
                         use_reliability=True, base_reliability=0.5,
-                        pearson_bias=1.0, *args, **kwargs):
+                        pearson_bias=1.0, weighting=None, *args, **kwargs):
         assert self.model_fit is not None
         model_score = self._calculate_pearson_residual_score(
             use_reliability=use_reliability,
@@ -170,6 +186,16 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         signature_component = GlycanCompositionSignatureMatcher.calculate_score(self)
         self._score = ((intensity + fragments_matched + model_score) * coverage_score
                        ) + mass_accuracy + signature_component
+        if weighting is None:
+            pass
+        elif weighting == 'correlation':
+            self._score *= self._transform_correlation(False)
+        elif weighting == 'normalized_correlation':
+            self._score *= self._transform_correlation(True, base_reliability=base_reliability)
+        elif weighting == 'correlation_distance':
+            self._score *= self._transform_correlation_distance(False)
+        elif weighting == 'normalized_correlation_distance':
+            self._score *= self._transform_correlation_distance(True, base_reliability=base_reliability)
         return self._score
 
 
