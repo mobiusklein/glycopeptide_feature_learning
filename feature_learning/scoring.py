@@ -26,6 +26,9 @@ from .partitions import classify_proton_mobility, partition_cell_spec
 from .utils import distcorr
 
 
+INF = float('inf')
+
+
 class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher, GlycanCompositionSignatureMatcher):
     accuracy_bias = accuracy_bias
 
@@ -34,8 +37,10 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         self.structure = self.target
         self.model_fit = multinomial_model
         self.partition = partition
+        self.error_tolerance = None
 
     def match(self, error_tolerance=2e-5, *args, **kwargs):
+        self.error_tolerance = error_tolerance
         GlycanCompositionSignatureMatcher.match(self, error_tolerance=error_tolerance)
 
         solution_map = FragmentMatchMap()
@@ -167,6 +172,34 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         mz = [ci.peak.mz for ci in c if ci.peak_pair]
         intensities = yhat[:-1] * (least_squares_scale_coefficient(yhat[:-1], intens[:-1]) if scaled else 1.0)
         return zip(mz, intensities)
+
+    def glycan_score(self, use_reliability=True, base_reliability=0.5, pearson_bias=1.0):
+        c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
+        if self.model_fit.reliability_model is None or not use_reliability:
+            reliability = np.ones_like(yhat)
+        else:
+            reliability = self.model_fit._calculate_reliability(
+                self, c, base_reliability=base_reliability)
+
+        stubs = []
+        intens /= t
+        for i in range(len(c)):
+            if c[i].series == 'stub_glycopeptide':
+                stubs.append((c[i], intens[i], yhat[i], reliability[i]))
+        if not stubs:
+            return 0
+        c, intens, yhat, reliability = zip(*stubs)
+        intens = np.array(intens)
+        yhat = np.array(yhat)
+        reliability = np.array(reliability)
+        delta = (intens - yhat) ** 2
+        mask = intens > yhat
+        delta[mask] = delta[mask] / 2.
+        denom = yhat * (1 - yhat) * reliability
+        stub_component = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6).sum()
+        oxonium_component = self._signature_ion_score(self.error_tolerance)
+        glycan_score = stub_component + oxonium_component
+        return max(glycan_score, 0)
 
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
                         glycosylated_weight=None, stub_weight=None,
