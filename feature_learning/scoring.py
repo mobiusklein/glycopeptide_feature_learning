@@ -137,7 +137,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         p = (intens / t)[:-1]
         yhat = yhat[:-1]
         if len(p) == 1:
-            return 0
+            return 0., 0.
         if normalized:
             reliability = self.model_fit._calculate_reliability(
                 self, c, base_reliability=base_reliability)[:-1]
