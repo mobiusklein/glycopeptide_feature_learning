@@ -997,6 +997,17 @@ class MultinomialRegressionFit(object):
         residuals = self._calculate_pearson_residuals(gpsm, use_reliability, base_reliability)
         return residuals.sum()
 
+    def calculate_correlation(self, gpsm, use_reliability=True, base_reliability=0.0):
+        c, intens, t, yhat = self._get_predicted_intensities(gpsm)
+        p = (intens / t)[:-1]
+        yhat = yhat[:-1]
+        if use_reliability and self.reliability_model is not None:
+            reliability = self._calculate_reliability(
+                gpsm, c, base_reliability=base_reliability)[:-1]
+            p = t * p / np.sqrt(t * reliability * p * (1 - p))
+            yhat = t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat))
+        return np.corrcoef(p, yhat)[0, 1]
+
     def _get_predicted_intensities(self, gpsm, all_fragments=False):
         c, intens, t = self.model_type.build_fragment_intensity_matches(gpsm)
         X = self.model_type.encode_classification(c)

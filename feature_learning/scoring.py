@@ -191,6 +191,10 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         c, intens, yhat, reliability = zip(*stubs)
         intens = np.array(intens)
         yhat = np.array(yhat)
+        corr = (np.corrcoef(intens, yhat)[0, 1])
+        if np.isnan(corr):
+            corr = -0.5
+        corr = (1.0 + corr) / 2.0
         reliability = np.array(reliability)
         delta = (intens - yhat) ** 2
         mask = intens > yhat
@@ -198,7 +202,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         denom = yhat * (1 - yhat) * reliability
         stub_component = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6).sum()
         oxonium_component = self._signature_ion_score(self.error_tolerance)
-        glycan_score = stub_component + oxonium_component
+        glycan_score = (stub_component) * corr + oxonium_component
         return max(glycan_score, 0)
 
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,

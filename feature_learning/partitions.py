@@ -93,7 +93,7 @@ glycan_size_ranges = [(a, a + 4) for a in range(1, 20, 4)]
 precursor_charges = (2, 3, 4, 5, 6)
 proton_mobilities = ('mobile', 'partial', 'immobile')
 # glycosylation_type = tuple(GlycosylationType[i] for i in range(1, 4))
-glycosylation_type = (GlycosylationType.n_linked,)
+glycosylation_type = (GlycosylationType.n_linked.name,)
 glycosylation_count = (1, 2,)
 
 
@@ -169,9 +169,20 @@ def partition_observations(gpsms, exclusive=True):
     return partition_map
 
 
+def shuffler(seed=None):
+    if seed is None:
+        return np.random.shuffle
+    else:
+        return np.random.RandomState(int(seed)).shuffle
+
+
 class KFoldSplitter(object):
-    def __init__(self, n_splits):
+    def __init__(self, n_splits, shuffler=None):
+        if shuffler is None:
+            def shuffler(x):
+                return x
         self.n_splits = n_splits
+        self.shuffler = shuffler
 
     def _indices(self, data):
         n_samples = len(data)
@@ -196,13 +207,14 @@ class KFoldSplitter(object):
         n_samples = len(data)
         indices = np.arange(n_samples)
         data = np.array(data)
+        self.shuffler(data)
         for test_index in self._mask(data):
             train_index = indices[np.logical_not(test_index)]
             test_index = indices[test_index]
             yield data[train_index], data[test_index]
 
 
-def crossvalidation_sets(gpsms, kfolds=3):
+def crossvalidation_sets(gpsms, kfolds=3, shuffler=None):
     '''
     Create k stratified cross-validation sets, stratified
     by glycopeptide identity.
@@ -210,7 +222,7 @@ def crossvalidation_sets(gpsms, kfolds=3):
     holders = defaultdict(list)
     for gpsm in gpsms:
         holders[gpsm.structure].append(gpsm)
-    splitter = KFoldSplitter(kfolds)
+    splitter = KFoldSplitter(kfolds, shuffler)
     singletons = set()
     combinables = []
     for k, v in holders.items():

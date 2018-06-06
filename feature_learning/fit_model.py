@@ -72,8 +72,6 @@ def fit_peak_relation_features(partition_map):
     features, stub_features, link_features = get_peak_relation_features()
     group_to_fit = {}
     for spec, cell in partition_map.items():
-        if spec.glycan_type != 'N-Linked':
-            continue
         subset = partition_map.adjacent(spec, 10)
         key = frozenset([gpsm.title for gpsm in subset])
         if key in group_to_fit:
