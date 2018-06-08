@@ -38,3 +38,7 @@ def distcorr(X, Y, pval=False, nruns=500):
                 greater += 1
         return (dcor, greater / float(nruns))
     return dcor
+
+
+def spectral_angle(X, Y):
+    return X.dot(Y) / (np.sqrt(X.dot(X)) * np.sqrt(Y.dot(Y)))
