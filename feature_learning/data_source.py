@@ -61,6 +61,8 @@ def parse_sequence(glycopeptide):
 
 class AnnotatedScan(ProcessedScan):
     _structure = None
+    # if matcher is populated, then pickling will fail due to recursive
+    # sharing of the peak set
     matcher = None
 
     @property

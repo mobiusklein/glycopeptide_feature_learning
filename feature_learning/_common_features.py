@@ -50,12 +50,21 @@ def build_building_block_set(gpsms):
 def make_feature_specs():
     from .peak_relations import MassOffsetFeature, LinkFeature
     features = {
-        MassOffsetFeature(name='charge-diff'): lambda x: x.feature.from_charge != x.feature.to_charge,
-        MassOffsetFeature(name='HexNAc', offset=glypy.monosaccharide_residues.HexNAc.mass()): lambda x: True,
+        MassOffsetFeature(
+            0.0, name='charge-diff'): lambda x: x.feature.from_charge != x.feature.to_charge,
+        MassOffsetFeature(
+            name='HexNAc', offset=glypy.monosaccharide_residues.HexNAc.mass()): lambda x: True,
     }
 
     stub_features = {
-        MassOffsetFeature(name='Hex', offset=glypy.monosaccharide_residues.Hex.mass()): lambda x: True,
+        MassOffsetFeature(
+            name='Hex', offset=glypy.monosaccharide_residues.Hex.mass()): lambda x: True,
+        MassOffsetFeature(
+            0.0, name='charge-diff'): lambda x: x.feature.from_charge != x.feature.to_charge,
+        MassOffsetFeature(
+            name='HexNAc', offset=glypy.monosaccharide_residues.HexNAc.mass()): lambda x: True,
+        MassOffsetFeature(
+            name='Fuc', offset=glypy.monosaccharide_residues.Fuc.mass()): lambda x: True,
     }
 
     backbone_features = {}
@@ -84,9 +93,6 @@ def fit_fragmentation_model(gpsms, common_features, backbone_features, stub_feat
     for series in [IonSeries.stub_glycopeptide]:
         fm = FragmentationModel(series)
         fm.fit_offset(gpsms)
-        for feature, filt in common_features.items():
-            fits = fm.fit_feature(gpsms, feature)
-            fm.features.extend(fits)
         for feature, filt in stub_features.items():
             fits = fm.fit_feature(gpsms, feature)
             fm.features.extend(fits)

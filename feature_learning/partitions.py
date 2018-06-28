@@ -76,7 +76,7 @@ class partition_cell_spec(partition_cell_spec):
         d['glycan_size_range'] = self.glycan_size_range
         d['charge'] = self.charge
         d['proton_mobility'] = self.proton_mobility
-        d['glycan_type'] = str(self.glycan_type.name)
+        d['glycan_type'] = str(getattr(self.glycan_type, "name", self.glycan_type))
         d['glycan_count'] = self.glycan_count
         return d
 
@@ -102,7 +102,9 @@ partition_by = map(lambda x: partition_cell_spec(*x), itertools.product(
     glycosylation_count))
 
 
-partition_cell = make_struct("partition_cell", ("subset", "fit", "spec"))
+class partition_cell(make_struct("partition_cell", ("subset", "fit", "spec"))):
+    def __len__(self):
+        return len(self.subset)
 
 
 def init_cell(subset=None, fit=None, spec=None):
@@ -214,15 +216,18 @@ class KFoldSplitter(object):
             yield data[train_index], data[test_index]
 
 
-def crossvalidation_sets(gpsms, kfolds=3, shuffler=None):
+def crossvalidation_sets(gpsms, kfolds=3, shuffler=None, stratified=True):
     '''
     Create k stratified cross-validation sets, stratified
     by glycopeptide identity.
     '''
+    splitter = KFoldSplitter(kfolds, shuffler)
+    if not stratified:
+        gpsms = np.array(gpsms)
+        return list(splitter.split(gpsms))
     holders = defaultdict(list)
     for gpsm in gpsms:
         holders[gpsm.structure].append(gpsm)
-    splitter = KFoldSplitter(kfolds, shuffler)
     singletons = set()
     combinables = []
     for k, v in holders.items():

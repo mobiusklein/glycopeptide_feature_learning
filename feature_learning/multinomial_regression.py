@@ -525,42 +525,7 @@ class NeighboringAminoAcidsModelDepth4(NeighboringAminoAcidsModel):
     bond_offset_depth = 4
 
 
-class GlycosylationSiteDistanceStubModel(NeighboringAminoAcidsModelDepth4):
-    max_glycosylation_site_distance = 10
-
-    def get_glycosylation_site_offset(self):
-        size = len(self.sequence)
-        sites = self.sequence.glycosylation_manager.keys()
-        distances = []
-        for s in sites:
-            distances.append(abs(s - (size / 2)))
-        distance = np.mean(distances)
-        return int(distance)
-
-    def encode_glycosylation_site_offset(self):
-        k_distance = self.max_glycosylation_site_distance + 1
-        k = k_distance
-        X = np.zeros(k, dtype=np.uint8)
-        offset = 0
-
-        if self.is_stub_glycopeptide():
-            distance = self.get_glycosylation_site_offset()
-            X[offset + min(distance, self.max_glycosylation_site_distance)] = 1
-        return X
-
-    def as_feature_vector(self):
-        X = super(GlycosylationSiteDistanceStubModel, self).as_feature_vector()
-        return np.concatenate((X, self.encode_glycosylation_site_offset()))
-
-    @classmethod
-    def feature_names(cls):
-        names = super(GlycosylationSiteDistanceStubModel, cls).feature_names()
-        for i in range(cls.max_glycosylation_site_distance):
-            names.append("glycosylation site center offset:%d" % i)
-        return names
-
-
-class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth4):
+class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth2):
     max_cleavage_site_distance_from_center = 10
 
     def get_cleavage_site_distance_from_center(self):
@@ -597,6 +562,42 @@ class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth4):
             for i in range(cls.max_cleavage_site_distance_from_center + 1):
                 names.append("cleavage site distance %d:series %r" % (i, label))
         return names
+
+
+class StubChargeModel(CleavageSiteCenterDistanceModel):
+
+    def encode_stub_charge(self):
+        k_glycosylated_stubs = (StubFragment_max_glycosylation_size * 2) + 1
+        k_stub_charges = FragmentCharge_max + 1
+        k_glycosylated_stubs_x_charge = (k_glycosylated_stubs * k_stub_charges)
+        k = k_glycosylated_stubs_x_charge
+
+        X = np.zeros(k, dtype=np.uint8)
+        offset = 0
+
+        if self.is_stub_glycopeptide():
+            loss_size = sum(self.sequence.glycan_composition.values()) - int(self.glycosylated)
+            if loss_size > k_glycosylated_stubs:
+                loss_size = k_glycosylated_stubs
+            # d = k_glycosylated_stubs * (self.charge - 1) + int(self.glycosylated)
+            d = k_glycosylated_stubs * (self.charge - 1) + loss_size
+            X[offset + d] = 1
+            offset += k_glycosylated_stubs_x_charge
+        return X
+
+    @classmethod
+    def feature_names(self):
+        names = super(StubChargeModel, self).feature_names()
+        k_glycosylated_stubs = (StubFragment_max_glycosylation_size * 2) + 1
+        k_stub_charges = FragmentCharge_max + 1
+        for i in range(k_stub_charges):
+            for j in range(k_glycosylated_stubs):
+                names.append("stub glycopeptide:charge %d:glycan loss %d" % (i + 1, j))
+        return names
+
+    def as_feature_vector(self):
+        X = super(StubChargeModel, self).as_feature_vector()
+        return np.concatenate((X, self.encode_stub_charge()))
 
 
 class AmideBondCrossproductModel(StubGlycopeptideCompositionModel):

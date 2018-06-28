@@ -1,5 +1,6 @@
 import glob
 import json
+import multiprocessing
 
 import click
 
@@ -59,6 +60,12 @@ def get_peak_relation_features():
     stub_features = {
         peak_relations.MassOffsetFeature(
             name='Hex', offset=glypy.monosaccharide_residues.Hex.mass()): lambda x: True,
+        peak_relations.MassOffsetFeature(
+            0.0, name='charge-diff'): lambda x: x.feature.from_charge != x.feature.to_charge,
+        peak_relations.MassOffsetFeature(
+            name='HexNAc', offset=glypy.monosaccharide_residues.HexNAc.mass()): lambda x: True,
+        peak_relations.MassOffsetFeature(
+            name='Fuc', offset=glypy.monosaccharide_residues.Fuc.mass()): lambda x: True,
     }
 
     link_features = {}
@@ -90,9 +97,6 @@ def fit_peak_relation_features(partition_map):
         for series in [IonSeries.stub_glycopeptide]:
             fm = peak_relations.FragmentationModel(series)
             fm.fit_offset(subset)
-            for feature, filt in features.items():
-                fits = fm.fit_feature(subset, feature)
-                fm.features.extend(fits)
             for feature, filt in stub_features.items():
                 fits = fm.fit_feature(subset, feature)
                 fm.features.extend(fits)
@@ -101,25 +105,46 @@ def fit_peak_relation_features(partition_map):
     return group_to_fit
 
 
-def fit_regression_model(partition_map, regression_model=None):
+def fit_regression_model(partition_map, regression_model=None, n_processes=1):
     if regression_model is None:
-        regression_model = multinomial_regression.CleavageSiteCenterDistanceModel
+        regression_model = multinomial_regression.StubChargeModel
     model_fits = []
-    for spec, cell in partition_map.items():
-        print(spec, len(cell.subset))
-        fm = peak_relations.FragmentationModelCollection(cell.fit)
-        try:
-            fit = regression_model.fit_regression(
-                cell.subset, reliability_model=fm, base_reliability=0.5)
-            if np.isinf(fit.estimate_dispersion()):
-                fit = regression_model.fit_regression(
-                    cell.subset, reliability_model=None)
-        except ValueError:
+    if n_processes == 1:
+        for spec, cell in partition_map.items():
+            print(spec, len(cell.subset))
+            _, fits = _fit_model_inner(spec, cell, regression_model)
+            print(fits[0].deviance)
+            for fit in fits:
+                model_fits.append((spec, fit))
+    else:
+        pool = multiprocessing.Pool(n_processes)
+        workload = (tuple(kv) + (regression_model,) for kv in partition_map.items())
+        for spec, fits in pool.map(task_fn, workload):
+            print(spec, len(fits[0].weights))
+            print(fits[0].deviance)
+            for fit in fits:
+                model_fits.append((spec, fit))
+    return model_fits
+
+
+def task_fn(args):
+    spec, cell, regression_model = args
+    return _fit_model_inner(spec, cell, regression_model)
+
+
+def _fit_model_inner(spec, cell, regression_model):
+    fm = peak_relations.FragmentationModelCollection(cell.fit)
+    try:
+        fit = regression_model.fit_regression(
+            cell.subset, reliability_model=fm, base_reliability=0.5)
+        if np.isinf(fit.estimate_dispersion()):
             fit = regression_model.fit_regression(
                 cell.subset, reliability_model=None)
-        print(fit.deviance)
-        model_fits.append((spec, fit))
-    return model_fits
+    except ValueError:
+        fit = regression_model.fit_regression(
+            cell.subset, reliability_model=None)
+    fits = [fit]
+    return (spec, fits)
 
 
 @click.command('fit-glycopeptide-regression-model')

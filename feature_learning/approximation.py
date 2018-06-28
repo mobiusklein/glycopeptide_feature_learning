@@ -163,6 +163,12 @@ class ECDF(StepFunction):
         super(ECDF, self).__init__(x, y, side=side, sorted=True)
 
 
+class ESF(ECDF):
+    def __call__(self, time):
+        tind = np.searchsorted(self.x, time, self.side) - 1
+        return 1 - self.y[tind]
+
+
 PearsonResidualCDF = ECDF(
     np.loadtxt(
         pkg_resources.resource_stream(
