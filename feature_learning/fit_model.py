@@ -100,7 +100,7 @@ def fit_peak_relation_features(partition_map):
         if key in group_to_fit:
             cell.fit = group_to_fit[key]
             continue
-        click.echo(spec, len(subset))
+        click.echo("%s %d" % (spec, len(subset)))
         for series in [IonSeries.b, IonSeries.y, ]:
             fm = peak_relations.FragmentationModel(series)
             fm.fit_offset(subset)
@@ -128,7 +128,7 @@ def fit_regression_model(partition_map, regression_model=None, use_mixture=True,
     model_fits = []
     if n_processes == 1:
         for spec, cell in partition_map.items():
-            click.echo(spec, len(cell.subset))
+            click.echo("%s %d" % (spec, len(cell.subset)))
             _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture)
             click.echo(fits[0].deviance)
             for fit in fits:
@@ -137,7 +137,7 @@ def fit_regression_model(partition_map, regression_model=None, use_mixture=True,
         pool = multiprocessing.Pool(n_processes)
         workload = (tuple(kv) + (regression_model,) for kv in partition_map.items())
         for spec, fits in pool.map(task_fn, workload):
-            click.echo(spec, len(fits[0].weights))
+            click.echo("%s %d" % (spec, len(fits[0].weights)))
             click.echo(fits[0].deviance)
             for fit in fits:
                 model_fits.append((spec, fit))
