@@ -198,6 +198,7 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
     fit_peak_relation_features(partition_map)
     click.echo("Fitting Peak Intensity Regression")
     model_fits = fit_regression_model(partition_map)
+    click.echo("Writing Models To %s" % (output_path,))
     export = []
     for spec, fit in model_fits:
         export.append((spec.to_json(), fit.to_json(False)))

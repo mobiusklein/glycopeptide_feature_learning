@@ -288,11 +288,11 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
         self.feature_cache = dict()
         self.mixture_coefficients = None
 
-    def _calculate_mixture_coefficients(self, scan):
+    def _calculate_mixture_coefficients(self):
         if len(self.model_fits) == 1:
             return np.array([1.])
         ps = np.array([
-            (1. / m.pearson_residual_score(scan)) ** self.power
+            (1. / m.pearson_residual_score(self)) ** self.power
             for m in self.model_fits
         ])
         total = ps.sum()
@@ -366,7 +366,7 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
                         glycosylated_weight=None, stub_weight=None,
                         use_reliability=True, base_reliability=0.5,
                         weighting=None, *args, **kwargs):
-        self.mixture_coefficients = self._calculate_mixture_coefficients(self.scan)
+        self.mixture_coefficients = self._calculate_mixture_coefficients()
         return super(MultinomialRegressionMixtureScorer, self).calculate_score(
             error_tolerance=error_tolerance, backbone_weight=backbone_weight,
             glycosylated_weight=glycosylated_weight, stub_weight=stub_weight,
