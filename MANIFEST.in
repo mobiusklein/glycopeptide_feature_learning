@@ -1,2 +1,2 @@
 # include requirements.txt
-include-recursive feature_learning/data *.txt
+recursive-include feature_learning/data *.txt
