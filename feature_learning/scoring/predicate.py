@@ -4,7 +4,7 @@ from collections import defaultdict, deque
 from ms_deisotope.data_source import ChargeNotProvided
 
 from feature_learning.partitions import classify_proton_mobility, partition_cell_spec
-from feature_learning.multinomial_model import MultinomialRegressionFit
+from feature_learning.multinomial_regression import MultinomialRegressionFit
 
 
 from .base import (DummyScorer, ModelBindingScorer)
@@ -215,12 +215,17 @@ class PredicateTreeBase(DummyScorer):
 
     @classmethod
     def from_json(cls, d):
-        arranged_data = dict()
+        arranged_data = defaultdict(list)
         for spec_d, model_d in d:
             model = MultinomialRegressionFit.from_json(model_d)
             spec = partition_cell_spec.from_json(spec_d)
+            # scorer_type = cls._scorer_type_for_spec(spec)
+            # arranged_data[spec] = cls._bind_model_scorer(scorer_type, model, spec)
+            arranged_data[spec].append(model)
+        for spec, models in arranged_data.items():
             scorer_type = cls._scorer_type_for_spec(spec)
-            arranged_data[spec] = cls._bind_model_scorer(scorer_type, model, spec)
+            arranged_data[spec] = cls._bind_model_scorer(scorer_type, models, spec)
+        arranged_data = dict(arranged_data)
         root = cls.build_tree(arranged_data, 0, 5, arranged_data)
         return cls(root)
 
@@ -246,12 +251,11 @@ class PredicateTreeBase(DummyScorer):
         return len(list(iter(self)))
 
     @classmethod
-    def _bind_model_scorer(cls, scorer_type, model, partition=None):
-        return ModelBindingScorer(
-            scorer_type, multinomial_model=model, partition=partition)
+    def _bind_model_scorer(cls, scorer_type, models, partition=None):
+        return ModelBindingScorer(scorer_type, model_fits=models, partition=partition)
 
     def __reduce__(self):
         return self.__class__, (self.root,)
 
     def __repr__(self):
-        return "PartitionTree(%d)" % (len(self.root),)
+        return "%s(%d)" % (self.__class__.__name__, len(self.root),)

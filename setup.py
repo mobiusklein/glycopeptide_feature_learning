@@ -97,5 +97,4 @@ setup(name='feature_learning',
       package_data={
           "feature_learning": ["feature_learning/data/*"],
       },
-
       cmdclass=cmdclass)

@@ -1,3 +1,4 @@
+import os
 import glob
 import json
 import multiprocessing
@@ -27,21 +28,36 @@ def get_training_data(paths, blacklist_path=None, threshold=50.0):
         blacklist = set()
 
     seen = set()
-    for train_file in training_files:
-        reader = data_source.AnnotatedMGFDeserializer(open(train_file, 'rb'))
-        for instance in reader:
-            if instance.annotations['ms2_score'] < threshold:
-                continue
-            if instance.mass_shift not in ("Unmodified", "Ammonium"):
-                continue
-            key = (instance.title, str(instance.structure))
-            if key in seen:
-                continue
-            if instance.title in blacklist:
-                continue
-            seen.add(key)
-            training_instances.append(instance)
+    n_files = len(training_files)
+    progbar = click.progressbar(
+        training_files, length=n_files, show_eta=True, label='Loading Training Data',
+        item_show_func=lambda x: os.path.basename(x) if x is not None else '')
+    with progbar:
+        for train_file in progbar:
+            reader = data_source.AnnotatedMGFDeserializer(open(train_file, 'rb'))
+            for instance in reader:
+                if instance.annotations['ms2_score'] < threshold:
+                    continue
+                if instance.mass_shift not in ("Unmodified", "Ammonium"):
+                    continue
+                key = (instance.title, str(instance.structure))
+                if key in seen:
+                    continue
+                if instance.title in blacklist:
+                    continue
+                seen.add(key)
+                training_instances.append(instance)
     return training_instances
+
+
+def match_spectra(matches, error_tolerance):
+    progbar = click.progressbar(
+        enumerate(matches), length=len(matches), show_eta=True, label='Matching Peaks',
+        item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '')
+    with progbar:
+        for i, match in progbar:
+            match.match(error_tolerance=error_tolerance)
+    return matches
 
 
 def partition_training_data(training_instances):
@@ -84,6 +100,7 @@ def fit_peak_relation_features(partition_map):
         if key in group_to_fit:
             cell.fit = group_to_fit[key]
             continue
+        click.echo(spec, len(subset))
         for series in [IonSeries.b, IonSeries.y, ]:
             fm = peak_relations.FragmentationModel(series)
             fm.fit_offset(subset)
@@ -105,23 +122,23 @@ def fit_peak_relation_features(partition_map):
     return group_to_fit
 
 
-def fit_regression_model(partition_map, regression_model=None, n_processes=1):
+def fit_regression_model(partition_map, regression_model=None, use_mixture=True, n_processes=1):
     if regression_model is None:
         regression_model = multinomial_regression.StubChargeModel
     model_fits = []
     if n_processes == 1:
         for spec, cell in partition_map.items():
-            print(spec, len(cell.subset))
-            _, fits = _fit_model_inner(spec, cell, regression_model)
-            print(fits[0].deviance)
+            click.echo(spec, len(cell.subset))
+            _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture)
+            click.echo(fits[0].deviance)
             for fit in fits:
                 model_fits.append((spec, fit))
     else:
         pool = multiprocessing.Pool(n_processes)
         workload = (tuple(kv) + (regression_model,) for kv in partition_map.items())
         for spec, fits in pool.map(task_fn, workload):
-            print(spec, len(fits[0].weights))
-            print(fits[0].deviance)
+            click.echo(spec, len(fits[0].weights))
+            click.echo(fits[0].deviance)
             for fit in fits:
                 model_fits.append((spec, fit))
     return model_fits
@@ -132,7 +149,7 @@ def task_fn(args):
     return _fit_model_inner(spec, cell, regression_model)
 
 
-def _fit_model_inner(spec, cell, regression_model):
+def _fit_model_inner(spec, cell, regression_model, use_mixture=True):
     fm = peak_relations.FragmentationModelCollection(cell.fit)
     try:
         fit = regression_model.fit_regression(
@@ -144,6 +161,24 @@ def _fit_model_inner(spec, cell, regression_model):
         fit = regression_model.fit_regression(
             cell.subset, reliability_model=None)
     fits = [fit]
+    if use_mixture:
+        mismatches = []
+        for case in cell.subset:
+            r = fit.calculate_correlation(case)
+            if r < 0.5:
+                mismatches.append(case)
+        if mismatches:
+            click.echo("Fitting Mismatch Model with %d cases" % len(mismatches))
+            try:
+                mismatch_fit = regression_model.fit_regression(
+                    mismatches, reliability_model=fm, base_reliability=0.5)
+                if np.isinf(mismatch_fit.estimate_dispersion()):
+                    mismatch_fit = regression_model.fit_regression(
+                        mismatches, reliability_model=None)
+            except ValueError:
+                mismatch_fit = regression_model.fit_regression(
+                    mismatches, reliability_model=None)
+            fits.append(mismatch_fit)
     return (spec, fits)
 
 
@@ -156,11 +191,7 @@ def _fit_model_inner(spec, cell, regression_model):
 def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5):
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
-    click.echo("Matching peaks")
-    for i, match in enumerate(training_instances):
-        if i % 1000 == 0:
-            click.echo("%d matches calculated" % (i, ))
-        match.match(error_tolerance=error_tolerance)
+    match_spectra(training_instances, error_tolerance)
     click.echo("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(training_instances)
     click.echo("Fitting Peak Relation Features")
