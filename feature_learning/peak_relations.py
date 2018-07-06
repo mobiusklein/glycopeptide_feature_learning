@@ -784,6 +784,8 @@ class FragmentationModel(object):
             if fragment.get_series() != self.series:
                 continue
             for feature in self.features:
+                if feature.on_series == 0:
+                    continue
                 if feature.from_charge == peak.charge:
                     matches = feature.find_matches(peak, deconvoluted_peak_set, structure)
                     for match in matches:
