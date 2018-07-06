@@ -17,6 +17,27 @@ from feature_learning.utils import distcorr
 from .predicate import PredicateTreeBase
 
 
+class CachedModelPrediction(object):
+    __slots__ = ("fragment_specifications", "experimental_intensities", "total_signal",
+                 "feature_vectors", "reliability_vector")
+
+    def __init__(self, fragment_specifications, experimental_intensities, total_signal, feature_vectors):
+        self.fragment_specifications = fragment_specifications
+        self.experimental_intensities = experimental_intensities
+        self.total_signal = total_signal
+        self.feature_vectors = feature_vectors
+        self.reliability_vector = None
+
+    def __iter__(self):
+        yield self.fragment_specifications
+        yield self.experimental_intensities
+        yield self.total_signal
+        yield self.feature_vectors
+
+    def __reduce__(self):
+        return self.__class__, tuple(self)
+
+
 class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher, GlycanCompositionSignatureMatcher):
     accuracy_bias = accuracy_bias
 
@@ -26,6 +47,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         self.model_fit = model_fit
         self.partition = partition
         self.error_tolerance = None
+        self._cached_model = None
+        self._cached_transform = None
 
     def match(self, error_tolerance=2e-5, *args, **kwargs):
         self.error_tolerance = error_tolerance
@@ -112,7 +135,26 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         self._backbone_mass_series = backbone_mass_series
         return solution_map
 
-    def _calculate_pearson_residual_score(self, use_reliability=True, base_reliability=0.5):
+    def _calculate_pearson_residuals(self, use_reliability=True, base_reliability=0.5):
+        r"""Calculate the raw Pearson residuals of the Multinomial model
+
+        .. math::
+            \frac{y - \hat{y}}{\hat{y} * (1 - \hat{y}) * r}
+
+        Parameters
+        ----------
+        use_reliability : bool, optional
+            Whether or not to use the fragment reliabilities to adjust the weight of
+            each matched peak
+        base_reliability : float, optional
+            The lowest reliability a peak may have, compressing the range of contributions
+            from the model based on the experimental evidence
+
+        Returns
+        -------
+        np.ndarray
+            The Pearson residuals
+        """
         c, intens, t, yhat = self._get_predicted_intensities()
         if self.model_fit.reliability_model is None or not use_reliability:
             reliability = np.ones_like(yhat)
@@ -130,11 +172,54 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         delta[mask] = delta[mask] / 2.
         denom = yhat * (1 - yhat)
         denom *= (reliability[:-1])  # divide by the reliability
-        pearson_residual_score = delta / denom
-        model_score = -np.log10(PearsonResidualCDF(pearson_residual_score) + 1e-6).sum()
+        pearson_residuals = delta / denom
+        return pearson_residuals
+
+    def _calculate_pearson_residual_score(self, use_reliability=True, base_reliability=0.5):
+        """Compute a model-based score by summing the Pearson residuals after transforming
+        through them an Empirically measured CDF and followed by a -log10 transform.
+
+        Parameters
+        ----------
+        use_reliability : bool, optional
+            Whether or not to use the fragment reliabilities to adjust the weight of
+            each matched peak
+        base_reliability : float, optional
+            The lowest reliability a peak may have, compressing the range of contributions
+            from the model based on the experimental evidence
+
+
+        Returns
+        -------
+        float:
+            The model score
+        """
+        pearson_residuals = self._calculate_pearson_residuals(use_reliability, base_reliability)
+        model_score = -np.log10(PearsonResidualCDF(pearson_residuals) + 1e-6).sum()
         return model_score
 
     def _get_intensity_observed_expected(self, use_reliability=False, base_reliability=0.5):
+        """Get the vector of matched experimental intensities and their predicted intensities.
+
+        If the reliability model is used, the peak intensities are recalibrated according
+        to a multinomial variance model with the reliabilities as weights.
+
+        Parameters
+        ----------
+        use_reliability : bool, optional
+            Whether or not to use the fragment reliabilities to adjust the weight of
+            each matched peak
+        base_reliability : float, optional
+            The lowest reliability a peak may have, compressing the range of contributions
+            from the model based on the experimental evidence
+
+        Returns
+        -------
+        np.ndarray:
+            Matched experimental peak intensities
+        np.ndarray:
+            Predicted peak intensities
+        """
         c, intens, t, yhat = self._get_predicted_intensities()
         p = (intens / t)[:-1]
         yhat = yhat[:-1]
@@ -174,11 +259,46 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         intensities = yhat[:-1] * (least_squares_scale_coefficient(yhat[:-1], intens[:-1]) if scaled else 1.0)
         return zip(mz, intensities)
 
+    def _transform_matched_peaks(self):
+        if self._is_model_cached(self.model_fit):
+            return self._get_cached_model_transform(self.model_fit)
+        result = self._transform_matched_peaks_uncached()
+        self._cache_model_transform(self.model_fit, result)
+        return result
+
     def _get_predicted_intensities(self):
-        c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
+        c, intens, t, X = self._transform_matched_peaks()
+        yhat = np.exp(X.dot(self.model_fit.coef))
+        yhat = yhat / (1 + yhat.sum())
         return c, intens, t, yhat
 
+    def _cache_model_transform(self, model_fit, transform):
+        self._cached_model = model_fit
+        self._cached_transform = CachedModelPrediction(*transform)
+
+    def _is_model_cached(self, model_fit):
+        return self.model_fit is self._cached_model
+
+    def _get_cached_model_transform(self, model_fit):
+        return self._cached_transform
+
+    def _clear_cache(self):
+        self._cached_model = None
+        self._cached_transform = None
+
+    def _transform_matched_peaks_uncached(self):
+        model_fit = self.model_fit
+        c, intens, t = model_fit.model_type.build_fragment_intensity_matches(self)
+        X = model_fit.model_type.encode_classification(c)
+        return (c, intens, t, X)
+
     def _get_reliabilities(self, fragment_match_features, base_reliability=0.5):
+        if self._is_model_cached(self.model_fit):
+            cached_data = self._get_cached_model_transform(self.model_fit)
+            if cached_data.reliability_vector is not None:
+                return cached_data.reliability_vector
+            else:
+                reliability = self.model_fit
         reliability = self.model_fit._calculate_reliability(
             self, fragment_match_features, base_reliability=base_reliability)
         return reliability
@@ -223,24 +343,29 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         backbones = []
         intens /= t
         for i in range(len(c)):
-            if c[i].series != 'stub_glycopeptide':
+            if c[i].series in ('b', 'y'):
                 backbones.append((c[i], intens[i], yhat[i], reliability[i]))
         if not backbones:
             return 0
         c, intens, yhat, reliability = zip(*backbones)
         intens = np.array(intens)
         yhat = np.array(yhat)
-        corr = (np.corrcoef(intens, yhat)[0, 1])
+        reliability = np.array(reliability)
+        corr = (np.corrcoef(t * intens / np.sqrt(t * reliability * intens * (1 - intens)),
+                            t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat)))[0, 1])
         if np.isnan(corr):
             corr = -0.5
-        corr = (1.0 + corr) / 2.0
+        # peptide fragment correlation is weaker than the overall correlation.
+        corr = (3.0 + corr) / 4.0
         reliability = np.array(reliability)
         delta = (intens - yhat) ** 2
         mask = intens > yhat
         delta[mask] = delta[mask] / 2.
         denom = yhat * (1 - yhat) * reliability
         peptide_score = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6).sum()
-        coverage_score = self._coverage_score()
+        # Ignore stub glycopeptides here because they are shared by decoy peptides
+        b_ions, y_ions = self._compute_coverage_vectors()[:2]
+        coverage_score = ((b_ions + y_ions[::-1])).sum() / float(self.n_theoretical)
         return peptide_score * coverage_score * corr
 
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
@@ -285,23 +410,39 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
             scan, sequence, mass_shift, model_fit=model_fits[0], partition=partition)
         self.model_fits = list(model_fits)
         self.power = power
-        self.feature_cache = dict()
+        self._feature_cache = dict()
         self.mixture_coefficients = None
+
+    def _iter_model_fits(self):
+        for model_fit in self.model_fits:
+            self.model_fit = model_fit
+            yield model_fit
+        self.model_fit = self.model_fits[0]
+
+    def _cache_model_transform(self, model_fit, transform):
+        self._feature_cache[model_fit] = CachedModelPrediction(*transform)
+
+    def _is_model_cached(self, model_fit):
+        return model_fit in self._feature_cache
+
+    def _get_cached_model_transform(self, model_fit):
+        return self._feature_cache[model_fit]
+
+    def _clear_cache(self):
+        self._feature_cache.clear()
 
     def _calculate_mixture_coefficients(self):
         if len(self.model_fits) == 1:
             return np.array([1.])
-        ps = np.array([
-            (1. / m.pearson_residual_score(self)) ** self.power
-            for m in self.model_fits
-        ])
-        total = ps.sum()
+        ps = np.empty(len(self.model_fits))
+        for i, model_fit in enumerate(self._iter_model_fits()):
+            ps[i] = (1. / self._calculate_pearson_residuals().sum()) ** self.power
+        total = ps.sum() + 1e-6 * ps.shape[0]
         return ps / total
 
     def _calculate_pearson_residual_score(self, use_reliability=True, base_reliability=0.5):
         scores = []
-        for model_fit in self.model_fits:
-            self.model_fit = model_fit
+        for model_fit in self._iter_model_fits():
             score = super(
                 MultinomialRegressionMixtureScorer, self)._calculate_pearson_residual_score(
                     use_reliability=use_reliability, base_reliability=base_reliability)
@@ -310,8 +451,7 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
 
     def glycan_score(self, use_reliability=True, base_reliability=0.5):
         scores = []
-        for model_fit in self.model_fits:
-            self.model_fit = model_fit
+        for model_fit in self._iter_model_fits():
             score = super(
                 MultinomialRegressionMixtureScorer, self).glycan_score(
                     use_reliability=use_reliability, base_reliability=base_reliability)
@@ -320,8 +460,7 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
 
     def peptide_score(self, use_reliability=True, base_reliability=0.5):
         scores = []
-        for model_fit in self.model_fits:
-            self.model_fit = model_fit
+        for model_fit in self._iter_model_fits():
             score = super(
                 MultinomialRegressionMixtureScorer, self).peptide_score(
                     use_reliability=use_reliability, base_reliability=base_reliability)
@@ -330,8 +469,7 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
 
     def _calculate_correlation_coef(self, use_reliability=False, base_reliability=0.5):
         scores = []
-        for model_fit in self.model_fits:
-            self.model_fit = model_fit
+        for model_fit in self._iter_model_fits():
             score = super(
                 MultinomialRegressionMixtureScorer, self)._calculate_correlation_coef(
                     use_reliability=use_reliability, base_reliability=base_reliability)
@@ -340,8 +478,7 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
 
     def _calculate_correlation_distance(self, use_reliability=False, base_reliability=0.5):
         scores = []
-        for model_fit in self.model_fits:
-            self.model_fit = model_fit
+        for model_fit in self._iter_model_fits():
             score = super(
                 MultinomialRegressionMixtureScorer, self)._calculate_correlation_distance(
                     use_reliability=use_reliability, base_reliability=base_reliability)
