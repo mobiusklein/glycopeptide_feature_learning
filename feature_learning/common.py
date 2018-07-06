@@ -7,7 +7,7 @@ def ppm_error(x, y):
     return (x - y) / y
 
 
-OUT_OF_RANGE_INT = -999
+OUT_OF_RANGE_INT = 999
 
 
 def intensity_ratio_function(peak1, peak2):
