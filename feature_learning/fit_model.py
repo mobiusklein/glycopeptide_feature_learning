@@ -35,6 +35,8 @@ def get_training_data(paths, blacklist_path=None, threshold=50.0):
     with progbar:
         for train_file in progbar:
             reader = data_source.AnnotatedMGFDeserializer(open(train_file, 'rb'))
+            if progbar.is_hidden:
+                click.echo("Reading %s" % (os.path.basename(train_file),))
             for instance in reader:
                 if instance.annotations['ms2_score'] < threshold:
                     continue
@@ -57,6 +59,8 @@ def match_spectra(matches, error_tolerance):
     with progbar:
         for i, match in progbar:
             match.match(error_tolerance=error_tolerance)
+            if progbar.is_hidden and (i + 1) % 1000 == 0:
+                click.echo("%d Spectra Matched" % (i,))
     return matches
 
 
