@@ -50,6 +50,9 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         self._cached_model = None
         self._cached_transform = None
 
+    def __reduce__(self):
+        return self.__class__, (self.scan, self.sequence, self.mass_shift, self.model_fit, self.partition)
+
     def match(self, error_tolerance=2e-5, *args, **kwargs):
         self.error_tolerance = error_tolerance
         GlycanCompositionSignatureMatcher.match(self, error_tolerance=error_tolerance)
@@ -372,10 +375,6 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
                         glycosylated_weight=None, stub_weight=None,
                         use_reliability=True, base_reliability=0.5,
                         weighting=None, *args, **kwargs):
-        assert self.model_fit is not None
-        model_score = self._calculate_pearson_residual_score(
-            use_reliability=use_reliability,
-            base_reliability=base_reliability)
         intensity = -math.log10(self._intensity_component_binomial())
         fragments_matched = -math.log10(self._fragment_matched_binomial())
         coverage_score = self._coverage_score(backbone_weight, glycosylated_weight, stub_weight)
@@ -383,6 +382,9 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         mass_accuracy = -10 * math.log10(
             1 - self.accuracy_bias.score(self.precursor_mass_accuracy(offset)))
         signature_component = GlycanCompositionSignatureMatcher.calculate_score(self)
+        model_score = self._calculate_pearson_residual_score(
+            use_reliability=use_reliability,
+            base_reliability=base_reliability)
         self._score = ((intensity + fragments_matched + model_score) * coverage_score
                        ) + mass_accuracy + signature_component
         if weighting is None:
@@ -405,13 +407,15 @@ class ShortPeptideMultinomialRegressionScorer(MultinomialRegressionScorer):
 class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
 
     def __init__(self, scan, sequence, mass_shift=None, model_fits=None, partition=None, power=4):
-        assert len(model_fits) > 0
         super(MultinomialRegressionMixtureScorer, self).__init__(
             scan, sequence, mass_shift, model_fit=model_fits[0], partition=partition)
         self.model_fits = list(model_fits)
         self.power = power
         self._feature_cache = dict()
         self.mixture_coefficients = None
+
+    def __reduce__(self):
+        return self.__class__, (self.scan, self.sequence, self.mass_shift, self.model_fits, self.partition, self.power)
 
     def _iter_model_fits(self):
         for model_fit in self.model_fits:
