@@ -3,11 +3,13 @@ cimport cython
 import numpy as np
 cimport numpy as np
 
+from cpython.tuple cimport PyTuple_GET_ITEM, PyTuple_GET_SIZE
+
 np.import_array()
 
 from ms_deisotope._c.peak_set cimport DeconvolutedPeak, DeconvolutedPeakSet
 
-
+cdef str NOISE = "noise"
 cdef int OUT_OF_RANGE_INT = 999
 
 
@@ -88,6 +90,9 @@ cdef class FeatureBase(object):
     def specialize(self, from_charge, to_charge, intensity_ratio):
         raise NotImplementedError()
 
+    def unspecialize(self):
+        raise NotImplementedError()
+
     def __call__(self, peak1, peak2, structure=None):
         raise NotImplementedError()
 
@@ -136,9 +141,9 @@ cdef class MassOffsetFeature(FeatureBase):
             size_t i, n
         matches = []
         peaks_in_range = peak_list.all_peaks_for(peak.neutral_mass + self.offset, self.tolerance)
-        n = len(peaks_in_range)
+        n = PyTuple_GET_SIZE(peaks_in_range)
         for i in range(n):
-            peak2 = <DeconvolutedPeak>(peaks_in_range[i])
+            peak2 = <DeconvolutedPeak>PyTuple_GET_ITEM(peaks_in_range, i)
             if peak is not peak2 and self.test(peak, peak2):
                 matches.append(peak2)
         return matches
@@ -173,6 +178,11 @@ cdef class MassOffsetFeature(FeatureBase):
         return self.__class__(
             self.offset, self.tolerance, self.name, intensity_ratio,
             from_charge, to_charge, self.feature_type, self.terminal)
+
+    def unspecialize(self):
+        return self.__class__(
+            self.offset, self.tolerance, self.name, OUT_OF_RANGE_INT,
+            OUT_OF_RANGE_INT, OUT_OF_RANGE_INT, self.feature_type, self.terminal)
 
     def _get_display_fields(self):
         fields = {}
@@ -210,3 +220,42 @@ cdef class MassOffsetFeature(FeatureBase):
             d['offset'], d['tolerance'], d['name'], d['intensity_ratio'],
             d['from_charge'], d['to_charge'], d['feature_type'], d['terminal'])
         return inst
+
+
+@cython.freelist(100000)
+cdef class PeakRelation(object):
+    cdef:
+        public DeconvolutedPeak from_peak
+        public DeconvolutedPeak to_peak
+        public int intensity_ratio
+        public object feature
+        public object series
+        public int from_charge
+        public int to_charge
+
+    def __init__(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak, feature, intensity_ratio=None, series=None):
+        if intensity_ratio is None:
+            intensity_ratio = intensity_ratio_function(from_peak, to_peak)
+        self.from_peak = from_peak
+        self.to_peak = to_peak
+        self.feature = feature
+        self.intensity_ratio = intensity_ratio
+        self.from_charge = from_peak.charge
+        self.to_charge = to_peak.charge
+        self.series = series or NOISE
+
+    def __reduce__(self):
+        return self.__class__, (self.from_peak, self.to_peak, self.feature, self.intensity_ratio, self.series)
+
+    def __repr__(self):
+        cdef:
+            str template
+        template = "<PeakRelation {s.from_peak.neutral_mass}({s.from_charge}) ->" +\
+            " {s.to_peak.neutral_mass}({s.to_charge}) by {s.feature.name} on {s.series}>"
+        return template.format(s=self)
+
+    cpdef tuple peak_key(self):
+        if self.from_peak._index.neutral_mass < self.to_peak._index.neutral_mass:
+            return self.from_peak, self.to_peak
+        else:
+            return self.to_peak, self.from_peak
