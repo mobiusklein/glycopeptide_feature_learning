@@ -70,6 +70,9 @@ class partition_cell_spec(partition_cell_spec):
         count = structure.structure.glycosylation_manager.count_glycosylation_type(self.glycan_type)
         return count == self.glycan_count
 
+    def compact(self):
+        return ':'.join(map(str, self))
+
     def to_json(self):
         d = {}
         d['peptide_length_range'] = self.peptide_length_range
