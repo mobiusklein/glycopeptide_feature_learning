@@ -259,6 +259,9 @@ class FeatureBase(object):
     def specialize(self, from_charge, to_charge, intensity_ratio):
         raise NotImplementedError()
 
+    def unspecialize(self):
+        raise NotImplementedError()
+
     def __call__(self, peak1, peak2, structure=None):
         raise NotImplementedError()
 
@@ -334,6 +337,11 @@ class MassOffsetFeature(FeatureBase):
         return self.__class__(
             self.offset, self.tolerance, self.name, intensity_ratio,
             from_charge, to_charge, self.feature_type, self.terminal)
+
+    def unspecialize(self):
+        return self.__class__(
+            self.offset, self.tolerance, self.name, OUT_OF_RANGE_INT,
+            OUT_OF_RANGE_INT, OUT_OF_RANGE_INT, self.feature_type, self.terminal)
 
     def _get_display_fields(self):
         fields = {}
@@ -472,6 +480,13 @@ class PeakRelation(object):
             return self.from_peak, self.to_peak
         else:
             return self.to_peak, self.from_peak
+
+
+try:
+    _PeakRelation = PeakRelation
+    from feature_learning._c.peak_relations import PeakRelation
+except ImportError:
+    pass
 
 
 def feature_function_estimator(gpsms, feature_function, series=IonSeries.b, tolerance=2e-5, preranked=True,
@@ -755,6 +770,46 @@ def train_feature_function(gpsms, feature, preranked=True, error_tolerance=2e-5,
     return feature_fits
 
 
+class FragmentationFeature(object):
+    def __init__(self, feature, fits, series):
+        self.feature = feature
+        self.series = series
+        self.fits = dict(fits)
+
+    def find_matches(self, peak, peak_list, structure=None):
+        matches = self.feature.find_matches(peak, peak_list, structure)
+        pairs = []
+        for match in matches:
+            rel = PeakRelation(peak, match, self.feature, series=self.series)
+            try:
+                rel.feature = self.fits[rel.intensity_ratio, rel.from_charge, rel.to_charge]
+                pairs.append(rel)
+            except KeyError:
+                continue
+        return pairs
+
+    def __len__(self):
+        return len(self.fits)
+
+    def __repr__(self):
+        template = "{self.__class__.__name__}(name={self.feature.name}, size={size}, series={self.series})"
+        return template.format(self=self, size=len(self))
+
+    @classmethod
+    def generalize_fits(cls, fitted_features, series):
+        feature_to_fits = defaultdict(dict)
+        for fit in fitted_features:
+            if fit.on_series < 1e-4:
+                continue
+            feature = fit.feature.unspecialize()
+            feature_to_fits[feature][
+                fit.feature.intensity_ratio, fit.feature.from_charge, fit.feature.to_charge] = fit
+        result = []
+        for feature, table in feature_to_fits.items():
+            result.append(cls(feature, table, series))
+        return result
+
+
 class FragmentationModel(object):
     def __init__(self, series, features=None, on_frequency=None, off_frequency=None,
                  prior_probability_of_match=None, error_tolerance=2e-5):
@@ -762,7 +817,7 @@ class FragmentationModel(object):
             features = []
         self.series = series
         self.features = features
-        self._feature_map = {}
+        self.feature_table = FragmentationFeature.generalize_fits(features, self.series)
         self.error_tolerance = error_tolerance
         # alpha
         self.on_frequency = on_frequency
@@ -783,18 +838,12 @@ class FragmentationModel(object):
             fragment = peak_fragment.fragment
             if fragment.get_series() != self.series:
                 continue
-            for feature in self.features:
-                if feature.on_series == 0:
-                    continue
-                if feature.from_charge == peak.charge:
-                    matches = feature.find_matches(peak, deconvoluted_peak_set, structure)
-                    for match in matches:
-                        if feature.is_valid_match(peak, match, solution_map, structure):
-                            matches_to_features[peak].append(
-                                PeakRelation(peak, match, feature, series=self.series))
-                            matches_to_features[match].append(
-                                PeakRelation(peak, match, feature, series=self.series))
-
+            for feature in self.feature_table:
+                rels = feature.find_matches(peak, deconvoluted_peak_set, structure)
+                for rel in rels:
+                    if feature.feature.is_valid_match(rel.from_peak, rel.to_peak, solution_map, structure):
+                        matches_to_features[rel.from_peak].append(rel)
+                        matches_to_features[rel.to_peak].append(rel)
         return matches_to_features
 
     def _compute_offset_probability(self):
@@ -859,14 +908,6 @@ class FragmentationModel(object):
             a *= feature.on_series
             b *= feature.off_series
         return (gamma * a) / ((gamma * a) + ((1 - gamma) * b))
-
-    def get_fitted_feature(self, feature):
-        try:
-            return self._feature_map[feature]
-        except KeyError:
-            for fit_feature in self.features:
-                self._feature_map[fit_feature.feature] = fit_feature
-            return self._feature_map[feature]
 
     def score(self, scan, solution_map, structure):
         match_to_features = self.find_matches(scan, solution_map, structure)
@@ -973,11 +1014,38 @@ class FragmentationModelCollection(object):
     def add(self, model):
         self[model.series] = model
 
+    def find_matches(self, scan, solution_map, structure):
+        match_to_features = defaultdict(list)
+        deconvoluted_peak_set = scan.deconvoluted_peak_set
+        for peak_fragment in solution_map:
+            peak = peak_fragment.peak
+            fragment = peak_fragment.fragment
+            try:
+                model = self.models[fragment.get_series()]
+            except KeyError:
+                continue
+            for feature in model.feature_table:
+                rels = feature.find_matches(peak, deconvoluted_peak_set, structure)
+                for rel in rels:
+                    for rel in rels:
+                        if feature.feature.is_valid_match(rel.from_peak, rel.to_peak, solution_map, structure):
+                            match_to_features[rel.from_peak].append(rel)
+                            match_to_features[rel.to_peak].append(rel)
+        return match_to_features
+
     def score(self, scan, solution_map, structure):
-        fragment_map = {}
-        for model in self.models.values():
-            fragment_map.update(model.score(scan, solution_map, structure))
-        return fragment_map
+        match_to_features = self.find_matches(scan, solution_map, structure)
+        fragment_probabilities = {}
+        for pair in solution_map:
+            features = match_to_features[pair.peak]
+            try:
+                model = self.models[pair.fragment.get_series()]
+            except KeyError:
+                continue
+            features = match_to_features[pair.peak]
+            fragment_probabilities[pair] = model._score_peak(
+                pair.peak, features, solution_map, structure)
+        return fragment_probabilities
 
     def __repr__(self):
         template = "{self.__class__.__name__}({self.models})"
