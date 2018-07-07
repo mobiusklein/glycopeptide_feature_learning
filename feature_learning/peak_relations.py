@@ -408,6 +408,11 @@ class LinkFeature(MassOffsetFeature):
             self.amino_acid, self.tolerance, self.name, intensity_ratio, from_charge,
             to_charge, self.feature_type, self.terminal)
 
+    def unspecialize(self):
+        return self.__class__(
+            self.amino_acid, self.tolerance, self.name, OUT_OF_RANGE_INT, OUT_OF_RANGE_INT,
+            OUT_OF_RANGE_INT, self.feature_type, self.terminal)
+
     def is_valid_match(self, from_peak, to_peak, solution_map, structure=None):
         is_peak_expected = to_peak in solution_map.by_peak
         if not is_peak_expected:
