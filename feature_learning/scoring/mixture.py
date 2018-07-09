@@ -66,6 +66,12 @@ class MixtureBase(object):
             out += np.log(self.weights)
         return out
 
+    def pdf(self, X, weighted=True):
+        return np.exp(self.logpdf(X, weighted=weighted))
+
+    def score(self, X):
+        return self.pdf(X).sum()
+
     def responsibility(self, X):
         '''Also called the posterior probability, as these are the
         probabilities associating each element of X with each component
@@ -73,7 +79,10 @@ class MixtureBase(object):
         acc = np.zeros((X.shape[0], self.n_components))
         for k in range(self.n_components):
             acc[:, k] = np.log(self.weights[k]) + self._logpdf(X, k)
-        out = np.exp(acc - logsumexp(acc, axis=1)[:, None])
+        total = logsumexp(acc, axis=1)[:, None]
+        # compute the ratio of the density to the total in log-space, then
+        # exponentiate to return to linear space
+        out = np.exp(acc - total)
         return out
 
 
@@ -384,8 +393,8 @@ class GaussianMixtureWithPriorComponent(GaussianMixture):
         self.n_components = len(weights)
 
     def _logpdf(self, X, k):
-        if k == self.n_components:
-            return self.prior.logpdf(X)
+        if k == self.n_components - 1:
+            return np.log(np.exp(self.prior.logpdf(X, weighted=False)).dot(self.prior.weights))
         else:
             return super(GaussianMixtureWithPriorComponent, self)._logpdf(X, k)
 
@@ -410,18 +419,14 @@ class GaussianMixtureWithPriorComponent(GaussianMixture):
             prev_loglikelihood = self.loglikelihood(X)
             new_weights = np.zeros_like(self.weights)
             for k in range(self.n_components - 1):
-                # The expressions for each partial derivative may be useful for understanding
-                # portions of this block.
-                # See http://www.notenoughthoughts.net/posts/normal-log-likelihood-gradient.html
                 g = responsibility[:, k]
-
                 N_k = g.sum()
                 diff = X - self.mus[k]
                 mu_k = g.dot(X) / N_k
                 new_mus[k] = mu_k
                 sigma_k = (g * diff).dot(diff.T) / N_k + 1e-6
                 new_sigmas[k] = np.sqrt(sigma_k)
-                #
+
             new_weights = responsibility.sum(axis=0) / responsibility.sum()
             self.mus = new_mus
             self.sigmas = new_sigmas
@@ -432,3 +437,10 @@ class GaussianMixtureWithPriorComponent(GaussianMixture):
                 break
         else:
             pass
+
+    def plot(self, ax=None):
+        ax = super(GaussianMixtureWithPriorComponent, self).plot(ax=ax)
+        X = np.arange(0. + 1e-6, self.mus.max() + self.sigmas.max() * 4, 0.01)
+        Y = self.prior.score(X) * self.weights[-1]
+        ax.plot(X, Y, alpha=0.5)
+        return ax
