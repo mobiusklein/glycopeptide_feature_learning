@@ -199,6 +199,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         """
         pearson_residuals = self._calculate_pearson_residuals(use_reliability, base_reliability)
         model_score = -np.log10(PearsonResidualCDF(pearson_residuals) + 1e-6).sum()
+        if np.isnan(model_score):
+            model_score = 0.0
         return model_score
 
     def _get_intensity_observed_expected(self, use_reliability=False, base_reliability=0.5):
@@ -332,6 +334,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         delta[mask] = delta[mask] / 2.
         denom = yhat * (1 - yhat) * reliability
         stub_component = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6).sum()
+        if np.isnan(stub_component):
+            stub_component = 0
         oxonium_component = self._signature_ion_score(self.error_tolerance)
         glycan_score = (stub_component) * corr + oxonium_component
         return max(glycan_score, 0)
@@ -354,8 +358,11 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         intens = np.array(intens)
         yhat = np.array(yhat)
         reliability = np.array(reliability)
-        corr = (np.corrcoef(t * intens / np.sqrt(t * reliability * intens * (1 - intens)),
-                            t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat)))[0, 1])
+        if use_reliability:
+            corr = (np.corrcoef(t * intens / np.sqrt(t * reliability * intens * (1 - intens)),
+                                t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat)))[0, 1])
+        else:
+            corr = np.corrcoef(intens, yhat)[0, 1]
         if np.isnan(corr):
             corr = -0.5
         # peptide fragment correlation is weaker than the overall correlation.
