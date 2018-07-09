@@ -98,31 +98,39 @@ def get_peak_relation_features():
 def fit_peak_relation_features(partition_map):
     features, stub_features, link_features = get_peak_relation_features()
     group_to_fit = {}
-    for spec, cell in partition_map.items():
-        subset = partition_map.adjacent(spec, 10)
-        key = frozenset([gpsm.title for gpsm in subset])
-        if key in group_to_fit:
-            cell.fit = group_to_fit[key]
-            continue
-        click.echo("%s %d" % (spec, len(subset)))
-        for series in [IonSeries.b, IonSeries.y, ]:
-            fm = peak_relations.FragmentationModel(series)
-            fm.fit_offset(subset)
-            for feature, filt in features.items():
-                fits = fm.fit_feature(subset, feature)
-                fm.features.extend(fits)
-            for feature, filt in link_features.items():
-                fits = fm.fit_feature(subset, feature)
-                fm.features.extend(fits)
-            cell.fit[series] = fm
-        for series in [IonSeries.stub_glycopeptide]:
-            fm = peak_relations.FragmentationModel(series)
-            fm.fit_offset(subset)
-            for feature, filt in stub_features.items():
-                fits = fm.fit_feature(subset, feature)
-                fm.features.extend(fits)
-            cell.fit[series] = fm
-        group_to_fit[key] = cell.fit
+    cell_sequence = [
+        (spec, cell, partition_map.adjacent(spec, 10))
+        for spec, cell in partition_map.items()]
+    bar = click.progressbar(
+        cell_sequence, label="Fitting Peak Relationships",
+        width=15, show_percent=True, show_eta=False,
+        item_show_func=lambda x: "%s" % (x[0].compact('\t'),) if x is not None else '')
+    with bar:
+        for spec, cell, subset in bar:
+            key = frozenset([gpsm.title for gpsm in subset])
+            if key in group_to_fit:
+                cell.fit = group_to_fit[key]
+                continue
+            if bar.is_hidden:
+                click.echo("%s %d" % (spec, len(subset)))
+            for series in [IonSeries.b, IonSeries.y, ]:
+                fm = peak_relations.FragmentationModel(series)
+                fm.fit_offset(subset)
+                for feature, filt in features.items():
+                    fits = fm.fit_feature(subset, feature)
+                    fm.features.extend(fits)
+                for feature, filt in link_features.items():
+                    fits = fm.fit_feature(subset, feature)
+                    fm.features.extend(fits)
+                cell.fit[series] = fm
+            for series in [IonSeries.stub_glycopeptide]:
+                fm = peak_relations.FragmentationModel(series)
+                fm.fit_offset(subset)
+                for feature, filt in stub_features.items():
+                    fits = fm.fit_feature(subset, feature)
+                    fm.features.extend(fits)
+                cell.fit[series] = fm
+            group_to_fit[key] = cell.fit
     return group_to_fit
 
 
