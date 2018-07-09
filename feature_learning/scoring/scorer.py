@@ -315,7 +315,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         else:
             reliability = self._get_reliabilities(c, base_reliability=base_reliability)
         stubs = []
-        intens /= t
+        intens = intens / t
         for i in range(len(c)):
             if c[i].series == 'stub_glycopeptide':
                 stubs.append((c[i], intens[i], yhat[i], reliability[i]))
@@ -324,11 +324,15 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         c, intens, yhat, reliability = zip(*stubs)
         intens = np.array(intens)
         yhat = np.array(yhat)
-        corr = (np.corrcoef(intens, yhat)[0, 1])
+        reliability = np.array(reliability)
+        if use_reliability:
+            corr = (np.corrcoef(t * intens / np.sqrt(t * reliability * intens * (1 - intens)),
+                                t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat)))[0, 1])
+        else:
+            corr = np.corrcoef(intens, yhat)[0, 1]
         if np.isnan(corr):
             corr = -0.5
         corr = (1.0 + corr) / 2.0
-        reliability = np.array(reliability)
         delta = (intens - yhat) ** 2
         mask = intens > yhat
         delta[mask] = delta[mask] / 2.
@@ -337,7 +341,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         if np.isnan(stub_component):
             stub_component = 0
         oxonium_component = self._signature_ion_score(self.error_tolerance)
-        glycan_score = (stub_component) * corr + oxonium_component
+        glycan_score = stub_component * corr + oxonium_component
         return max(glycan_score, 0)
 
     def peptide_score(self, use_reliability=True, base_reliability=0.5):
@@ -348,7 +352,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             reliability = self._get_reliabilities(c, base_reliability=base_reliability)
 
         backbones = []
-        intens /= t
+        intens = intens / t
         for i in range(len(c)):
             if c[i].series in ('b', 'y'):
                 backbones.append((c[i], intens[i], yhat[i], reliability[i]))
