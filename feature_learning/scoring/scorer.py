@@ -341,7 +341,13 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         if np.isnan(stub_component):
             stub_component = 0
         oxonium_component = self._signature_ion_score(self.error_tolerance)
-        glycan_score = stub_component * corr + oxonium_component
+        # Unlike peptide coverage, the glycan composition coverage operates as a bias towards
+        # selecting matches which contain more reliable glycan Y ions, but not to act as a scaling
+        # factor because the set of all possible fragments for the glycan composition is a much larger
+        # superset of the possible fragments of glycan structures because of recurring patterns
+        # not reflected in the glycan composition.
+        coverage = np.sum(reliability + 1) / np.sqrt(np.sum(self.target.glycan_composition.values()))
+        glycan_score = stub_component * corr + oxonium_component + coverage
         return max(glycan_score, 0)
 
     def peptide_score(self, use_reliability=True, base_reliability=0.5):
