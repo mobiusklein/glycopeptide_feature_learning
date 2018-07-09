@@ -70,7 +70,7 @@ class MixtureBase(object):
         return np.exp(self.logpdf(X, weighted=weighted))
 
     def score(self, X):
-        return self.pdf(X).sum()
+        return self.pdf(X).sum(axis=1)
 
     def responsibility(self, X):
         '''Also called the posterior probability, as these are the
