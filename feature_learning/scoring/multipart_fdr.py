@@ -28,7 +28,7 @@ class FiniteMixtureModelFDREstimator(object):
     def estimate_gamma(self, max_components=10):
         models = []
         bics = []
-        for i in range(1, max_components):
+        for i in range(1, max_components + 1):
             self.log("Fitting %d Components" % (i,))
             model = GammaMixture.fit(self.decoy_scores, i)
             bic = model.bic(self.decoy_scores)
@@ -43,7 +43,7 @@ class FiniteMixtureModelFDREstimator(object):
     def estimate_gaussian(self, max_components=10):
         models = []
         bics = []
-        for i in range(1, max_components):
+        for i in range(1, max_components + 1):
             self.log("Fitting %d Components" % (i,))
             model = GaussianMixtureWithPriorComponent.fit(
                 self.target_scores, i, self.gamma_mixture)
