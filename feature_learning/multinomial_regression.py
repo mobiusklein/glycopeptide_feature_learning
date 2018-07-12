@@ -944,7 +944,10 @@ class MultinomialRegressionFit(object):
             remaining_reliability = 1 - base_reliability
             reliability_score_map = self.reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
             for i, frag_spec in enumerate(fragment_specs):
-                peak_pair = frag_spec.peak_pair
+                try:
+                    peak_pair = frag_spec.peak_pair
+                except AttributeError:
+                    peak_pair = frag_spec
                 if peak_pair is None:
                     reliability[i] = 1.0
                 else:
