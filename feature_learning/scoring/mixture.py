@@ -175,6 +175,44 @@ def fit_gamma(X, maxiter=100, tol=1e-6):
     return shape, scale
 
 
+r'''
+Gamma Distribution Notes
+------------------------
+The scipy.stats.gamma distribution's parameters, `a` and `scale`
+are the equivalent of the parameterization on the Wikipedia page
+for the Gamma distribution map to `k` and `theta` respectively.
+
+There is no closed form solution for the Gamma distribution's
+parameters. The log-likelihood function for the Gamma distribution
+is
+
+.. math::
+
+    \ell(k, \theta) = (k - 1)\sum_{i=1}^N\ln(x_i) - \sum_{i=1}^N\frac{x_i}{\theta}
+                      - Nk\ln(\theta) - N\ln(\Gamma(k))\\
+
+The maximum likelihood estimator of the :math:`\theta` parameter
+
+.. math::
+
+    \hat{\theta} = \frac{1}{kN}\sum_{i=1}^N{x_i}
+
+The mixture version of this expression would be
+
+.. math::
+
+    \hat{\theta}_j &= \pi_j\frac{1}{k_jN}\sum_{i=1}^N{x_i}
+
+To get an expression for :math:`k`, we substitute the estimate for :math:`theta`
+into the log-likelihood function
+
+.. math::
+
+    \ell = (k - 1)\sum_{i=1}^N{\ln(x_i)} - Nk - Nk\ln\left(
+           \frac{1}{kN}\sum_{i=1}^Nx_i\right) - N\ln(\Gamma(k))
+'''
+
+
 class GammaMixtureFitter(object):
     '''Fit a Gamma mixture semi-numerically using the constrained function
     optimizer :func:`scipy.optimize.minimize`
