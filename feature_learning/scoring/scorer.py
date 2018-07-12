@@ -201,7 +201,10 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         model_score = -np.log10(PearsonResidualCDF(pearson_residuals) + 1e-6).sum()
         if np.isnan(model_score):
             model_score = 0.0
-        return model_score
+        c, intens, t, yhat = self._get_predicted_intensities()
+        reliability = self._get_reliabilities(c, base_reliability=base_reliability)[:-1]
+        intensity_component = np.log10(intens[:-1]).dot(reliability + 1.0)
+        return model_score + intensity_component
 
     def _get_intensity_observed_expected(self, use_reliability=False, base_reliability=0.5):
         """Get the vector of matched experimental intensities and their predicted intensities.
@@ -308,6 +311,43 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             self, fragment_match_features, base_reliability=base_reliability)
         return reliability
 
+    def _get_stub_component(self, fragments, use_reliability=True, base_reliability=0.5, filtered=False):
+        if self.model_fit.reliability_model is None or not use_reliability:
+            reliability = np.ones(len(fragments))
+        else:
+            reliability = self._get_reliabilities(fragments, base_reliability=base_reliability)
+        if not filtered:
+            stubs = []
+            for i in range(len(fragments)):
+                if fragments[i].fragment.series == 'stub_glycopeptide':
+                    stubs.append((fragments[i], reliability[i]))
+            if not stubs:
+                return 0
+            fragments, reliability = zip(*stubs)
+            return self._glycan_coverage(fragments, np.array(reliability))
+        else:
+            if len(fragments) == 0:
+                return 0
+            return self._glycan_coverage(fragments, reliability)
+
+    def _glycan_coverage(self, fragments, reliability):
+        theoretical_set = list(self.target.stub_fragments(extended=True))
+        core_fragments = set()
+        for frag in theoretical_set:
+            if not frag.is_extended:
+                core_fragments.add(frag.name)
+        core_matches = []
+        extended_matches = []
+        for ci, rel in zip(fragments, reliability):
+            if ci.fragment.name in core_fragments:
+                core_matches.append(1.0 + rel)
+            else:
+                extended_matches.append(1.0 + rel)
+        coverage = ((sum(core_matches) ** 2) / len(core_fragments) * (
+            sum(extended_matches) + sum(core_matches)) / (
+                sum(self.target.glycan_composition.values())))
+        return coverage
+
     def glycan_score(self, use_reliability=True, base_reliability=0.5):
         c, intens, t, yhat = self._get_predicted_intensities()
         if self.model_fit.reliability_model is None or not use_reliability:
@@ -346,8 +386,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         # factor because the set of all possible fragments for the glycan composition is a much larger
         # superset of the possible fragments of glycan structures because of recurring patterns
         # not reflected in the glycan composition.
-        coverage = np.sum(reliability + 1) / np.sqrt(np.sum(self.target.glycan_composition.values()))
-        glycan_score = stub_component * corr + oxonium_component + coverage
+        coverage = self._glycan_coverage(c, reliability)
+        glycan_score = (np.log10(intens * t).sum() + stub_component) * corr + oxonium_component + coverage
         return max(glycan_score, 0)
 
     def peptide_score(self, use_reliability=True, base_reliability=0.5):
@@ -368,11 +408,9 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         intens = np.array(intens)
         yhat = np.array(yhat)
         reliability = np.array(reliability)
-        if use_reliability:
-            corr = (np.corrcoef(t * intens / np.sqrt(t * reliability * intens * (1 - intens)),
-                                t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat)))[0, 1])
-        else:
-            corr = np.corrcoef(intens, yhat)[0, 1]
+        # peptide reliability is usually less powerful, so it does not benefit
+        # us to use the normalized correlation coefficient here
+        corr = np.corrcoef(intens, yhat)[0, 1]
         if np.isnan(corr):
             corr = -0.5
         # peptide fragment correlation is weaker than the overall correlation.
@@ -383,10 +421,10 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         delta[mask] = delta[mask] / 2.
         denom = yhat * (1 - yhat) * reliability
         peptide_score = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6).sum()
-        # Ignore stub glycopeptides here because they are shared by decoy peptides
+        # peptide backbone coverage without separate term for glycosylation site parsimony
         b_ions, y_ions = self._compute_coverage_vectors()[:2]
         coverage_score = ((b_ions + y_ions[::-1])).sum() / float(self.n_theoretical)
-        return peptide_score * coverage_score * corr
+        return (np.log10(intens * t).dot(reliability + 1).sum() + peptide_score) * coverage_score * corr
 
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
                         glycosylated_weight=None, stub_weight=None,
@@ -414,6 +452,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             self._score *= self._transform_correlation_distance(False)
         elif weighting == 'normalized_correlation_distance':
             self._score *= self._transform_correlation_distance(True, base_reliability=base_reliability)
+        else:
+            raise ValueError("Unrecognized Weighting Scheme %s" % (weighting,))
         return self._score
 
 
