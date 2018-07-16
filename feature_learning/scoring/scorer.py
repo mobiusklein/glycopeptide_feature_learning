@@ -205,7 +205,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         reliability = self._get_reliabilities(c, base_reliability=base_reliability)[:-1]
         intensity_component = np.log10(intens[:-1]).dot(reliability + 1.0)
         stub_component = self._get_stub_component(
-            c, use_reliability=use_reliability, base_reliability=base_reliability)
+            c[:-1], use_reliability=use_reliability, base_reliability=base_reliability)
         return model_score + intensity_component + stub_component
 
     def _get_intensity_observed_expected(self, use_reliability=False, base_reliability=0.5):
