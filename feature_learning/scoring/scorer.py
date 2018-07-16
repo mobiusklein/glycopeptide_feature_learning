@@ -204,7 +204,9 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         c, intens, t, yhat = self._get_predicted_intensities()
         reliability = self._get_reliabilities(c, base_reliability=base_reliability)[:-1]
         intensity_component = np.log10(intens[:-1]).dot(reliability + 1.0)
-        return model_score + intensity_component
+        stub_component = self._get_stub_component(
+            c, use_reliability=use_reliability, base_reliability=base_reliability)
+        return model_score + intensity_component + stub_component
 
     def _get_intensity_observed_expected(self, use_reliability=False, base_reliability=0.5):
         """Get the vector of matched experimental intensities and their predicted intensities.
@@ -257,7 +259,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
     def _transform_correlation_distance(self, use_reliability=False, base_reliability=0.5):
         r = self._calculate_correlation_distance(use_reliability=use_reliability, base_reliability=base_reliability)
         if np.isnan(r):
-            r = 0
+            r = -0.5
         c = (r + 1) / 2.
         return c
 
@@ -346,6 +348,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         coverage = ((sum(core_matches) ** 2) / len(core_fragments) * (
             sum(extended_matches) + sum(core_matches)) / (
                 sum(self.target.glycan_composition.values())))
+        if np.isnan(coverage):
+            coverage = 0.0
         return coverage
 
     def glycan_score(self, use_reliability=True, base_reliability=0.5):
@@ -448,9 +452,9 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             self._score *= self._transform_correlation(False)
         elif weighting == 'normalized_correlation':
             self._score *= self._transform_correlation(True, base_reliability=base_reliability)
-        elif weighting == 'correlation_distance':
+        elif weighting in ('correlation_distance', 'distance_correlation'):
             self._score *= self._transform_correlation_distance(False)
-        elif weighting == 'normalized_correlation_distance':
+        elif weighting == ('normalized_correlation_distance', 'normalized_distance_correlation'):
             self._score *= self._transform_correlation_distance(True, base_reliability=base_reliability)
         else:
             raise ValueError("Unrecognized Weighting Scheme %s" % (weighting,))
