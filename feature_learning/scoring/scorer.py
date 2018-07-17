@@ -454,7 +454,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             self._score *= self._transform_correlation(True, base_reliability=base_reliability)
         elif weighting in ('correlation_distance', 'distance_correlation'):
             self._score *= self._transform_correlation_distance(False)
-        elif weighting == ('normalized_correlation_distance', 'normalized_distance_correlation'):
+        elif weighting in ('normalized_correlation_distance', 'normalized_distance_correlation'):
             self._score *= self._transform_correlation_distance(True, base_reliability=base_reliability)
         else:
             raise ValueError("Unrecognized Weighting Scheme %s" % (weighting,))
