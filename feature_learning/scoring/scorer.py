@@ -204,9 +204,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         c, intens, t, yhat = self._get_predicted_intensities()
         reliability = self._get_reliabilities(c, base_reliability=base_reliability)[:-1]
         intensity_component = np.log10(intens[:-1]).dot(reliability + 1.0)
-        # stub_component = self._get_stub_component(
-        #     c[:-1], use_reliability=use_reliability, base_reliability=base_reliability)
-        stub_component = 0.0
+        stub_component = self._get_stub_component(
+            c[:-1], use_reliability=use_reliability, base_reliability=base_reliability)
         return model_score + intensity_component + stub_component
 
     def _get_intensity_observed_expected(self, use_reliability=False, base_reliability=0.5):
@@ -308,8 +307,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             cached_data = self._get_cached_model_transform(self.model_fit)
             if cached_data.reliability_vector is not None:
                 return cached_data.reliability_vector
-            else:
-                reliability = self.model_fit
+
         reliability = self.model_fit._calculate_reliability(
             self, fragment_match_features, base_reliability=base_reliability)
         return reliability
@@ -327,7 +325,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             if not stubs:
                 return 0
             fragments, reliability = zip(*stubs)
-            return self._glycan_coverage(fragments, np.array(reliability))
+            return self._glycan_coverage(fragments, reliability)
         else:
             if len(fragments) == 0:
                 return 0
@@ -446,7 +444,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             use_reliability=use_reliability,
             base_reliability=base_reliability)
         self._score = ((intensity + fragments_matched + model_score) * coverage_score
-                       ) + mass_accuracy + signature_component
+                       )
         if weighting is None:
             pass
         elif weighting == 'correlation':
@@ -459,6 +457,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             self._score *= self._transform_correlation_distance(True, base_reliability=base_reliability)
         else:
             raise ValueError("Unrecognized Weighting Scheme %s" % (weighting,))
+        self._score += (mass_accuracy + signature_component)
         return self._score
 
 
