@@ -12,6 +12,11 @@ FDR estimation procedure described in:
 '''
 import numpy as np
 
+try:
+    from matplotlib import pyplot as plt
+except ImportError:
+    pass
+
 from .mixture import GammaMixture, GaussianMixtureWithPriorComponent
 
 
@@ -72,3 +77,14 @@ class FiniteMixtureModelFDREstimator(object):
         # those into the ascending ordering of the FDR vector to get
         # the FDR estimates of the original X
         return fdr[::-1][np.searchsorted(X_[::-1], X)]
+
+    def plot(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(1)
+        X = np.arange(1, max(self.target_scores), 0.1)
+        ax.plot(X,
+                np.exp(self.gaussian_mixture.logpdf(X)).sum(axis=1))
+        for col in np.exp(self.gaussian_mixture.logpdf(X)).T:
+            ax.plot(X, col, linestyle='--')
+        ax.hist(self.target_scores, bins=100, density=1, alpha=0.15)
+        return ax
