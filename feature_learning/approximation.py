@@ -1,41 +1,8 @@
 import pkg_resources
 
 import numpy as np
-from scipy.stats import gamma, gengamma
 
 from matplotlib import pyplot as plt
-
-
-class GammaFit(object):
-    _model_type = gamma
-
-    def __init__(self, data):
-        self.data = np.array(data)
-        self.params = self._model_type.fit(data)
-
-    def plot(self, ax=None):
-        if ax is None:
-            fig, ax = plt.subplots(1)
-        a, b = np.histogram(self.data, bins='fd', density=1)
-        ax.plot(b[1:], a, label='empirical', c='blue')
-        ax.plot(b[1:], self.pdf(b[1:]), label='gamma', c='orange')
-        return ax
-
-    def nnlf(self):
-        return self._model_type.nnlf(self.data, self.params)
-
-    def pdf(self, x):
-        return self._model_type.pdf(x, *self.params)
-
-    def cdf(self, x):
-        return self._model_type.cdf(x, *self.params)
-
-    def sf(self, x):
-        return self._model_type.sf(x, *self.params)
-
-
-class GeneralizedGammaFit(GammaFit):
-    _model_type = gengamma
 
 
 # derived from statsmodels
