@@ -303,13 +303,21 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         return (c, intens, t, X)
 
     def _get_reliabilities(self, fragment_match_features, base_reliability=0.5):
+        is_model_cached = False
+        cached_data = None
+        # Does not actually populate the cache if the model hasn't had its result
+        # cached in the first place.
         if self._is_model_cached(self.model_fit):
+            is_model_cached = True
             cached_data = self._get_cached_model_transform(self.model_fit)
             if cached_data.reliability_vector is not None:
                 return cached_data.reliability_vector
 
         reliability = self.model_fit._calculate_reliability(
             self, fragment_match_features, base_reliability=base_reliability)
+        if is_model_cached:
+            if cached_data is not None:
+                cached_data.reliability_vector = reliability
         return reliability
 
     def _get_stub_component(self, fragments, use_reliability=True, base_reliability=0.5, filtered=False):
@@ -390,7 +398,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         # superset of the possible fragments of glycan structures because of recurring patterns
         # not reflected in the glycan composition.
         coverage = self._glycan_coverage(c, reliability)
-        glycan_score = (np.log10(intens * t).sum() + stub_component) * corr + oxonium_component + coverage
+        glycan_score = (np.log10(intens * t).dot(reliability + 1) + stub_component + coverage
+                        ) * corr + oxonium_component
         return max(glycan_score, 0)
 
     def peptide_score(self, use_reliability=True, base_reliability=0.5):
@@ -433,9 +442,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
                         glycosylated_weight=None, stub_weight=None,
                         use_reliability=True, base_reliability=0.5,
                         weighting=None, *args, **kwargs):
-        intensity = -math.log10(self._intensity_component_binomial())
-        # fragments_matched = -math.log10(self._fragment_matched_binomial())
-        fragments_matched = 0
+        intensity = -2 * math.log10(self._intensity_component_binomial())
+        fragments_matched = -0.1 * math.log10(self._fragment_matched_binomial())
         coverage_score = self._coverage_score(backbone_weight, glycosylated_weight, stub_weight)
         offset = self.determine_precursor_offset()
         mass_accuracy = -10 * math.log10(
