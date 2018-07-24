@@ -352,9 +352,11 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
                 core_matches.append(1.0 + rel)
             else:
                 extended_matches.append(1.0 + rel)
-        coverage = ((sum(core_matches) ** 2) / len(core_fragments) * (
+        core_coverage = (sum(core_matches) ** 2) / len(core_fragments)
+        extended_coverage = (
             sum(extended_matches) + sum(core_matches)) / (
-                sum(self.target.glycan_composition.values())))
+                sum(self.target.glycan_composition.values()))
+        coverage = core_coverage * extended_coverage
         if np.isnan(coverage):
             coverage = 0.0
         return coverage
