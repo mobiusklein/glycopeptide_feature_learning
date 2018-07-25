@@ -444,8 +444,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
                         glycosylated_weight=None, stub_weight=None,
                         use_reliability=True, base_reliability=0.5,
                         weighting=None, *args, **kwargs):
-        intensity = -5 * math.log10(self._intensity_component_binomial())
-        fragments_matched = -0.1 * math.log10(self._fragment_matched_binomial())
+        intensity = -math.log10(self._intensity_component_binomial())
+        fragments_matched = -math.log10(self._fragment_matched_binomial())
         # fragments_matched = 0.0
         coverage_score = self._coverage_score(backbone_weight, glycosylated_weight, stub_weight)
         offset = self.determine_precursor_offset()
