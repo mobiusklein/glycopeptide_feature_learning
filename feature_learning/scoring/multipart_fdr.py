@@ -33,6 +33,12 @@ class FiniteMixtureModelFDREstimator(object):
     def estimate_gamma(self, max_components=10):
         models = []
         bics = []
+        n = len(self.decoy_scores)
+        np.random.seed(n)
+        if n < 10:
+            self.log("Too few decoy observations")
+            self.gamma_mixture = GammaMixture([1.0], [1.0], [1.0])
+            return self.gamma_mixture
         for i in range(1, max_components + 1):
             self.log("Fitting %d Components" % (i,))
             model = GammaMixture.fit(self.decoy_scores, i)
@@ -48,6 +54,12 @@ class FiniteMixtureModelFDREstimator(object):
     def estimate_gaussian(self, max_components=10):
         models = []
         bics = []
+        n = len(self.target_scores)
+        np.random.seed(n)
+        if n < 10:
+            self.log("Too few target observations")
+            self.gaussian_mixture = GaussianMixtureWithPriorComponent([1.0], [1.0], self.gamma_mixture, [0.5, 0.5])
+            return self.gaussian_mixture
         for i in range(1, max_components + 1):
             self.log("Fitting %d Components" % (i,))
             model = GaussianMixtureWithPriorComponent.fit(
