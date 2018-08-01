@@ -63,7 +63,7 @@ class FiniteMixtureModelFDREstimator(object):
         for i in range(1, max_components + 1):
             self.log("Fitting %d Components" % (i,))
             model = GaussianMixtureWithPriorComponent.fit(
-                self.target_scores, i, self.gamma_mixture)
+                self.target_scores, i, self.gamma_mixture, deterministic=True)
             bic = model.bic(self.target_scores)
             models.append(model)
             bics.append(bic)

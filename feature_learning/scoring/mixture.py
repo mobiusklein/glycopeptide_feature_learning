@@ -104,10 +104,13 @@ class GaussianMixture(MixtureBase):
         return stats.norm.logpdf(X, self.mus[k], self.sigmas[k])
 
     @classmethod
-    def fit(cls, X, n_components, maxiter=1000, tol=1e-5):
-        mus = KMeans.fit(X, n_components).means
+    def fit(cls, X, n_components, maxiter=1000, tol=1e-5, deterministic=False):
+        if not deterministic:
+            mus = KMeans.fit(X, n_components).means
+        else:
+            mus = (np.max(X) / (n_components + 1)) * np.arange(1, n_components + 1)
         assert not np.any(np.isnan(mus))
-        sigmas = np.std(X) * np.ones_like(mus)
+        sigmas = np.var(X) * np.ones_like(mus)
         weights = np.ones_like(mus) / n_components
         inst = cls(mus, sigmas, weights)
         inst.estimate(X, maxiter=maxiter, tol=tol)
@@ -304,8 +307,8 @@ class GammaMixtureBase(MixtureBase):
         return ax
 
     @classmethod
-    def fit(cls, X, n_components, maxiter=100, tol=1e-5):
-        shapes, scales, weights = cls.initial_parameters(X, n_components)
+    def fit(cls, X, n_components, maxiter=100, tol=1e-5, deterministic=False):
+        shapes, scales, weights = cls.initial_parameters(X, n_components, deterministic=deterministic)
         inst = cls(shapes, scales, weights)
         inst.estimate(X, maxiter=maxiter, tol=tol)
         return inst
@@ -325,7 +328,7 @@ class GradientGammaMixture(GammaMixtureBase):
     '''
 
     @staticmethod
-    def initial_parameters(X, n_components):
+    def initial_parameters(X, n_components, deterministic=False):
         weights = np.random.random(n_components)
         weights /= weights.sum()
         X_sorted = sorted(X)
@@ -384,7 +387,7 @@ class IterativeGammaMixture(GradientGammaMixture):
     Derived from pGlyco's FDR estimation method
     '''
     @staticmethod
-    def initial_parameters(X, n_components):
+    def initial_parameters(X, n_components, deterministic=False):
         mu = np.median(X) / (n_components + 1) * np.arange(1, n_components + 1)
         sigma = np.ones(n_components) * np.var(X)
         shapes = mu ** 2 / sigma
@@ -437,10 +440,13 @@ class GaussianMixtureWithPriorComponent(GaussianMixture):
             return super(GaussianMixtureWithPriorComponent, self)._logpdf(X, k)
 
     @classmethod
-    def fit(cls, X, n_components, prior, maxiter=1000, tol=1e-5):
-        mus = KMeans.fit(X, n_components).means
+    def fit(cls, X, n_components, prior, maxiter=1000, tol=1e-5, deterministic=False):
+        if not deterministic:
+            mus = KMeans.fit(X, n_components).means
+        else:
+            mus = (np.max(X) / (n_components + 1)) * np.arange(1, n_components + 1)
         assert not np.any(np.isnan(mus))
-        sigmas = np.std(X) * np.ones_like(mus)
+        sigmas = np.var(X) * np.ones_like(mus)
         weights = np.ones(n_components + 1) / (n_components + 1)
         inst = cls(mus, sigmas, prior, weights)
         inst.estimate(X, maxiter=maxiter, tol=tol)
