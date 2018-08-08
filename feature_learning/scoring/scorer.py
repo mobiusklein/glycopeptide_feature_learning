@@ -431,6 +431,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
             corr = -0.5
         # peptide fragment correlation is weaker than the overall correlation.
         corr = (3.0 + corr) / 4.0
+        corr_score = corr * 10.0
         reliability = np.array(reliability)
         delta = (intens - yhat) ** 2
         mask = intens > yhat
@@ -440,7 +441,10 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         # peptide backbone coverage without separate term for glycosylation site parsimony
         b_ions, y_ions = self._compute_coverage_vectors()[:2]
         coverage_score = ((b_ions + y_ions[::-1])).sum() / float(self.n_theoretical)
-        return (np.log10(intens * t).dot(reliability + 1).sum() + peptide_score) * coverage_score * corr
+        peptide_score = (np.log10(intens * t).dot(reliability + 1).sum() + peptide_score) * coverage_score
+        # peptide_score *= corr
+        peptide_score += corr_score
+        return peptide_score
 
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
                         glycosylated_weight=None, stub_weight=None,
