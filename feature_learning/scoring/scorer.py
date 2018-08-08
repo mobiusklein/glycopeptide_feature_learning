@@ -441,9 +441,10 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         # peptide backbone coverage without separate term for glycosylation site parsimony
         b_ions, y_ions = self._compute_coverage_vectors()[:2]
         coverage_score = ((b_ions + y_ions[::-1])).sum() / float(self.n_theoretical)
-        peptide_score = (np.log10(intens * t).dot(reliability + 1).sum() + peptide_score) * coverage_score
+        peptide_score = (np.log10(intens * t).dot(reliability + 1).sum() + peptide_score)
         # peptide_score *= corr
         peptide_score += corr_score
+        peptide_score *= coverage_score
         return peptide_score
 
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
