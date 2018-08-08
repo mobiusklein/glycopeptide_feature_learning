@@ -462,20 +462,24 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         model_score = self._calculate_pearson_residual_score(
             use_reliability=use_reliability,
             base_reliability=base_reliability)
-        self._score = ((intensity + fragments_matched + model_score) * coverage_score
-                       )
+        self._score = (intensity + fragments_matched + model_score)
         if weighting is None:
             pass
         elif weighting == 'correlation':
-            self._score *= self._transform_correlation(False)
+            # self._score *= self._transform_correlation(False)
+            self._score += self._transform_correlation(False) * 10.0
         elif weighting == 'normalized_correlation':
-            self._score *= self._transform_correlation(True, base_reliability=base_reliability)
+            # self._score *= self._transform_correlation(True, base_reliability=base_reliability)
+            self._score += self._transform_correlation(True, base_reliability=base_reliability) * 10.0
         elif weighting in ('correlation_distance', 'distance_correlation'):
-            self._score *= self._transform_correlation_distance(False)
+            # self._score *= self._transform_correlation_distance(False)
+            self._score += self._transform_correlation_distance(False) * 10.0
         elif weighting in ('normalized_correlation_distance', 'normalized_distance_correlation'):
-            self._score *= self._transform_correlation_distance(True, base_reliability=base_reliability)
+            # self._score *= self._transform_correlation_distance(True, base_reliability=base_reliability)
+            self._score += self._transform_correlation_distance(True, base_reliability=base_reliability) * 10.0
         else:
             raise ValueError("Unrecognized Weighting Scheme %s" % (weighting,))
+        self._score *= coverage_score
         self._score += (mass_accuracy + signature_component)
         return self._score
 
