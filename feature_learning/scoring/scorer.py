@@ -386,6 +386,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         if np.isnan(corr):
             corr = -0.5
         corr = (1.0 + corr) / 2.0
+        corr_score = corr * 10.0
         delta = (intens - yhat) ** 2
         mask = intens > yhat
         delta[mask] = delta[mask] / 2.
@@ -401,7 +402,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         # not reflected in the glycan composition.
         coverage = self._glycan_coverage(c, reliability)
         glycan_score = (np.log10(intens * t).dot(reliability + 1) + stub_component + coverage
-                        ) * corr + oxonium_component
+                        # ) * corr + oxonium_component
+                        ) + corr_score + oxonium_component
         return max(glycan_score, 0)
 
     def peptide_score(self, use_reliability=True, base_reliability=0.5):
