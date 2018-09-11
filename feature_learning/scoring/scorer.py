@@ -180,7 +180,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
 
     def _calculate_pearson_residual_score(self, use_reliability=True, base_reliability=0.5):
         """Compute a model-based score by summing the Pearson residuals after transforming
-        through them an Empirically measured CDF and followed by a -log10 transform.
+        through them an empirically measured CDF and followed by a -log10 transform.
 
         Parameters
         ----------
@@ -524,7 +524,10 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
             return np.array([1.])
         ps = np.empty(len(self.model_fits))
         for i, model_fit in enumerate(self._iter_model_fits()):
-            ps[i] = (1. / self._calculate_pearson_residuals().sum()) ** self.power
+            pearson = self._calculate_pearson_residuals().sum()
+            if np.isnan(pearson):
+                pearson = 1.0
+            ps[i] = (1. / pearson) ** self.power
         total = ps.sum() + 1e-6 * ps.shape[0]
         return ps / total
 

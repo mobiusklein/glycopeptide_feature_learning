@@ -577,8 +577,8 @@ class StubChargeModel(CleavageSiteCenterDistanceModel):
 
         if self.is_stub_glycopeptide():
             loss_size = sum(self.sequence.glycan_composition.values()) - int(self.glycosylated)
-            if loss_size > k_glycosylated_stubs:
-                loss_size = k_glycosylated_stubs
+            if loss_size >= k_glycosylated_stubs:
+                loss_size = k_glycosylated_stubs - 1
             # d = k_glycosylated_stubs * (self.charge - 1) + int(self.glycosylated)
             d = k_glycosylated_stubs * (self.charge - 1) + loss_size
             X[offset + d] = 1
