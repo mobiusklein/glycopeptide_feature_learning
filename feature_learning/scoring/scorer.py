@@ -631,3 +631,18 @@ class NaivePredicateTree(PredicateTreeBase):
     @classmethod
     def _bind_model_scorer(cls, scorer_type, models, partition=None):
         return ModelBindingScorer(scorer_type, model_fit=models[0], partition=partition)
+
+
+class NaiveScorerWithoutReliability(NaiveScorer):
+    def _get_reliabilities(self, fragment_match_features, base_reliability=0.5):
+        rel = np.ones(len(fragment_match_features), dtype=float)
+        return rel
+
+
+class ShortPeptideNaiveScorerWithoutReliability(NaiveScorer):
+    stub_weight = 0.65
+
+
+class NaivePredicateTreeWithoutReliability(NaivePredicateTree):
+    _scorer_type = NaiveScorerWithoutReliability
+    _short_peptide_scorer_type = ShortPeptideNaiveScorerWithoutReliability
