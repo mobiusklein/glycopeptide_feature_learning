@@ -14,7 +14,7 @@ from feature_learning.multinomial_regression import (
 
 from feature_learning.utils import distcorr
 
-from .predicate import PredicateTreeBase
+from .predicate import PredicateTreeBase, ModelBindingScorer
 
 
 class CachedModelPrediction(object):
@@ -438,6 +438,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         delta[mask] = delta[mask] / 2.
         denom = yhat * (1 - yhat) * reliability
         peptide_score = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6).sum()
+        if np.isnan(peptide_score):
+            peptide_score = 0.0
         # peptide backbone coverage without separate term for glycosylation site parsimony
         b_ions, y_ions = self._compute_coverage_vectors()[:2]
         coverage_score = ((b_ions + y_ions[::-1])).sum() / float(self.n_theoretical)
@@ -466,16 +468,12 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         if weighting is None:
             pass
         elif weighting == 'correlation':
-            # self._score *= self._transform_correlation(False)
             self._score += self._transform_correlation(False) * 10.0
         elif weighting == 'normalized_correlation':
-            # self._score *= self._transform_correlation(True, base_reliability=base_reliability)
             self._score += self._transform_correlation(True, base_reliability=base_reliability) * 10.0
         elif weighting in ('correlation_distance', 'distance_correlation'):
-            # self._score *= self._transform_correlation_distance(False)
             self._score += self._transform_correlation_distance(False) * 10.0
         elif weighting in ('normalized_correlation_distance', 'normalized_distance_correlation'):
-            # self._score *= self._transform_correlation_distance(True, base_reliability=base_reliability)
             self._score += self._transform_correlation_distance(True, base_reliability=base_reliability) * 10.0
         else:
             raise ValueError("Unrecognized Weighting Scheme %s" % (weighting,))
@@ -612,3 +610,24 @@ class PredicateTree(PredicateTreeBase):
 
 
 PartitionTree = PredicateTree
+
+
+class NaiveScorer(MultinomialRegressionScorer):
+
+    def _get_predicted_intensities(self):
+        c, intens, t, yhat = super(NaiveScorer, self)._get_predicted_intensities()
+        yhat *= np.nan
+        return c, intens, t, yhat
+
+
+class ShortPeptideNaiveScorer(NaiveScorer):
+    stub_weight = 0.65
+
+
+class NaivePredicateTree(PredicateTreeBase):
+    _scorer_type = NaiveScorer
+    _short_peptide_scorer_type = ShortPeptideNaiveScorer
+
+    @classmethod
+    def _bind_model_scorer(cls, scorer_type, models, partition=None):
+        return ModelBindingScorer(scorer_type, model_fit=models[0], partition=partition)
