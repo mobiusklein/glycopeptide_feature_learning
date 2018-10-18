@@ -144,6 +144,19 @@ class GlycanTypeCountPredicate(PredicateBase):
                     if distance < best_distance:
                         best_distance = distance
                         best_key = (key, cnt)
+        # we didn't find a match strictly by glycan type and count, so instead
+        # use the first glycan type with the best count, though a type match with the
+        # wrong count would be acceptable.
+        if best_key is None:
+            count = len(glycosylation_manager)
+            for key, branch in self.root.items():
+                for cnt, value in branch.items():
+                    distance = math.sqrt((count - cnt) ** 2)
+                    if key not in point.values():
+                        distance += 1
+                    if distance < best_distance:
+                        best_distance = distance
+                        best_key = (key, cnt)
         return self.root[best_key[0]][best_key[1]]
 
 
