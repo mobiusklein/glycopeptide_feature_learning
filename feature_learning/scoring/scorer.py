@@ -3,10 +3,8 @@ import math
 import numpy as np
 
 from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial import (
-    FragmentMatchMap, accuracy_bias)
+    CoverageWeightedBinomialScorer)
 from glycan_profiling.tandem.glycopeptide.scoring.base import ChemicalShift
-from glycan_profiling.tandem.glycopeptide.scoring.simple_score import SimpleCoverageScorer
-from glycan_profiling.tandem.glycopeptide.scoring.binomial_score import BinomialSpectrumMatcher
 from glycan_profiling.tandem.glycopeptide.scoring.glycan_signature_ions import GlycanCompositionSignatureMatcher
 
 from feature_learning.multinomial_regression import (
@@ -38,8 +36,7 @@ class CachedModelPrediction(object):
         return self.__class__, tuple(self)
 
 
-class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher, GlycanCompositionSignatureMatcher):
-    accuracy_bias = accuracy_bias
+class MultinomialRegressionScorer(CoverageWeightedBinomialScorer):
 
     def __init__(self, scan, sequence, mass_shift=None, model_fit=None, partition=None):
         super(MultinomialRegressionScorer, self).__init__(scan, sequence, mass_shift)
@@ -55,88 +52,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
 
     def match(self, error_tolerance=2e-5, *args, **kwargs):
         self.error_tolerance = error_tolerance
-        GlycanCompositionSignatureMatcher.match(self, error_tolerance=error_tolerance)
-
-        solution_map = FragmentMatchMap()
-        spectrum = self.spectrum
-        # this does not include stub glycopeptides
-        n_theoretical = 0
-        backbone_mass_series = []
-        neutral_losses = tuple(kwargs.pop("neutral_losses", []))
-
-        masked_peaks = set()
-        for frag in self.target.glycan_fragments(
-                all_series=False, allow_ambiguous=False,
-                include_large_glycan_fragments=False,
-                maximum_fragment_size=4):
-            peak = spectrum.has_peak(frag.mass, error_tolerance)
-            if peak:
-                solution_map.add(peak, frag)
-                masked_peaks.add(peak.index.neutral_mass)
-                # try:
-                #     self._sanitized_spectrum.remove(peak)
-                # except KeyError:
-                #     continue
-        if self.mass_shift.tandem_mass != 0:
-            chemical_shift = ChemicalShift(
-                self.mass_shift.name, self.mass_shift.tandem_composition)
-        else:
-            chemical_shift = None
-        for frag in self.target.stub_fragments(extended=True):
-            for peak in spectrum.all_peaks_for(frag.mass, error_tolerance):
-                # should we be masking these? peptides which have amino acids which are
-                # approximately the same mass as a monosaccharide unit at ther terminus
-                # can produce cases where a stub ion and a backbone fragment match the
-                # same peak.
-                #
-                masked_peaks.add(peak.index.neutral_mass)
-                solution_map.add(peak, frag)
-
-            # If the precursor match was caused by a mass shift, that mass shift may
-            # be associated with stub fragments.
-            if chemical_shift is not None:
-                shifted_mass = frag.mass + self.mass_shift.tandem_mass
-                for peak in spectrum.all_peaks_for(shifted_mass, error_tolerance):
-                    masked_peaks.add(peak.index.neutral_mass)
-                    shifted_frag = frag.clone()
-                    shifted_frag.chemical_shift = chemical_shift
-                    shifted_frag.name += "+ %s" % (self.mass_shift.name,)
-                    solution_map.add(peak, shifted_frag)
-
-        n_glycosylated_b_ions = 0
-        for frags in self.target.get_fragments('b', neutral_losses):
-            glycosylated_position = False
-            n_theoretical += 1
-            for frag in frags:
-                backbone_mass_series.append(frag)
-                glycosylated_position |= frag.is_glycosylated
-                for peak in spectrum.all_peaks_for(frag.mass, error_tolerance):
-                    if peak.index.neutral_mass in masked_peaks:
-                        continue
-                    solution_map.add(peak, frag)
-            if glycosylated_position:
-                n_glycosylated_b_ions += 1
-
-        n_glycosylated_y_ions = 0
-        for frags in self.target.get_fragments('y', neutral_losses):
-            glycosylated_position = False
-            n_theoretical += 1
-            for frag in frags:
-                backbone_mass_series.append(frag)
-                glycosylated_position |= frag.is_glycosylated
-                for peak in spectrum.all_peaks_for(frag.mass, error_tolerance):
-                    if peak.index.neutral_mass in masked_peaks:
-                        continue
-                    solution_map.add(peak, frag)
-            if glycosylated_position:
-                n_glycosylated_y_ions += 1
-
-        self.n_theoretical = n_theoretical
-        self.glycosylated_b_ion_count = n_glycosylated_b_ions
-        self.glycosylated_y_ion_count = n_glycosylated_y_ions
-        self.solution_map = solution_map
-        self._backbone_mass_series = backbone_mass_series
-        return solution_map
+        return super(MultinomialRegressionScorer, self).match(
+            error_tolerance=error_tolerance, *args, **kwargs)
 
     def _calculate_pearson_residuals(self, use_reliability=True, base_reliability=0.5):
         r"""Calculate the raw Pearson residuals of the Multinomial model
@@ -443,7 +360,7 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         # peptide backbone coverage without separate term for glycosylation site parsimony
         b_ions, y_ions = self._compute_coverage_vectors()[:2]
         coverage_score = ((b_ions + y_ions[::-1])).sum() / float(self.n_theoretical)
-        peptide_score = (np.log10(intens * t).dot(reliability + 1).sum() + peptide_score)
+        peptide_score = (np.log10(intens * t).dot(reliability + 1) + peptide_score)
         # peptide_score *= corr
         peptide_score += corr_score
         peptide_score *= coverage_score
@@ -457,10 +374,8 @@ class MultinomialRegressionScorer(SimpleCoverageScorer, BinomialSpectrumMatcher,
         # fragments_matched = -math.log10(self._fragment_matched_binomial())
         fragments_matched = 0.0
         coverage_score = self._coverage_score(backbone_weight, glycosylated_weight, stub_weight)
-        offset = self.determine_precursor_offset()
-        mass_accuracy = -10 * math.log10(
-            1 - self.accuracy_bias.score(self.precursor_mass_accuracy(offset)))
-        signature_component = GlycanCompositionSignatureMatcher.calculate_score(self)
+        mass_accuracy = self._precursor_mass_accuracy_score()
+        signature_component = self._signature_ion_score()
         model_score = self._calculate_pearson_residual_score(
             use_reliability=use_reliability,
             base_reliability=base_reliability)
