@@ -172,6 +172,7 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True):
     except ValueError:
         fit = regression_model.fit_regression(
             cell.subset, reliability_model=None)
+    fit.reliability_model = fm
     fits = [fit]
     if use_mixture:
         mismatches = []
