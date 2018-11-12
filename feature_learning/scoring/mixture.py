@@ -151,13 +151,13 @@ class GaussianMixture(MixtureBase):
         else:
             pass
 
-    def plot(self, ax=None):
+    def plot(self, ax=None, **kwargs):
         if ax is None:
             fig, ax = plt.subplots(1)
         X = np.arange(self.mus.min() - self.sigmas.max() * 4,
                       self.mus.max() + self.sigmas.max() * 4, 0.01)
         Y = np.exp(self.logpdf(X, True))
-        ax.plot(X, np.sum(Y, axis=1))
+        ax.plot(X, np.sum(Y, axis=1), **kwargs)
         return ax
 
 
@@ -298,12 +298,12 @@ class GammaMixtureBase(MixtureBase):
         '''
         return stats.gamma.logpdf(X, a=self.shapes[k], scale=self.scales[k])
 
-    def plot(self, ax=None):
+    def plot(self, ax=None, **kwargs):
         if ax is None:
             fig, ax = plt.subplots(1)
         X = np.arange(0. + 1e-6, 100., 0.01)
         Y = np.exp(self.logpdf(X, True))
-        ax.plot(X, np.sum(Y, axis=1))
+        ax.plot(X, np.sum(Y, axis=1), **kwargs)
         return ax
 
     @classmethod
@@ -482,9 +482,9 @@ class GaussianMixtureWithPriorComponent(GaussianMixture):
         else:
             pass
 
-    def plot(self, ax=None):
-        ax = super(GaussianMixtureWithPriorComponent, self).plot(ax=ax)
+    def plot(self, ax=None, **kwargs):
+        ax = super(GaussianMixtureWithPriorComponent, self).plot(ax=ax, **kwargs)
         X = np.arange(0. + 1e-6, self.mus.max() + self.sigmas.max() * 4, 0.01)
         Y = self.prior.score(X) * self.weights[-1]
-        ax.plot(X, Y, alpha=0.5)
+        ax.plot(X, Y, **kwargs)
         return ax
