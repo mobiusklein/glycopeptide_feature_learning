@@ -232,8 +232,6 @@ class PredicateTreeBase(DummyScorer):
         for spec_d, model_d in d:
             model = MultinomialRegressionFit.from_json(model_d)
             spec = partition_cell_spec.from_json(spec_d)
-            # scorer_type = cls._scorer_type_for_spec(spec)
-            # arranged_data[spec] = cls._bind_model_scorer(scorer_type, model, spec)
             arranged_data[spec].append(model)
         for spec, models in arranged_data.items():
             scorer_type = cls._scorer_type_for_spec(spec)
@@ -241,6 +239,14 @@ class PredicateTreeBase(DummyScorer):
         arranged_data = dict(arranged_data)
         root = cls.build_tree(arranged_data, 0, 5, arranged_data)
         return cls(root)
+
+    def to_json(self):
+        d_list = []
+        for node in self:
+            partition_cell_spec = node.kwargs.get('partition')
+            for model_fit in node.kwargs.get('model_fits', []):
+                d_list.append((partition_cell_spec.to_json(), model_fit.to_json(False)))
+        return d_list
 
     @classmethod
     def _scorer_type_for_spec(cls, spec):
