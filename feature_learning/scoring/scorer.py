@@ -2,6 +2,8 @@ import math
 
 import numpy as np
 
+from glycopeptidepy import IonSeries
+
 from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial import (
     CoverageWeightedBinomialScorer)
 from glycan_profiling.tandem.glycopeptide.scoring.base import ChemicalShift
@@ -13,6 +15,14 @@ from feature_learning.multinomial_regression import (
 from feature_learning.utils import distcorr
 
 from .predicate import PredicateTreeBase, ModelBindingScorer
+
+
+def pad(x, pad=0.5):
+    return (1 - pad) * x + pad
+
+
+def unpad(x, pad=0.5):
+    return (x - pad) / (1 - pad)
 
 
 class CachedModelPrediction(object):
@@ -36,7 +46,64 @@ class CachedModelPrediction(object):
         return self.__class__, tuple(self)
 
 
-class MultinomialRegressionScorer(CoverageWeightedBinomialScorer):
+class _ModelPredictionCachingBase(object):
+    def _transform_matched_peaks(self):
+        if self._is_model_cached(self.model_fit):
+            return self._get_cached_model_transform(self.model_fit)
+        result = self._transform_matched_peaks_uncached()
+        self._cache_model_transform(self.model_fit, result)
+        return result
+
+    def _init_cache(self):
+        self._cached_model = None
+        self._cached_transform = None
+
+    def _get_predicted_intensities(self):
+        c, intens, t, X = self._transform_matched_peaks()
+        yhat = np.exp(X.dot(self.model_fit.coef))
+        yhat = yhat / (1 + yhat.sum())
+        return c, intens, t, yhat
+
+    def _cache_model_transform(self, model_fit, transform):
+        self._cached_model = model_fit
+        self._cached_transform = CachedModelPrediction(*transform)
+
+    def _is_model_cached(self, model_fit):
+        return self.model_fit is self._cached_model
+
+    def _get_cached_model_transform(self, model_fit):
+        return self._cached_transform
+
+    def _clear_cache(self):
+        self._cached_model = None
+        self._cached_transform = None
+
+    def _transform_matched_peaks_uncached(self):
+        model_fit = self.model_fit
+        c, intens, t = model_fit.model_type.build_fragment_intensity_matches(self)
+        X = model_fit.model_type.encode_classification(c)
+        return (c, intens, t, X)
+
+    def _get_reliabilities(self, fragment_match_features, base_reliability=0.5):
+        is_model_cached = False
+        cached_data = None
+        # Does not actually populate the cache if the model hasn't had its result
+        # cached in the first place.
+        if self._is_model_cached(self.model_fit):
+            is_model_cached = True
+            cached_data = self._get_cached_model_transform(self.model_fit)
+            if cached_data.reliability_vector is not None:
+                return cached_data.reliability_vector
+
+        reliability = self.model_fit._calculate_reliability(
+            self, fragment_match_features, base_reliability=base_reliability)
+        if is_model_cached:
+            if cached_data is not None:
+                cached_data.reliability_vector = reliability
+        return reliability
+
+
+class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, _ModelPredictionCachingBase):
 
     def __init__(self, scan, sequence, mass_shift=None, model_fit=None, partition=None):
         super(MultinomialRegressionScorer, self).__init__(scan, sequence, mass_shift)
@@ -44,8 +111,7 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer):
         self.model_fit = model_fit
         self.partition = partition
         self.error_tolerance = None
-        self._cached_model = None
-        self._cached_transform = None
+        self._init_cache()
 
     def __reduce__(self):
         return self.__class__, (self.scan, self.sequence, self.mass_shift, self.model_fit, self.partition)
@@ -120,10 +186,9 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer):
             model_score = 0.0
         c, intens, t, yhat = self._get_predicted_intensities()
         reliability = self._get_reliabilities(c, base_reliability=base_reliability)[:-1]
+        reliability = unpad(reliability, base_reliability)
         intensity_component = np.log10(intens[:-1]).dot(reliability + 1.0)
-        stub_component = self._get_stub_component(
-            c[:-1], use_reliability=use_reliability, base_reliability=base_reliability)
-        return model_score + intensity_component + stub_component
+        return model_score + intensity_component
 
     def _get_intensity_observed_expected(self, use_reliability=False, base_reliability=0.5):
         """Get the vector of matched experimental intensities and their predicted intensities.
@@ -186,99 +251,37 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer):
         intensities = yhat[:-1] * (least_squares_scale_coefficient(yhat[:-1], intens[:-1]) if scaled else 1.0)
         return zip(mz, intensities)
 
-    def _transform_matched_peaks(self):
-        if self._is_model_cached(self.model_fit):
-            return self._get_cached_model_transform(self.model_fit)
-        result = self._transform_matched_peaks_uncached()
-        self._cache_model_transform(self.model_fit, result)
-        return result
-
-    def _get_predicted_intensities(self):
-        c, intens, t, X = self._transform_matched_peaks()
-        yhat = np.exp(X.dot(self.model_fit.coef))
-        yhat = yhat / (1 + yhat.sum())
-        return c, intens, t, yhat
-
-    def _cache_model_transform(self, model_fit, transform):
-        self._cached_model = model_fit
-        self._cached_transform = CachedModelPrediction(*transform)
-
-    def _is_model_cached(self, model_fit):
-        return self.model_fit is self._cached_model
-
-    def _get_cached_model_transform(self, model_fit):
-        return self._cached_transform
-
-    def _clear_cache(self):
-        self._cached_model = None
-        self._cached_transform = None
-
-    def _transform_matched_peaks_uncached(self):
-        model_fit = self.model_fit
-        c, intens, t = model_fit.model_type.build_fragment_intensity_matches(self)
-        X = model_fit.model_type.encode_classification(c)
-        return (c, intens, t, X)
-
-    def _get_reliabilities(self, fragment_match_features, base_reliability=0.5):
-        is_model_cached = False
-        cached_data = None
-        # Does not actually populate the cache if the model hasn't had its result
-        # cached in the first place.
-        if self._is_model_cached(self.model_fit):
-            is_model_cached = True
-            cached_data = self._get_cached_model_transform(self.model_fit)
-            if cached_data.reliability_vector is not None:
-                return cached_data.reliability_vector
-
-        reliability = self.model_fit._calculate_reliability(
-            self, fragment_match_features, base_reliability=base_reliability)
-        if is_model_cached:
-            if cached_data is not None:
-                cached_data.reliability_vector = reliability
-        return reliability
-
-    def _get_stub_component(self, fragments, use_reliability=True, base_reliability=0.5, filtered=False):
-        if self.model_fit.reliability_model is None or not use_reliability:
-            reliability = np.ones(len(fragments))
-        else:
-            reliability = self._get_reliabilities(fragments, base_reliability=base_reliability)
-        if not filtered:
-            stubs = []
-            for i in range(len(fragments)):
-                if fragments[i].fragment.series == 'stub_glycopeptide':
-                    stubs.append((fragments[i], reliability[i]))
-            if not stubs:
-                return 0
-            fragments, reliability = zip(*stubs)
-            return self._glycan_coverage(fragments, reliability)
-        else:
-            if len(fragments) == 0:
-                return 0
-            return self._glycan_coverage(fragments, reliability)
-
-    def _glycan_coverage(self, fragments, reliability):
+    def _glycan_coverage(self, fragments, core_weight=0.4, coverage_weight=0.6):
+        seen = set()
+        series = IonSeries.stub_glycopeptide
         theoretical_set = list(self.target.stub_fragments(extended=True))
         core_fragments = set()
         for frag in theoretical_set:
             if not frag.is_extended:
                 core_fragments.add(frag.name)
-        core_matches = []
-        extended_matches = []
-        for ci, rel in zip(fragments, reliability):
-            if ci.fragment.name in core_fragments:
-                core_matches.append(1.0 + rel)
+
+        total = 0
+        core_matches = set()
+        extended_matches = set()
+
+        for peak_pair in self.solution_map:
+            if peak_pair.fragment.series != series:
+                continue
+            elif peak_pair.fragment_name in core_fragments:
+                core_matches.add(peak_pair.fragment_name)
             else:
-                extended_matches.append(1.0 + rel)
-        core_coverage = (sum(core_matches) ** 2) / len(core_fragments)
-        extended_coverage = (
-            sum(extended_matches) + sum(core_matches)) / (
-                sum(self.target.glycan_composition.values()))
+                extended_matches.add(peak_pair.fragment_name)
+        n = self._get_internal_size(self.target.glycan_composition)
+        k = 2.0
+        core_coverage = ((len(core_matches) * 1.0) / len(core_fragments)) ** core_weight
+        extended_coverage = min(float(len(core_matches) + len(extended_matches)
+            ) / (n * np.log(n) / k), 1.0) ** coverage_weight
         coverage = core_coverage * extended_coverage
         if np.isnan(coverage):
             coverage = 0.0
         return coverage
 
-    def glycan_score(self, use_reliability=True, base_reliability=0.5):
+    def glycan_score(self, use_reliability=True, base_reliability=0.5, core_weight=0.4, coverage_weight=0.6):
         c, intens, t, yhat = self._get_predicted_intensities()
         if self.model_fit.reliability_model is None or not use_reliability:
             reliability = np.ones_like(yhat)
@@ -309,18 +312,13 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer):
         delta[mask] = delta[mask] / 2.
         denom = yhat * (1 - yhat) * reliability
         stub_component = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6).sum()
+
         if np.isnan(stub_component):
             stub_component = 0
         oxonium_component = self._signature_ion_score(self.error_tolerance)
-        # Unlike peptide coverage, the glycan composition coverage operates as a bias towards
-        # selecting matches which contain more reliable glycan Y ions, but not to act as a scaling
-        # factor because the set of all possible fragments for the glycan composition is a much larger
-        # superset of the possible fragments of glycan structures because of recurring patterns
-        # not reflected in the glycan composition.
-        coverage = self._glycan_coverage(c, reliability)
-        glycan_score = (np.log10(intens * t).dot(reliability + 1) + stub_component + coverage
-                        # ) * corr + oxonium_component
-                        ) + corr_score + oxonium_component
+        coverage = self._glycan_coverage(c, core_weight, coverage_weight)
+        glycan_score = (np.log10(intens * t).dot(reliability + 1) + corr_score + stub_component
+                        ) * coverage + oxonium_component
         return max(glycan_score, 0)
 
     def peptide_score(self, use_reliability=True, base_reliability=0.5):
@@ -329,11 +327,11 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer):
             reliability = np.ones_like(yhat)
         else:
             reliability = self._get_reliabilities(c, base_reliability=base_reliability)
-
+        series_set = ('b', 'y')
         backbones = []
         intens = intens / t
         for i in range(len(c)):
-            if c[i].series in ('b', 'y'):
+            if c[i].series in series_set:
                 backbones.append((c[i], intens[i], yhat[i], reliability[i]))
         if not backbones:
             return 0
@@ -358,8 +356,8 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer):
         if np.isnan(peptide_score):
             peptide_score = 0.0
         # peptide backbone coverage without separate term for glycosylation site parsimony
-        b_ions, y_ions = self._compute_coverage_vectors()[:2]
-        coverage_score = ((b_ions + y_ions[::-1])).sum() / float(self.n_theoretical)
+        n_term_ions, c_term_ions = self._compute_coverage_vectors()[:2]
+        coverage_score = ((n_term_ions + c_term_ions[::-1])).sum() / float(self.n_theoretical)
         peptide_score = (np.log10(intens * t).dot(reliability + 1) + peptide_score)
         # peptide_score *= corr
         peptide_score += corr_score
@@ -401,19 +399,7 @@ class ShortPeptideMultinomialRegressionScorer(MultinomialRegressionScorer):
     stub_weight = 0.65
 
 
-class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
-
-    def __init__(self, scan, sequence, mass_shift=None, model_fits=None, partition=None, power=4):
-        super(MultinomialRegressionMixtureScorer, self).__init__(
-            scan, sequence, mass_shift, model_fit=model_fits[0], partition=partition)
-        self.model_fits = list(model_fits)
-        self.power = power
-        self._feature_cache = dict()
-        self.mixture_coefficients = None
-
-    def __reduce__(self):
-        return self.__class__, (self.scan, self.sequence, self.mass_shift, self.model_fits, self.partition, self.power)
-
+class _ModelMixtureBase(object):
     def _iter_model_fits(self):
         for model_fit in self.model_fits:
             self.model_fit = model_fit
@@ -432,6 +418,9 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
     def _clear_cache(self):
         self._feature_cache.clear()
 
+    def _init_cache(self):
+        self._feature_cache = dict()
+
     def _calculate_mixture_coefficients(self):
         if len(self.model_fits) == 1:
             return np.array([1.])
@@ -443,6 +432,24 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer):
             ps[i] = (1. / pearson) ** self.power
         total = ps.sum() + 1e-6 * ps.shape[0]
         return ps / total
+
+    def _mixture_apply(self, fn, *args, **kwargs):
+        return self.mixture_coefficients.dot(
+            [fn(self, *args, **kwargs) for _ in self._iter_model_fits()])
+
+
+class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer, _ModelMixtureBase):
+
+    def __init__(self, scan, sequence, mass_shift=None, model_fits=None, partition=None, power=4):
+        super(MultinomialRegressionMixtureScorer, self).__init__(
+            scan, sequence, mass_shift, model_fit=model_fits[0], partition=partition)
+        self.model_fits = list(model_fits)
+        self.power = power
+        self._init_cache()
+        self.mixture_coefficients = None
+
+    def __reduce__(self):
+        return self.__class__, (self.scan, self.sequence, self.mass_shift, self.model_fits, self.partition, self.power)
 
     def _calculate_pearson_residual_score(self, use_reliability=True, base_reliability=0.5):
         scores = []
@@ -561,3 +568,151 @@ class ShortPeptideNaiveScorerWithoutReliability(NaiveScorer):
 class NaivePredicateTreeWithoutReliability(NaivePredicateTree):
     _scorer_type = NaiveScorerWithoutReliability
     _short_peptide_scorer_type = ShortPeptideNaiveScorerWithoutReliability
+
+
+class SplitScorer(MultinomialRegressionScorer):
+    def __init__(self, scan, sequence, mass_shift=None, model_fit=None, partition=None):
+        super(SplitScorer, self).__init__(scan, sequence, mass_shift)
+        self.structure = self.target
+        self.model_fit = model_fit
+        self.partition = partition
+        self.error_tolerance = None
+        self._cached_model = None
+        self._cached_transform = None
+
+    def peptide_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5):
+        c, intens, t, yhat = self._get_predicted_intensities()
+        if self.model_fit.reliability_model is None or not use_reliability:
+            reliability = np.ones_like(yhat)
+        else:
+            reliability = self._get_reliabilities(c, base_reliability=base_reliability)
+        series_set = ('b', 'y')
+        backbones = []
+        intens = intens / t
+        for i in range(len(c)):
+            if c[i].series in series_set:
+                backbones.append((c[i], intens[i], yhat[i], reliability[i]))
+        if not backbones:
+            return 0
+        c, intens, yhat, reliability = zip(*backbones)
+        intens = np.array(intens)
+        yhat = np.array(yhat)
+        reliability = np.array(reliability)
+
+        delta = (intens - yhat) ** 2
+        mask = intens > yhat
+        delta[mask] = delta[mask] / 2.
+        denom = yhat * (1 - yhat) * reliability
+        peptide_score = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6)
+        if np.all(np.isnan(peptide_score)):
+            peptide_score = 0.0
+
+        mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
+        # peptide backbone coverage without separate term for glycosylation site parsimony
+        n_term_ions, c_term_ions = self._compute_coverage_vectors()[:2]
+        coverage_score = ((n_term_ions + c_term_ions[::-1])).sum() / float(self.n_theoretical)
+        peptide_score = ((np.log10(intens * t) * mass_accuracy * (
+            unpad(reliability, base_reliability) + 0.75) * (0.17 * peptide_score))).sum()
+        peptide_score *= coverage_score
+        return peptide_score
+
+    def glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4, coverage_weight=0.6):
+        c, intens, t, yhat = self._get_predicted_intensities()
+        if self.model_fit.reliability_model is None or not use_reliability:
+            reliability = np.ones_like(yhat)
+        else:
+            reliability = self._get_reliabilities(c, base_reliability=base_reliability)
+        stubs = []
+        intens = intens / t
+        for i in range(len(c)):
+            if c[i].series == 'stub_glycopeptide':
+                stubs.append((c[i], intens[i], yhat[i], reliability[i]))
+        if not stubs:
+            return 0
+
+        c, intens, yhat, reliability = zip(*stubs)
+        intens = np.array(intens)
+        yhat = np.array(yhat)
+        reliability = np.array(reliability)
+
+        delta = (intens - yhat) ** 2
+        mask = intens > yhat
+        delta[mask] = delta[mask] / 2.
+        denom = yhat * (1 - yhat) * reliability
+        stub_component = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6)
+        if np.all(np.isnan(stub_component)):
+            stub_component = 0
+        oxonium_component = self._signature_ion_score(self.error_tolerance)
+        coverage = self._glycan_coverage(c, core_weight, coverage_weight)
+        mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
+        glycan_score = ((np.log10(intens * t) * mass_accuracy * (
+            unpad(reliability, base_reliability) + 1) * (
+            0.17 * stub_component)).sum())  * coverage + oxonium_component
+        return max(glycan_score, 0)
+
+    def calculate_score(self, error_tolerance=2e-5, peptide_weight=0.65, glycosylated_weight=0.1,
+                        base_reliability=0.5, *args, **kwargs):
+        intensity = -math.log10(self._intensity_component_binomial())
+        mass_accuracy = self._precursor_mass_accuracy_score()
+        signature_component = self._signature_ion_score()
+
+        (n_term, c_term, stub_count,
+         glycosylated_n_term_ions, glycosylated_c_term_ions) = self._compute_coverage_vectors()
+
+        glycosylated_coverage_score = self._compute_glycosylated_coverage(
+            glycosylated_n_term_ions,
+            glycosylated_c_term_ions) + 1e-3
+        localization_score = (glycosylated_coverage_score * 100) * glycosylated_weight
+
+        score = peptide_weight * self.peptide_score(error_tolerance, True, base_reliability)
+        score += (1 - peptide_weight) * self.glycan_score(error_tolerance, True, base_reliability)
+        score += mass_accuracy
+        score += signature_component
+        score += localization_score
+        self._score = score
+        return score
+
+
+class MixtureSplitScorer(SplitScorer, _ModelMixtureBase):
+    def __init__(self, scan, sequence, mass_shift=None, model_fits=None, partition=None, power=4):
+        super(MixtureSplitScorer, self).__init__(
+            scan, sequence, mass_shift, model_fit=model_fits[0], partition=partition)
+        self.model_fits = list(model_fits)
+        self.power = power
+        self._feature_cache = self._init_cache()
+        self.mixture_coefficients = None
+
+    def __reduce__(self):
+        return self.__class__, (self.scan, self.sequence, self.mass_shift, self.model_fits, self.partition, self.power)
+
+    def glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5):
+        scores = []
+        for model_fit in self._iter_model_fits():
+            score = super(
+                MixtureSplitScorer, self).glycan_score(
+                    error_tolerance=error_tolerance,
+                    use_reliability=use_reliability, base_reliability=base_reliability)
+            scores.append(score)
+        return np.dot(scores, self.mixture_coefficients)
+
+    def peptide_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5):
+        scores = []
+        for model_fit in self._iter_model_fits():
+            score = super(
+                MixtureSplitScorer, self).peptide_score(
+                    error_tolerance=error_tolerance,
+                    use_reliability=use_reliability, base_reliability=base_reliability)
+            scores.append(score)
+        return np.dot(scores, self.mixture_coefficients)
+
+    def calculate_score(self, error_tolerance=2e-5, peptide_weight=0.65, glycosylated_weight=0.1,
+                        base_reliability=0.5, *args, **kwargs):
+        self.mixture_coefficients = self._calculate_mixture_coefficients()
+        return super(MixtureSplitScorer, self).calculate_score(
+            error_tolerance, peptide_weight, glycosylated_weight, base_reliability, *args, **kwargs)
+
+
+
+class SplitScorerTree(PredicateTree):
+    _scorer_type = MixtureSplitScorer
+    _short_peptide_scorer_type = MixtureSplitScorer
