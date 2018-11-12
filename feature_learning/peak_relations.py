@@ -622,7 +622,8 @@ class FittedFeature(object):
         return True
 
     def __repr__(self):
-        temp = "<FittedFeature {feature.name}, {terms} u:{on_series} v:{off_series} @ {series} {count_relations}>"
+        temp = ("<FittedFeature {feature.name}, {terms} u:{on_series:0.4g}"
+                " v:{off_series:0.4g} @ {series} {count_relations}>")
         return temp.format(
             feature=self.feature,
             terms=', '.join(map(str, self.feature._get_display_fields())),
