@@ -17,13 +17,17 @@ try:
 except ImportError:
     pass
 
+
+from glycan_profiling.tandem.target_decoy import NearestValueLookUp
+
+
 from .mixture import GammaMixture, GaussianMixtureWithPriorComponent
 
 
 class FiniteMixtureModelFDREstimator(object):
     def __init__(self, decoy_scores, target_scores):
-        self.decoy_scores = decoy_scores
-        self.target_scores = target_scores
+        self.decoy_scores = np.array(decoy_scores)
+        self.target_scores = np.array(target_scores)
         self.gamma_mixture = None
         self.gaussian_mixture = None
 
@@ -88,9 +92,16 @@ class FiniteMixtureModelFDREstimator(object):
         # to find the indices of the origin values of X, then map
         # those into the ascending ordering of the FDR vector to get
         # the FDR estimates of the original X
-        return fdr[::-1][np.searchsorted(X_[::-1], X)]
+        fdr[np.isnan(fdr)] = 1.0
+        fdr_descending = fdr[::-1]
+        for i in range(1, fdr_descending.shape[0]):
+            if fdr_descending[i - 1] < fdr_descending[i]:
+                fdr_descending[i] = fdr_descending[i - 1]
+        fdr = fdr_descending[::-1]
+        fdr = fdr[::-1][np.searchsorted(X_[::-1], X)]
+        return fdr
 
-    def plot(self, ax=None):
+    def plot_mixture(self, ax=None):
         if ax is None:
             fig, ax = plt.subplots(1)
         X = np.arange(1, max(self.target_scores), 0.1)
@@ -99,4 +110,25 @@ class FiniteMixtureModelFDREstimator(object):
         for col in np.exp(self.gaussian_mixture.logpdf(X)).T:
             ax.plot(X, col, linestyle='--')
         ax.hist(self.target_scores, bins=100, density=1, alpha=0.15)
+        return ax
+
+    def plot(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(1)
+        points = np.linspace(
+            min(self.target_scores.min(), self.decoy_scores.min()),
+            max(self.target_scores.max(), self.decoy_scores.max()),
+            10000)
+        target_counts = [(self.target_scores >= i).sum() for i in points]
+        decoy_counts = [(self.decoy_scores >= i).sum() for i in points]
+        fdr = self.estimate_fdr(points)
+        at_5_percent = np.where(fdr < 0.05)[0][0]
+        at_1_percent = np.where(fdr < 0.01)[0][0]
+        line1 = ax.plot(points, target_counts, label='Target', color='blue')
+        line2 = ax.plot(points, decoy_counts, label='Decoy', color='orange')
+        ax.vlines(points[at_5_percent], 0, np.max(target_counts), linestyle='--', color='blue', lw=0.75)
+        ax.vlines(points[at_1_percent], 0, np.max(target_counts), linestyle='--', color='blue', lw=0.75)
+        ax2 = ax.twinx()
+        line3 = ax2.plot(points, fdr, label='FDR', color='grey', linestyle='--')
+        ax.legend([line1[0], line2[0], line3[0]], ['Target', 'Decoy', 'FDR'])
         return ax
