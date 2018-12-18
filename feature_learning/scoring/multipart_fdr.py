@@ -119,16 +119,17 @@ class FiniteMixtureModelFDREstimator(object):
             min(self.target_scores.min(), self.decoy_scores.min()),
             max(self.target_scores.max(), self.decoy_scores.max()),
             10000)
+        target_scores = np.sort(self.target_scores)
         target_counts = [(self.target_scores >= i).sum() for i in points]
         decoy_counts = [(self.decoy_scores >= i).sum() for i in points]
-        fdr = self.estimate_fdr(points)
+        fdr = self.estimate_fdr(target_scores)
         at_5_percent = np.where(fdr < 0.05)[0][0]
         at_1_percent = np.where(fdr < 0.01)[0][0]
         line1 = ax.plot(points, target_counts, label='Target', color='blue')
         line2 = ax.plot(points, decoy_counts, label='Decoy', color='orange')
-        ax.vlines(points[at_5_percent], 0, np.max(target_counts), linestyle='--', color='blue', lw=0.75)
-        ax.vlines(points[at_1_percent], 0, np.max(target_counts), linestyle='--', color='blue', lw=0.75)
+        ax.vlines(target_scores[at_5_percent], 0, np.max(target_counts), linestyle='--', color='blue', lw=0.75)
+        ax.vlines(target_scores[at_1_percent], 0, np.max(target_counts), linestyle='--', color='blue', lw=0.75)
         ax2 = ax.twinx()
-        line3 = ax2.plot(points, fdr, label='FDR', color='grey', linestyle='--')
+        line3 = ax2.plot(target_scores, fdr, label='FDR', color='grey', linestyle='--')
         ax.legend([line1[0], line2[0], line3[0]], ['Target', 'Decoy', 'FDR'])
         return ax
