@@ -28,8 +28,9 @@ class FiniteMixtureModelFDREstimator(object):
     def __init__(self, decoy_scores, target_scores):
         self.decoy_scores = np.array(decoy_scores)
         self.target_scores = np.array(target_scores)
-        self.gamma_mixture = None
-        self.gaussian_mixture = None
+        self.decoy_mixture = None
+        self.target_mixture = None
+        self.fdr_map = None
 
     def log(self, message):
         print(message)
@@ -41,8 +42,8 @@ class FiniteMixtureModelFDREstimator(object):
         np.random.seed(n)
         if n < 10:
             self.log("Too few decoy observations")
-            self.gamma_mixture = GammaMixture([1.0], [1.0], [1.0])
-            return self.gamma_mixture
+            self.decoy_mixture = GammaMixture([1.0], [1.0], [1.0])
+            return self.decoy_mixture
         for i in range(1, max_components + 1):
             self.log("Fitting %d Components" % (i,))
             model = GammaMixture.fit(self.decoy_scores, i)
@@ -52,8 +53,8 @@ class FiniteMixtureModelFDREstimator(object):
             self.log("BIC: %g" % (bic,))
         i = np.argmin(bics)
         self.log("Selected %d Components" % (i + 1,))
-        self.gamma_mixture = models[i]
-        return self.gamma_mixture
+        self.decoy_mixture = models[i]
+        return self.decoy_mixture
 
     def estimate_gaussian(self, max_components=10):
         models = []
@@ -62,24 +63,24 @@ class FiniteMixtureModelFDREstimator(object):
         np.random.seed(n)
         if n < 10:
             self.log("Too few target observations")
-            self.gaussian_mixture = GaussianMixtureWithPriorComponent([1.0], [1.0], self.gamma_mixture, [0.5, 0.5])
-            return self.gaussian_mixture
+            self.target_mixture = GaussianMixtureWithPriorComponent([1.0], [1.0], self.decoy_mixture, [0.5, 0.5])
+            return self.target_mixture
         for i in range(1, max_components + 1):
             self.log("Fitting %d Components" % (i,))
             model = GaussianMixtureWithPriorComponent.fit(
-                self.target_scores, i, self.gamma_mixture, deterministic=True)
+                self.target_scores, i, self.decoy_mixture, deterministic=True)
             bic = model.bic(self.target_scores)
             models.append(model)
             bics.append(bic)
             self.log("BIC: %g" % (bic,))
         i = np.argmin(bics)
         self.log("Selected %d Components" % (i + 1,))
-        self.gaussian_mixture = models[i]
-        return self.gaussian_mixture
+        self.target_mixture = models[i]
+        return self.target_mixture
 
     def estimate_posterior_error_probability(self, X):
-        return self.gaussian_mixture.prior.score(X) * self.gaussian_mixture.weights[
-            -1] / self.gaussian_mixture.score(X)
+        return self.target_mixture.prior.score(X) * self.target_mixture.weights[
+            -1] / self.target_mixture.score(X)
 
     def estimate_fdr(self, X):
         X_ = np.array(sorted(X, reverse=True))
@@ -106,8 +107,8 @@ class FiniteMixtureModelFDREstimator(object):
             fig, ax = plt.subplots(1)
         X = np.arange(1, max(self.target_scores), 0.1)
         ax.plot(X,
-                np.exp(self.gaussian_mixture.logpdf(X)).sum(axis=1))
-        for col in np.exp(self.gaussian_mixture.logpdf(X)).T:
+                np.exp(self.target_mixture.logpdf(X)).sum(axis=1))
+        for col in np.exp(self.target_mixture.logpdf(X)).T:
             ax.plot(X, col, linestyle='--')
         ax.hist(self.target_scores, bins=100, density=1, alpha=0.15)
         return ax
@@ -133,3 +134,10 @@ class FiniteMixtureModelFDREstimator(object):
         line3 = ax2.plot(target_scores, fdr, label='FDR', color='grey', linestyle='--')
         ax.legend([line1[0], line2[0], line3[0]], ['Target', 'Decoy', 'FDR'])
         return ax
+
+    def fit(self, max_components=10):
+        self.estimate_gamma(max_components)
+        self.estimate_gaussian(max_components)
+        fdr = self.estimate_fdr(self.target_scores)
+        self.fdr_map = NearestValueLookUp(zip(self.target_scores, fdr))
+        return self.fdr_map
