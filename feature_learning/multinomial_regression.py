@@ -60,6 +60,36 @@ _FragmentType = namedtuple(
     "FragmentType", [
         "nterm", "cterm", "series", "glycosylated", "charge", "peak_pair", "sequence"])
 
+class _FragmentType(_FragmentType):
+    _is_backbone = None
+    _is_assigned = None
+    _is_stub_glycopeptide = None
+
+    @property
+    def fragment(self):
+        return self.peak_pair.fragment
+
+    @property
+    def peak(self):
+        return self.peak_pair.peak
+
+    def is_assigned(self):
+        if self._is_assigned is None:
+            self._is_assigned = self.series != FragmentSeriesClassification.unassigned
+        return self._is_assigned
+
+    def is_backbone(self):
+        if self._is_backbone is None:
+            self._is_backbone = (
+                self.series != FragmentSeriesClassification.stub_glycopeptide) and self.is_assigned()
+        return self._is_backbone
+
+    def is_stub_glycopeptide(self):
+        if self._is_stub_glycopeptide is None:
+            self._is_stub_glycopeptide = (
+                self.series == FragmentSeriesClassification.stub_glycopeptide)
+        return self._is_stub_glycopeptide
+
 
 def get_nterm_index_from_fragment(fragment, structure):
     size = len(structure)
@@ -84,10 +114,10 @@ def get_cterm_index_from_fragment(fragment, structure):
 class FragmentTypeMeta(type):
     type_cache = dict()
 
-    def __new__(cls, name, parents, attrs):
-        new_type = type.__new__(cls, name, parents, attrs)
+    def __new__(mcs, name, parents, attrs):
+        new_type = type.__new__(mcs, name, parents, attrs)
         new_type._feature_count = None
-        cls.type_cache[name] = new_type
+        mcs.type_cache[name] = new_type
         return new_type
 
     @property
@@ -100,36 +130,16 @@ class FragmentTypeMeta(type):
         return self.type_cache[name]
 
 
+try:
+    from feature_learning._c.model_types import (
+        _FragmentType, FragmentSeriesClassification,
+        FragmentTypeClassification)
+except ImportError:
+    pass
+
+
 @six.add_metaclass(FragmentTypeMeta)
 class FragmentType(_FragmentType):
-
-    _is_backbone = None
-    _is_assigned = None
-    _is_stub_glycopeptide = None
-
-    @property
-    def fragment(self):
-        return self.peak_pair.fragment
-
-    @property
-    def peak(self):
-        return self.peak_pair.peak
-
-    def is_assigned(self):
-        if self._is_assigned is None:
-            self._is_assigned = self.series != FragmentSeriesClassification.unassigned
-        return self._is_assigned
-
-    def is_backbone(self):
-        if self._is_backbone is None:
-            self._is_backbone = (self.series != FragmentSeriesClassification.stub_glycopeptide) and self.is_assigned()
-        return self._is_backbone
-
-    def is_stub_glycopeptide(self):
-        if self._is_stub_glycopeptide is None:
-            self._is_stub_glycopeptide = (self.series == FragmentSeriesClassification.stub_glycopeptide)
-        return self._is_stub_glycopeptide
-
     def as_feature_dict(self):
         return OrderedDict(zip(self.feature_names(), self.as_feature_vector()))
 
@@ -222,8 +232,7 @@ class FragmentType(_FragmentType):
     def from_peak_peptide_fragment_pair(cls, peak_fragment_pair, structure):
         peak, fragment = peak_fragment_pair
         nterm, cterm = classify_amide_bond_frank(*fragment.flanking_amino_acids)
-        glycosylation = bool(fragment.glycosylation) | bool(
-            set(fragment.modification_dict) & PeptideFragment.concerned_modifications)
+        glycosylation = fragment.is_glycosylated
         inst = cls(
             nterm, cterm, FragmentSeriesClassification[fragment.series],
             glycosylation, min(peak.charge, FragmentCharge_max + 1),
@@ -267,7 +276,7 @@ class FragmentType(_FragmentType):
     @classmethod
     def encode_classification(cls, classification):
         X = []
-        for i, row in enumerate(classification):
+        for _, row in enumerate(classification):
             X.append(row.as_feature_vector())
         return np.vstack(X)
 
@@ -351,6 +360,17 @@ class FragmentType(_FragmentType):
         return elements
 
 
+try:
+    from feature_learning._c.model_types import (
+        FragmentType_as_feature_vector,
+        build_fragment_intensity_matches
+    )
+    FragmentType.as_feature_vector = FragmentType_as_feature_vector
+    FragmentType.build_fragment_intensity_matches = classmethod(build_fragment_intensity_matches)
+except ImportError:
+    pass
+
+
 class ProlineSpecializingModel(FragmentType):
     def specialize_proline(self):
         k_charge_cterm_pro = (FragmentCharge_max + 1)
@@ -394,6 +414,13 @@ class ProlineSpecializingModel(FragmentType):
         return names
 
 
+try:
+    from feature_learning._c.model_types import specialize_proline
+    ProlineSpecializingModel.specialize_proline = specialize_proline
+except ImportError as err:
+    print(err)
+
+
 class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
 
     def encode_stub_information(self):
@@ -428,6 +455,13 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
                 continue
             names.append("stub glycopeptide:composition %s" % (label,))
         return names
+
+
+try:
+    from feature_learning._c.model_types import encode_stub_information
+    StubGlycopeptideCompositionModel.encode_stub_information = encode_stub_information
+except ImportError as err:
+    print(err)
 
 
 class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
@@ -479,13 +513,13 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
         X = np.zeros(k, dtype=np.uint8)
         offset = 0
 
-        for i in range(1, self.bond_offset_depth + 1):
+        for _ in range(1, self.bond_offset_depth + 1):
             if self.is_backbone():
                 nterm = self.get_nterm_neighbor(self.bond_offset_depth)
                 if nterm is not None:
                     X[offset + nterm.value] = 1
             offset += k_ftypes
-        for i in range(1, self.bond_offset_depth + 1):
+        for _ in range(1, self.bond_offset_depth + 1):
             if self.is_backbone():
                 cterm = self.get_cterm_neighbor(self.bond_offset_depth)
                 if cterm is not None:
@@ -511,6 +545,18 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
                     continue
                 names.append("c-term + %d %s" % (i, label))
         return names
+
+
+try:
+    from feature_learning._c.model_types import (
+        encode_neighboring_residues, get_nterm_neighbor, get_cterm_neighbor,
+        get_nterm_index_from_fragment, get_cterm_index_from_fragment
+    )
+    NeighboringAminoAcidsModel.encode_neighboring_residues = encode_neighboring_residues
+    NeighboringAminoAcidsModel.get_nterm_neighbor = get_nterm_neighbor
+    NeighboringAminoAcidsModel.get_cterm_neighbor = get_cterm_neighbor
+except ImportError as err:
+    print(err)
 
 
 class NeighboringAminoAcidsModelDepth2(NeighboringAminoAcidsModel):
@@ -564,6 +610,17 @@ class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth2):
         return names
 
 
+try:
+    from feature_learning._c.model_types import (
+        encode_cleavage_site_distance_from_center, get_cleavage_site_distance_from_center)
+    CleavageSiteCenterDistanceModel.encode_cleavage_site_distance_from_center =\
+        encode_cleavage_site_distance_from_center
+    CleavageSiteCenterDistanceModel.get_cleavage_site_distance_from_center =\
+        get_cleavage_site_distance_from_center
+except ImportError as err:
+    print(err)
+
+
 class StubChargeModel(CleavageSiteCenterDistanceModel):
 
     def encode_stub_charge(self):
@@ -598,6 +655,13 @@ class StubChargeModel(CleavageSiteCenterDistanceModel):
     def as_feature_vector(self):
         X = super(StubChargeModel, self).as_feature_vector()
         return np.concatenate((X, self.encode_stub_charge()))
+
+
+try:
+    from feature_learning._c.model_types import encode_stub_charge
+    StubChargeModel.encode_stub_charge = encode_stub_charge
+except ImportError as err:
+    print(err)
 
 
 class AmideBondCrossproductModel(StubGlycopeptideCompositionModel):
@@ -642,10 +706,15 @@ class AmideBondCrossproductModel(StubGlycopeptideCompositionModel):
 # @memoize.memoize(1000000)
 def classify_sequence_by_residues(sequence):
     ctr = defaultdict(int)
-    for res, mods in sequence:
+    for res, _ in sequence:
         ctr[classify_residue_frank(res)] += 1
     return sorted(ctr.items())
 
+
+try:
+    from feature_learning._c.model_types import classify_sequence_by_residues
+except ImportError as err:
+    print(err)
 
 build_fragment_intensity_matches = FragmentType.build_fragment_intensity_matches
 
@@ -779,6 +848,7 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
         assert not np.any(np.isnan(eta[i]))
 
     dev = deviance(y, mu, n, reliabilities)
+    iter_ = 0
     for iter_ in range(control['maxit']):
         if control['trace']:
             print("Iteration %d" % (iter_,))

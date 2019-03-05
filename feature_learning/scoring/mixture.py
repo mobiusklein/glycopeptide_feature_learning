@@ -263,6 +263,7 @@ class GammaMixtureFitter(object):
         scale = params[self.n_components:]
         negative_log_likelihood = -self.loglikelihood(X, shape, scale, weights)
         gradients = self.gradient(X, shape, scale)
+        # pylint: disable=invalid-unary-operand-type
         weighted_gradients = np.concatenate(
             (-np.sum(gradients[0].T * responsibility, axis=0),
              -np.sum(gradients[1].T * responsibility, axis=0)))

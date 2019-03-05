@@ -2,4 +2,8 @@
 *.pyd
 feature_learning/_c/*.c
 feature_learning/_c/*.html
-
+data/
+*.json*
+*sublime*
+build/*
+*egg*
