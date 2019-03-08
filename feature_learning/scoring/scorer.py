@@ -112,7 +112,7 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, _ModelPredicti
         self._init_cache()
 
     def __reduce__(self):
-        return self.__class__, (self.scan, self.sequence, self.mass_shift, self.model_fit, self.partition)
+        return self.__class__, (self.scan, self.target, self.mass_shift, self.model_fit, self.partition)
 
     def match(self, error_tolerance=2e-5, *args, **kwargs):
         self.error_tolerance = error_tolerance
@@ -299,7 +299,7 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, _ModelPredicti
             coverage = 0.0
         return coverage
 
-    def glycan_score(self, use_reliability=True, base_reliability=0.5, core_weight=0.4, coverage_weight=0.6):
+    def calculate_glycan_score(self, use_reliability=True, base_reliability=0.5, core_weight=0.4, coverage_weight=0.6):
         c, intens, t, yhat = self._get_predicted_intensities()
         if self.model_fit.reliability_model is None or not use_reliability:
             reliability = np.ones_like(yhat)
@@ -339,7 +339,7 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, _ModelPredicti
                         ) * coverage + oxonium_component
         return max(glycan_score, 0)
 
-    def peptide_score(self, use_reliability=True, base_reliability=0.5):
+    def calculate_peptide_score(self, use_reliability=True, base_reliability=0.5):
         c, intens, t, yhat = self._get_predicted_intensities()
         if self.model_fit.reliability_model is None or not use_reliability:
             reliability = np.ones_like(yhat)
@@ -382,6 +382,19 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, _ModelPredicti
         peptide_score += corr_score
         peptide_score *= coverage_score
         return peptide_score
+
+    def glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
+                     coverage_weight=0.5, **kwargs):
+        if self._glycan_score is None:
+            self._glycan_score = self.calculate_glycan_score(
+                error_tolerance, use_reliability, base_reliability, core_weight, coverage_weight, **kwargs)
+        return self._glycan_score
+
+    def peptide_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, **kwargs):
+        if self._peptide_score is None:
+            self._peptide_score = self.calculate_peptide_score(
+                error_tolerance, use_reliability, base_reliability, **kwargs)
+        return self._peptide_score
 
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
                         glycosylated_weight=None, stub_weight=None,
@@ -468,7 +481,7 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer, _ModelMixt
         self.mixture_coefficients = None
 
     def __reduce__(self):
-        return self.__class__, (self.scan, self.sequence, self.mass_shift, self.model_fits, self.partition, self.power)
+        return self.__class__, (self.scan, self.target, self.mass_shift, self.model_fits, self.partition, self.power)
 
     def _calculate_pearson_residual_score(self, use_reliability=True, base_reliability=0.5):
         scores = []
@@ -479,20 +492,20 @@ class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer, _ModelMixt
             scores.append(score)
         return np.dot(scores, self.mixture_coefficients)
 
-    def glycan_score(self, use_reliability=True, base_reliability=0.5):
+    def calculate_glycan_score(self, use_reliability=True, base_reliability=0.5):
         scores = []
         for model_fit in self._iter_model_fits():
             score = super(
-                MultinomialRegressionMixtureScorer, self).glycan_score(
+                MultinomialRegressionMixtureScorer, self).calculate_glycan_score(
                     use_reliability=use_reliability, base_reliability=base_reliability)
             scores.append(score)
         return np.dot(scores, self.mixture_coefficients)
 
-    def peptide_score(self, use_reliability=True, base_reliability=0.5):
+    def calculate_peptide_score(self, use_reliability=True, base_reliability=0.5):
         scores = []
         for model_fit in self._iter_model_fits():
             score = super(
-                MultinomialRegressionMixtureScorer, self).peptide_score(
+                MultinomialRegressionMixtureScorer, self).calculate_peptide_score(
                     use_reliability=use_reliability, base_reliability=base_reliability)
             scores.append(score)
         return np.dot(scores, self.mixture_coefficients)
@@ -742,7 +755,7 @@ class MixtureSplitScorer(SplitScorer, _ModelMixtureBase):
         self.mixture_coefficients = None
 
     def __reduce__(self):
-        return self.__class__, (self.scan, self.sequence, self.mass_shift, self.model_fits, self.partition, self.power)
+        return self.__class__, (self.scan, self.target, self.mass_shift, self.model_fits, self.partition, self.power)
 
     def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5,
                                core_weight=0.4, coverage_weight=0.5, **kwargs):
@@ -819,7 +832,7 @@ class MixturePartialSplitScorer(PartialSplitScorer, _ModelMixtureBase):
         self.mixture_coefficients = None
 
     def __reduce__(self):
-        return self.__class__, (self.scan, self.sequence, self.mass_shift, self.model_fits, self.partition, self.power)
+        return self.__class__, (self.scan, self.target, self.mass_shift, self.model_fits, self.partition, self.power)
 
     def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5,
                                core_weight=0.4, coverage_weight=0.5, **kwargs):

@@ -122,7 +122,7 @@ cdef class _FragmentType(object):
         public EnumValue cterm
         public EnumValue series
         public PeakFragmentPair peak_pair
-        public bint glycosylated
+        public int glycosylated
         public int charge
         public _PeptideSequenceCore sequence
 
@@ -198,6 +198,16 @@ cdef class _FragmentType(object):
             self[0].name if self[0] else '',
             self[1].name if self[1] else '',
             self[2].name, self[3], self[4])
+
+    cpdef np.ndarray[feature_dtype_t, ndim=1] _allocate_feature_array(self):
+        cdef:
+            Py_ssize_t k
+            np.npy_intp knd
+
+        k = PyInt_AsLong(type(self).feature_count)
+        knd = k
+        return np.PyArray_ZEROS(1, &knd, np.NPY_UINT8, 0)
+
 
 @cython.binding(True)
 cpdef from_peak_peptide_fragment_pair(cls, PeakFragmentPair peak_fragment_pair, _PeptideSequenceCore structure):
@@ -533,7 +543,7 @@ def encode_stub_charge(_FragmentType self):
 
 def classify_sequence_by_residues(_PeptideSequenceCore sequence):
     cdef:
-        size_t i, n
+        size_t i, n, m
         int* residue_tp_counts
         AminoAcidResidueBase res
         EnumValue e
@@ -547,8 +557,11 @@ def classify_sequence_by_residues(_PeptideSequenceCore sequence):
         residue_tp_counts[e.int_value()] += 1
 
     result = []
+    m = 0
     for i in range(AminoAcidClassification_max):
         if residue_tp_counts[i] > 0:
+            m += residue_tp_counts[i]
             result.append((AminoAcidClassification[i], residue_tp_counts[i]))
+    result.append((AminoAcidClassification['x'], n - m))
     free(residue_tp_counts)
     return result

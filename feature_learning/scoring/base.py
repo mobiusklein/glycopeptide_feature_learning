@@ -4,7 +4,15 @@ from glycan_profiling.tandem.spectrum_match import Unmodified
 
 
 class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
-    def __init__(self, tp, *args, **kwargs):
+    def __init__(self, tp, args=None, kwargs=None, *_args, **_kwargs):
+        if args is None:
+            args = tuple(_args)
+        else:
+            args = tuple(args) + tuple(_args)
+        if kwargs is None:
+            kwargs = _kwargs
+        else:
+            kwargs.update(_kwargs)
         self.tp = tp
         self.args = args
         self.kwargs = kwargs

@@ -47,6 +47,15 @@ class FragmentTypeClassification(AminoAcidClassification):
     pass
 
 
+try:
+    from feature_learning._c.model_types import (
+        FragmentSeriesClassification,
+        FragmentTypeClassification
+    )
+except ImportError:
+    pass
+
+
 FragmentTypeClassification_max = max(FragmentTypeClassification, key=lambda x: x[1].value)[1].value
 
 # consider fragments with up to 2 monosaccharides attached to a backbone fragment
@@ -90,6 +99,9 @@ class _FragmentType(_FragmentType):
                 self.series == FragmentSeriesClassification.stub_glycopeptide)
         return self._is_stub_glycopeptide
 
+    def _allocate_feature_array(self):
+        return np.zeros(self.feature_count, dtype=np.uint8)
+
 
 def get_nterm_index_from_fragment(fragment, structure):
     size = len(structure)
@@ -131,9 +143,7 @@ class FragmentTypeMeta(type):
 
 
 try:
-    from feature_learning._c.model_types import (
-        _FragmentType, FragmentSeriesClassification,
-        FragmentTypeClassification)
+    from feature_learning._c.model_types import _FragmentType
 except ImportError:
     pass
 
@@ -363,10 +373,14 @@ class FragmentType(_FragmentType):
 try:
     from feature_learning._c.model_types import (
         FragmentType_as_feature_vector,
-        build_fragment_intensity_matches
+        build_fragment_intensity_matches,
+        from_peak_peptide_fragment_pair
     )
     FragmentType.as_feature_vector = FragmentType_as_feature_vector
-    FragmentType.build_fragment_intensity_matches = classmethod(build_fragment_intensity_matches)
+    FragmentType.from_peak_peptide_fragment_pair = classmethod(
+        from_peak_peptide_fragment_pair)
+    FragmentType.build_fragment_intensity_matches = classmethod(
+        build_fragment_intensity_matches)
 except ImportError:
     pass
 
