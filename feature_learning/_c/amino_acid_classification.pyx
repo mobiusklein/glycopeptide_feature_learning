@@ -1,4 +1,4 @@
-# cython: profile=True
+# cython: embedsignature=True
 cimport cython
 from cpython cimport PyTuple_GetItem, PyTuple_Size, PyList_GET_ITEM, PyList_GET_SIZE
 from cpython.object cimport PyObject

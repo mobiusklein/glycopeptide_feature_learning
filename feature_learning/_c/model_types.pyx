@@ -1,4 +1,4 @@
-# cython: profile=True
+# cython: embedsignature=True
 # distutils: include_dirs = C:\Users\Asus\Miniconda2\lib\site-packages\numpy\core\include
 cimport cython
 from cpython cimport PyTuple_GetItem, PyTuple_Size, PyList_GET_ITEM, PyList_GET_SIZE
@@ -291,12 +291,10 @@ def build_fragment_intensity_matches(cls, gpsm):
 
 
 @cython.binding(True)
-def FragmentType_as_feature_vector(_FragmentType self):
+def FragmentType_build_feature_vector(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
         Py_ssize_t k_ftypes, k_series, k_unassigned, k_charge
-        Py_ssize_t k_charge_series, k_glycosylated, k, offset, index
-        np.npy_intp knd
-        np.ndarray[feature_dtype_t, ndim=1] X
+        Py_ssize_t k_charge_series, k_glycosylated, k, index
 
     k_ftypes = (FragmentTypeClassification_max + 1)
     k_series = (FragmentSeriesClassification_max + 1)
@@ -309,11 +307,6 @@ def FragmentType_as_feature_vector(_FragmentType self):
     k = (
         (k_ftypes * 2) + k_series + k_unassigned + k_charge + k_charge_series +
         k_glycosylated)
-
-    # X = zeros(k, dtype=feature_dtype)
-    knd = k
-    X = np.PyArray_ZEROS(1, &knd, np.NPY_UINT8, 0)
-    offset = 0
 
     if self.nterm is not None:
         X[self.nterm.int_value()] = 1
@@ -346,8 +339,8 @@ def FragmentType_as_feature_vector(_FragmentType self):
         X[offset + PyInt_AsLong(
             int(self.peak_pair.fragment.glycosylation_size))] = 1
     offset += k_glycosylated
+    return X, offset
 
-    return X
 
 @cython.binding(True)
 cpdef EnumValue get_nterm_neighbor(_FragmentType self, int offset=1):
@@ -374,22 +367,15 @@ cpdef EnumValue get_cterm_neighbor(_FragmentType self, int offset=1):
         return classify_residue_frank(residue)
 
 @cython.binding(True)
-def encode_neighboring_residues(_FragmentType self):
+def encode_neighboring_residues(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
-        Py_ssize_t k_ftypes, k, offset
-        np.npy_intp knd
+        Py_ssize_t k_ftypes, k, start
         long bond_offset_depth
-        np.ndarray[feature_dtype_t, ndim=1] X
         EnumValue nterm, cterm
 
     bond_offset_depth = PyInt_AsLong(self.bond_offset_depth)
     k_ftypes = (FragmentTypeClassification_max + 1)
     k = (k_ftypes * 2) * bond_offset_depth
-
-    knd = k
-    X = np.PyArray_ZEROS(1, &knd, np.NPY_UINT8, 0)
-    offset = 0
-
 
     for _ in range(1, bond_offset_depth + 1):
         if self._is_backbone:
@@ -403,16 +389,14 @@ def encode_neighboring_residues(_FragmentType self):
             if cterm is not None:
                 X[offset + cterm.int_value()] = 1
         offset += k_ftypes
-    return X
+    return X, offset
 
 
 @cython.binding(True)
-def specialize_proline(_FragmentType self):
+def specialize_proline(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
         Py_ssize_t k_charge_cterm_pro, k_series_cterm_pro, k_glycosylated_proline
-        Py_ssize_t k, offset
-        np.npy_intp knd
-        np.ndarray[feature_dtype_t, ndim=1] X
+        Py_ssize_t k
         int index
 
     k_charge_cterm_pro = (FragmentCharge_max + 1)
@@ -420,10 +404,6 @@ def specialize_proline(_FragmentType self):
     k_glycosylated_proline = BackboneFragment_max_glycosylation_size + 1
 
     k = (k_charge_cterm_pro + k_series_cterm_pro + k_glycosylated_proline)
-
-    knd = k
-    X = np.PyArray_ZEROS(1, &knd, np.NPY_UINT8, 0)
-    offset = 0
 
 
     if self.cterm == FragmentTypeClassification_pro:
@@ -436,29 +416,23 @@ def specialize_proline(_FragmentType self):
         offset += k_glycosylated_proline
     else:
         offset += k
-    return X
+    return X, offset
 
 
 @cython.binding(True)
-def encode_stub_information(_FragmentType self):
+def encode_stub_information(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
         Py_ssize_t k_glycosylated_stubs, k_sequence_composition_stubs
-        Py_ssize_t k, offset, i, n
-        np.npy_intp knd
-        np.ndarray[feature_dtype_t, ndim=1] X
+        Py_ssize_t k, i, n
         int index, c
         tuple tp_c
         list ctr
         EnumValue tp
 
-
     k_glycosylated_stubs = StubFragment_max_glycosylation_size + 1
     k_sequence_composition_stubs = FragmentTypeClassification_max + 1
     k = k_glycosylated_stubs + k_sequence_composition_stubs
 
-    knd = k
-    X = np.PyArray_ZEROS(1, &knd, np.NPY_UINT8, 0)
-    offset = 0
 
     if self._is_stub_glycopeptide:
         X[offset + (self.glycosylated)] = 1
@@ -474,7 +448,7 @@ def encode_stub_information(_FragmentType self):
         offset += k_sequence_composition_stubs
     else:
         offset += k_glycosylated_stubs + k_sequence_composition_stubs
-    return X
+    return X, offset
 
 
 @cython.binding(True)
@@ -489,38 +463,29 @@ cpdef int get_cleavage_site_distance_from_center(_FragmentType self):
 
 
 @cython.binding(True)
-def encode_cleavage_site_distance_from_center(_FragmentType self):
+def encode_cleavage_site_distance_from_center(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
-        Py_ssize_t k_distance, k_series, k, offset
-        np.npy_intp knd
-        np.ndarray[feature_dtype_t, ndim=1] X
+        Py_ssize_t k_distance, k_series, k
         long max_distance, series_offset, distance
 
     max_distance = PyInt_AsLong(self.max_cleavage_site_distance_from_center)
     k_distance = max_distance + 1
     k_series = BackboneFragmentSeriesClassification_max + 1
     k = k_distance * k_series
-
-    knd = k
-    X = np.PyArray_ZEROS(1, &knd, np.NPY_UINT8, 0)
-    offset = 0
-
     if self._is_backbone:
         distance = get_cleavage_site_distance_from_center(self)
         distance = min(distance, max_distance)
         series_offset = self.series.int_value() * k_distance
         X[offset + series_offset + distance] = 1
     offset += (k_distance * k_series)
-    return X
+    return X, offset
 
 
 @cython.binding(True)
-def encode_stub_charge(_FragmentType self):
+def encode_stub_charge(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
         Py_ssize_t k_glycosylated_stubs, k_stub_charges, k_glycosylated_stubs_x_charge
-        Py_ssize_t k, offset
-        np.npy_intp knd
-        np.ndarray[feature_dtype_t, ndim=1] X
+        Py_ssize_t k
         long loss_size, d
 
     k_glycosylated_stubs = (StubFragment_max_glycosylation_size * 2) + 1
@@ -528,18 +493,14 @@ def encode_stub_charge(_FragmentType self):
     k_glycosylated_stubs_x_charge = (k_glycosylated_stubs * k_stub_charges)
     k = k_glycosylated_stubs_x_charge
 
-    knd = k
-    X = np.PyArray_ZEROS(1, &knd, np.NPY_UINT8, 0)
-    offset = 0
-
     if self._is_stub_glycopeptide:
         loss_size = PyInt_AsLong(self.sequence.total_glycosylation_size) - self.glycosylated
         if loss_size >= k_glycosylated_stubs:
             loss_size = k_glycosylated_stubs - 1
         d = k_glycosylated_stubs * (self.charge - 1) + loss_size
         X[offset + d] = 1
-        offset += k_glycosylated_stubs_x_charge
-    return X
+    offset += k_glycosylated_stubs_x_charge
+    return X, offset
 
 def classify_sequence_by_residues(_PeptideSequenceCore sequence):
     cdef:

@@ -153,7 +153,7 @@ class FragmentType(_FragmentType):
     def as_feature_dict(self):
         return OrderedDict(zip(self.feature_names(), self.as_feature_vector()))
 
-    def as_feature_vector(self):
+    def build_feature_vector(self, X, offset):
         k_ftypes = (FragmentTypeClassification_max + 1)
         k_series = (FragmentSeriesClassification_max + 1)
         k_unassigned = 1
@@ -200,6 +200,12 @@ class FragmentType(_FragmentType):
             X[offset + int(self.peak_pair.fragment.glycosylation_size)] = 1
         offset += k_glycosylated
 
+        return X
+
+    def as_feature_vector(self):
+        X = self._allocate_feature_array()
+        offset = 0
+        self.build_feature_vector(X, offset)
         return X
 
     @classmethod
@@ -372,11 +378,11 @@ class FragmentType(_FragmentType):
 
 try:
     from feature_learning._c.model_types import (
-        FragmentType_as_feature_vector,
+        FragmentType_build_feature_vector,
         build_fragment_intensity_matches,
         from_peak_peptide_fragment_pair
     )
-    FragmentType.as_feature_vector = FragmentType_as_feature_vector
+    FragmentType.build_feature_vector = FragmentType_build_feature_vector
     FragmentType.from_peak_peptide_fragment_pair = classmethod(
         from_peak_peptide_fragment_pair)
     FragmentType.build_fragment_intensity_matches = classmethod(
@@ -386,15 +392,12 @@ except ImportError:
 
 
 class ProlineSpecializingModel(FragmentType):
-    def specialize_proline(self):
+    def specialize_proline(self, X, offset):
         k_charge_cterm_pro = (FragmentCharge_max + 1)
         k_series_cterm_pro = (BackboneFragmentSeriesClassification_max + 1)
         k_glycosylated_proline = BackboneFragment_max_glycosylation_size + 1
 
         k = (k_charge_cterm_pro + k_series_cterm_pro + k_glycosylated_proline)
-
-        X = np.zeros(k, dtype=np.uint8)
-        offset = 0
 
         if self.cterm == FragmentTypeClassification.pro:
             index = (self.charge - 1)
@@ -408,11 +411,12 @@ class ProlineSpecializingModel(FragmentType):
         if self.cterm == FragmentTypeClassification.pro:
             X[offset + int(self.peak_pair.fragment.glycosylation_size)] = 1
         offset += k_glycosylated_proline
-        return X
+        return X, offset
 
-    def as_feature_vector(self):
-        X = super(ProlineSpecializingModel, self).as_feature_vector()
-        return np.concatenate((X, self.specialize_proline()))
+    def build_feature_vector(self, X, offset):
+        X, offset = super(ProlineSpecializingModel, self).build_feature_vector(X, offset)
+        X, offset = self.specialize_proline(X, offset)
+        return X, offset
 
     @classmethod
     def feature_names(cls):
@@ -437,13 +441,10 @@ except ImportError as err:
 
 class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
 
-    def encode_stub_information(self):
+    def encode_stub_information(self, X, offset):
         k_glycosylated_stubs = StubFragment_max_glycosylation_size + 1
         k_sequence_composition_stubs = FragmentTypeClassification_max + 1
         k = k_glycosylated_stubs + k_sequence_composition_stubs
-
-        X = np.zeros(k, dtype=np.uint8)
-        offset = 0
 
         if self.is_stub_glycopeptide():
             X[offset + int(self.glycosylated)] = 1
@@ -453,11 +454,12 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
             for tp, c in ctr:
                 X[offset + tp.value] = c
         offset += k_sequence_composition_stubs
-        return X
+        return X, offset
 
-    def as_feature_vector(self):
-        X = super(StubGlycopeptideCompositionModel, self).as_feature_vector()
-        return np.concatenate((X, self.encode_stub_information()))
+    def build_feature_vector(self, X, offset):
+        X, offset = super(StubGlycopeptideCompositionModel, self).build_feature_vector(X, offset)
+        X, offset = self.encode_stub_information(X, offset)
+        return X, offset
 
     @classmethod
     def feature_names(self):
@@ -479,17 +481,18 @@ except ImportError as err:
 
 
 class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
-    def encode_stub_fucosylation(self):
-        X = [0, 0]
-        offset = 0
+    def encode_stub_fucosylation(self, X, offset):
+        k = 2
         if self.is_stub_glycopeptide():
             i = int(self.peak_pair.fragment.glycosylation['Fuc'] > 0)
             X[offset + i] = 1
-        return np.array(X, dtype=np.uint8)
+        offset += k
+        return X, offset
 
-    def as_feature_vector(self):
-        X = super(StubGlycopeptideFucosylationModel, self).as_feature_vector()
-        return np.concatenate((X, self.encode_stub_fucosylation()))
+    def build_feature_vector(self, X, offset):
+        X, offset = super(StubGlycopeptideFucosylationModel, self).build_feature_vector(X, offset)
+        X, offset = self.encode_stub_fucosylation(X, offset)
+        return X, offset
 
     @classmethod
     def feature_names(self):
@@ -520,12 +523,9 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
             residue = self.sequence[index][0]
             return classify_residue_frank(residue)
 
-    def encode_neighboring_residues(self):
+    def encode_neighboring_residues(self, X, offset):
         k_ftypes = (FragmentTypeClassification_max + 1)
         k = (k_ftypes * 2) * self.bond_offset_depth
-
-        X = np.zeros(k, dtype=np.uint8)
-        offset = 0
 
         for _ in range(1, self.bond_offset_depth + 1):
             if self.is_backbone():
@@ -539,11 +539,12 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
                 if cterm is not None:
                     X[offset + cterm.value] = 1
             offset += k_ftypes
-        return X
+        return X, offset
 
-    def as_feature_vector(self):
-        X = super(NeighboringAminoAcidsModel, self).as_feature_vector()
-        return np.concatenate((X, self.encode_neighboring_residues()))
+    def build_feature_vector(self, X, offset):
+        X, offset = super(NeighboringAminoAcidsModel, self).build_feature_vector(X, offset)
+        X, offset = self.encode_neighboring_residues(X, offset)
+        return X, offset
 
     @classmethod
     def feature_names(cls):
@@ -594,12 +595,10 @@ class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth2):
         center = (seq_size / 2)
         return abs(center - index)
 
-    def encode_cleavage_site_distance_from_center(self):
+    def encode_cleavage_site_distance_from_center(self, X, offset):
         k_distance = self.max_cleavage_site_distance_from_center + 1
         k_series = BackboneFragmentSeriesClassification_max + 1
         k = k_distance * k_series
-        X = np.zeros(k, dtype=np.uint8)
-        offset = 0
 
         if self.is_backbone():
             distance = self.get_cleavage_site_distance_from_center()
@@ -607,11 +606,12 @@ class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth2):
             series_offset = self.series.value * k_distance
             X[offset + series_offset + distance] = 1
         offset += (k_distance * k_series)
-        return X
+        return X, offset
 
-    def as_feature_vector(self):
-        X = super(CleavageSiteCenterDistanceModel, self).as_feature_vector()
-        return np.concatenate((X, self.encode_cleavage_site_distance_from_center()))
+    def build_feature_vector(self, X, offset):
+        X, offset = super(CleavageSiteCenterDistanceModel, self).build_feature_vector(X, offset)
+        X, offset = self.encode_cleavage_site_distance_from_center(X, offset)
+        return X, offset
 
     @classmethod
     def feature_names(cls):
@@ -637,14 +637,11 @@ except ImportError as err:
 
 class StubChargeModel(CleavageSiteCenterDistanceModel):
 
-    def encode_stub_charge(self):
+    def encode_stub_charge(self, X, offset):
         k_glycosylated_stubs = (StubFragment_max_glycosylation_size * 2) + 1
         k_stub_charges = FragmentCharge_max + 1
         k_glycosylated_stubs_x_charge = (k_glycosylated_stubs * k_stub_charges)
         k = k_glycosylated_stubs_x_charge
-
-        X = np.zeros(k, dtype=np.uint8)
-        offset = 0
 
         if self.is_stub_glycopeptide():
             loss_size = sum(self.sequence.glycan_composition.values()) - int(self.glycosylated)
@@ -653,8 +650,8 @@ class StubChargeModel(CleavageSiteCenterDistanceModel):
             # d = k_glycosylated_stubs * (self.charge - 1) + int(self.glycosylated)
             d = k_glycosylated_stubs * (self.charge - 1) + loss_size
             X[offset + d] = 1
-            offset += k_glycosylated_stubs_x_charge
-        return X
+        offset += k_glycosylated_stubs_x_charge
+        return X, offset
 
     @classmethod
     def feature_names(self):
@@ -666,9 +663,10 @@ class StubChargeModel(CleavageSiteCenterDistanceModel):
                 names.append("stub glycopeptide:charge %d:glycan loss %d" % (i + 1, j))
         return names
 
-    def as_feature_vector(self):
-        X = super(StubChargeModel, self).as_feature_vector()
-        return np.concatenate((X, self.encode_stub_charge()))
+    def build_feature_vector(self, X, offset):
+        X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
+        X, offset = self.encode_stub_charge(X, offset)
+        return X, offset
 
 
 try:
