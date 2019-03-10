@@ -1,6 +1,5 @@
 import six
 import base64
-import json
 import io
 
 from collections import namedtuple, defaultdict, OrderedDict
@@ -10,8 +9,7 @@ from scipy.stats import norm
 from scipy.linalg import solve_triangular, cho_solve
 
 from glypy.utils import Enum
-from glycopeptidepy.utils import memoize
-from glycopeptidepy.structure.fragment import PeptideFragment, IonSeries
+from glycopeptidepy.structure.fragment import IonSeries
 
 from glycan_profiling.structure.fragment_match_map import PeakFragmentPair
 from ms_deisotope import DeconvolutedPeak
@@ -69,6 +67,7 @@ _FragmentType = namedtuple(
     "FragmentType", [
         "nterm", "cterm", "series", "glycosylated", "charge", "peak_pair", "sequence"])
 
+
 class _FragmentType(_FragmentType):
     _is_backbone = None
     _is_assigned = None
@@ -101,57 +100,6 @@ class _FragmentType(_FragmentType):
 
     def _allocate_feature_array(self):
         return np.zeros(self.feature_count, dtype=np.uint8)
-
-
-def get_nterm_index_from_fragment(fragment, structure):
-    size = len(structure)
-    direction = fragment.series.direction
-    if direction < 0:
-        index = size + (fragment.series.direction * fragment.position + fragment.series.direction)
-    else:
-        index = fragment.position - 1
-    return index
-
-
-def get_cterm_index_from_fragment(fragment, structure):
-    size = len(structure)
-    direction = fragment.series.direction
-    if direction < 0:
-        index = size + (fragment.series.direction * fragment.position)
-    else:
-        index = fragment.position
-    return index
-
-
-class FragmentTypeMeta(type):
-    type_cache = dict()
-
-    def __new__(mcs, name, parents, attrs):
-        new_type = type.__new__(mcs, name, parents, attrs)
-        new_type._feature_count = None
-        mcs.type_cache[name] = new_type
-        return new_type
-
-    @property
-    def feature_count(self):
-        if self._feature_count is None:
-            self._feature_count = len(self.feature_names())
-        return self._feature_count
-
-    def get_model_by_name(self, name):
-        return self.type_cache[name]
-
-
-try:
-    from feature_learning._c.model_types import _FragmentType
-except ImportError:
-    pass
-
-
-@six.add_metaclass(FragmentTypeMeta)
-class FragmentType(_FragmentType):
-    def as_feature_dict(self):
-        return OrderedDict(zip(self.feature_names(), self.as_feature_vector()))
 
     def build_feature_vector(self, X, offset):
         k_ftypes = (FragmentTypeClassification_max + 1)
@@ -207,6 +155,57 @@ class FragmentType(_FragmentType):
         offset = 0
         self.build_feature_vector(X, offset)
         return X
+
+
+def get_nterm_index_from_fragment(fragment, structure):
+    size = len(structure)
+    direction = fragment.series.direction
+    if direction < 0:
+        index = size + (fragment.series.direction * fragment.position + fragment.series.direction)
+    else:
+        index = fragment.position - 1
+    return index
+
+
+def get_cterm_index_from_fragment(fragment, structure):
+    size = len(structure)
+    direction = fragment.series.direction
+    if direction < 0:
+        index = size + (fragment.series.direction * fragment.position)
+    else:
+        index = fragment.position
+    return index
+
+
+class FragmentTypeMeta(type):
+    type_cache = dict()
+
+    def __new__(mcs, name, parents, attrs):
+        new_type = type.__new__(mcs, name, parents, attrs)
+        new_type._feature_count = None
+        mcs.type_cache[name] = new_type
+        return new_type
+
+    @property
+    def feature_count(self):
+        if self._feature_count is None:
+            self._feature_count = len(self.feature_names())
+        return self._feature_count
+
+    def get_model_by_name(self, name):
+        return self.type_cache[name]
+
+
+try:
+    from feature_learning._c.model_types import _FragmentType
+except ImportError:
+    pass
+
+
+@six.add_metaclass(FragmentTypeMeta)
+class FragmentType(_FragmentType):
+    def as_feature_dict(self):
+        return OrderedDict(zip(self.feature_names(), self.as_feature_vector()))
 
     @classmethod
     def feature_names(cls):
@@ -378,11 +377,11 @@ class FragmentType(_FragmentType):
 
 try:
     from feature_learning._c.model_types import (
-        FragmentType_build_feature_vector,
+        encode_classification,
         build_fragment_intensity_matches,
         from_peak_peptide_fragment_pair
     )
-    FragmentType.build_feature_vector = FragmentType_build_feature_vector
+    FragmentType.encode_classification = classmethod(encode_classification)
     FragmentType.from_peak_peptide_fragment_pair = classmethod(
         from_peak_peptide_fragment_pair)
     FragmentType.build_fragment_intensity_matches = classmethod(
@@ -396,8 +395,6 @@ class ProlineSpecializingModel(FragmentType):
         k_charge_cterm_pro = (FragmentCharge_max + 1)
         k_series_cterm_pro = (BackboneFragmentSeriesClassification_max + 1)
         k_glycosylated_proline = BackboneFragment_max_glycosylation_size + 1
-
-        k = (k_charge_cterm_pro + k_series_cterm_pro + k_glycosylated_proline)
 
         if self.cterm == FragmentTypeClassification.pro:
             index = (self.charge - 1)
@@ -444,7 +441,6 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
     def encode_stub_information(self, X, offset):
         k_glycosylated_stubs = StubFragment_max_glycosylation_size + 1
         k_sequence_composition_stubs = FragmentTypeClassification_max + 1
-        k = k_glycosylated_stubs + k_sequence_composition_stubs
 
         if self.is_stub_glycopeptide():
             X[offset + int(self.glycosylated)] = 1
@@ -525,7 +521,6 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
 
     def encode_neighboring_residues(self, X, offset):
         k_ftypes = (FragmentTypeClassification_max + 1)
-        k = (k_ftypes * 2) * self.bond_offset_depth
 
         for _ in range(1, self.bond_offset_depth + 1):
             if self.is_backbone():
@@ -598,7 +593,6 @@ class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth2):
     def encode_cleavage_site_distance_from_center(self, X, offset):
         k_distance = self.max_cleavage_site_distance_from_center + 1
         k_series = BackboneFragmentSeriesClassification_max + 1
-        k = k_distance * k_series
 
         if self.is_backbone():
             distance = self.get_cleavage_site_distance_from_center()
@@ -641,7 +635,6 @@ class StubChargeModel(CleavageSiteCenterDistanceModel):
         k_glycosylated_stubs = (StubFragment_max_glycosylation_size * 2) + 1
         k_stub_charges = FragmentCharge_max + 1
         k_glycosylated_stubs_x_charge = (k_glycosylated_stubs * k_stub_charges)
-        k = k_glycosylated_stubs_x_charge
 
         if self.is_stub_glycopeptide():
             loss_size = sum(self.sequence.glycan_composition.values()) - int(self.glycosylated)
@@ -664,8 +657,18 @@ class StubChargeModel(CleavageSiteCenterDistanceModel):
         return names
 
     def build_feature_vector(self, X, offset):
-        X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
-        X, offset = self.encode_stub_charge(X, offset)
+        # X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
+        # X, offset = self.encode_stub_charge(X, offset)
+
+        # Directly invoke feature vector construction because super() costs too much
+        # in a tight loop
+        X, offset = FragmentType.build_feature_vector(self, X, offset)
+        X, offset = ProlineSpecializingModel.specialize_proline(self, X, offset)
+        X, offset = StubGlycopeptideCompositionModel.encode_stub_information(self, X, offset)
+        X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(self, X, offset)
+        X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(self, X, offset)
+        X, offset = CleavageSiteCenterDistanceModel.encode_cleavage_site_distance_from_center(self, X, offset)
+        X, offset = StubChargeModel.encode_stub_charge(self, X, offset)
         return X, offset
 
 
@@ -715,7 +718,6 @@ class AmideBondCrossproductModel(StubGlycopeptideCompositionModel):
         return names
 
 
-# @memoize.memoize(1000000)
 def classify_sequence_by_residues(sequence):
     ctr = defaultdict(int)
     for res, _ in sequence:

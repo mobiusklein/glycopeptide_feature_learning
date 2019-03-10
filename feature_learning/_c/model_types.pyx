@@ -13,10 +13,6 @@ np.import_array()
 
 from numpy.math cimport isnan
 
-cdef object zeros = np.zeros
-cdef object feature_dtype = np.uint8
-ctypedef np.uint8_t feature_dtype_t
-
 import six
 from collections import OrderedDict
 
@@ -117,19 +113,6 @@ cpdef int get_cterm_index_from_fragment(PeptideFragment fragment, _PeptideSequen
 
 cdef class _FragmentType(object):
 
-    cdef:
-        public EnumValue nterm
-        public EnumValue cterm
-        public EnumValue series
-        public PeakFragmentPair peak_pair
-        public int glycosylated
-        public int charge
-        public _PeptideSequenceCore sequence
-
-        public bint _is_backbone
-        public bint _is_assigned
-        public bint _is_stub_glycopeptide
-
     def __init__(self, nterm, cterm, series, glycosylated, charge, peak_pair, sequence):
         self.nterm = nterm
         self.cterm = cterm
@@ -199,15 +182,108 @@ cdef class _FragmentType(object):
             self[1].name if self[1] else '',
             self[2].name, self[3], self[4])
 
+    cdef long get_feature_count(self):
+        return PyInt_AsLong(type(self).feature_count)        
+
     cpdef np.ndarray[feature_dtype_t, ndim=1] _allocate_feature_array(self):
         cdef:
             Py_ssize_t k
             np.npy_intp knd
 
-        k = PyInt_AsLong(type(self).feature_count)
+        k = self.get_feature_count()
         knd = k
         return np.PyArray_ZEROS(1, &knd, np.NPY_UINT8, 0)
 
+    cpdef np.ndarray[feature_dtype_t, ndim=1] as_feature_vector(self):
+        cdef:
+            np.ndarray[feature_dtype_t, ndim=1] X
+            size_t offset
+        X = self._allocate_feature_array()
+        offset = 0
+        self.build_feature_vector(X, offset)
+        return X
+
+    cpdef build_feature_vector(self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+        cdef:
+            Py_ssize_t k_ftypes, k_series, k_unassigned, k_charge
+            Py_ssize_t k_charge_series, k_glycosylated, k, index
+
+        k_ftypes = (FragmentTypeClassification_max + 1)
+        k_series = (FragmentSeriesClassification_max + 1)
+        k_unassigned = 1
+        k_charge = FragmentCharge_max + 1
+        k_charge_series = k_charge * k_series
+
+        k_glycosylated = BackboneFragment_max_glycosylation_size + 1
+
+        k = (
+            (k_ftypes * 2) + k_series + k_unassigned + k_charge + k_charge_series +
+            k_glycosylated)
+
+        if self.nterm is not None:
+            X[self.nterm.int_value()] = 1
+        offset += k_ftypes
+
+        if self.cterm is not None:
+            X[offset + self.cterm.int_value()] = 1
+        offset += k_ftypes
+
+        if self._is_assigned:
+            X[offset + self.series.int_value()] = 1
+        offset += k_series
+
+        # track the unassigned placeholder observation separately
+        X[offset] = int(not self._is_assigned)
+        offset += k_unassigned
+
+        # use charge - 1 because there is no 0 charge
+        if self._is_backbone:
+            X[offset + (self.charge - 1)] = 1
+        offset += k_charge
+
+        if self._is_assigned:
+            index = (self.series.int_value() * k_charge) + (self.charge - 1)
+            X[offset + index] = 1
+        offset += k_charge_series
+
+        # non-stub ion glycosylation
+        if self._is_backbone:
+            X[offset + PyInt_AsLong(
+                int(self.peak_pair.fragment.glycosylation_size))] = 1
+        offset += k_glycosylated
+        return X, offset
+
+
+@cython.binding(True)
+cpdef np.ndarray[feature_dtype_t, ndim=2] encode_classification(cls, list classification):
+    cdef:
+        size_t i, n, j, k
+        _FragmentType row
+        np.npy_intp[2] knd
+        np.ndarray[feature_dtype_t, ndim=1] features
+        np.ndarray[feature_dtype_t, ndim=2] X
+
+    n = PyList_GET_SIZE(classification)
+    if n == 0:
+        k = 0
+        knd[0] = n
+        knd[1] = k
+        return np.PyArray_ZEROS(2, knd, np.NPY_UINT8, 0)
+    i = 0
+    row = <_FragmentType>PyList_GET_ITEM(classification, i)
+    features = row.as_feature_vector()
+    k = row.get_feature_count()
+    knd[0] = n
+    knd[1] = k
+    X = np.PyArray_ZEROS(2, knd, np.NPY_UINT8, 0)
+    for j in range(k):
+        X[i, j] = features[j]
+    for i in range(1, n):
+        row = <_FragmentType>PyList_GET_ITEM(classification, i)
+        features = row.as_feature_vector()
+        for j in range(k):
+            X[i, j] = features[j]
+    return X
 
 @cython.binding(True)
 cpdef from_peak_peptide_fragment_pair(cls, PeakFragmentPair peak_fragment_pair, _PeptideSequenceCore structure):
@@ -288,58 +364,6 @@ def build_fragment_intensity_matches(cls, gpsm):
     ft = cls(None, None, FragmentSeriesClassification_unassigned, 0, 0, None, None)
     fragment_classification.append(ft)
     return fragment_classification, intensities, total
-
-
-@cython.binding(True)
-def FragmentType_build_feature_vector(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
-    cdef:
-        Py_ssize_t k_ftypes, k_series, k_unassigned, k_charge
-        Py_ssize_t k_charge_series, k_glycosylated, k, index
-
-    k_ftypes = (FragmentTypeClassification_max + 1)
-    k_series = (FragmentSeriesClassification_max + 1)
-    k_unassigned = 1
-    k_charge = FragmentCharge_max + 1
-    k_charge_series = k_charge * k_series
-
-    k_glycosylated = BackboneFragment_max_glycosylation_size + 1
-
-    k = (
-        (k_ftypes * 2) + k_series + k_unassigned + k_charge + k_charge_series +
-        k_glycosylated)
-
-    if self.nterm is not None:
-        X[self.nterm.int_value()] = 1
-    offset += k_ftypes
-
-    if self.cterm is not None:
-        X[offset + self.cterm.int_value()] = 1
-    offset += k_ftypes
-
-    if self._is_assigned:
-        X[offset + self.series.int_value()] = 1
-    offset += k_series
-
-    # track the unassigned placeholder observation separately
-    X[offset] = int(not self._is_assigned)
-    offset += k_unassigned
-
-    # use charge - 1 because there is no 0 charge
-    if self._is_backbone:
-        X[offset + (self.charge - 1)] = 1
-    offset += k_charge
-
-    if self._is_assigned:
-        index = (self.series.int_value() * k_charge) + (self.charge - 1)
-        X[offset + index] = 1
-    offset += k_charge_series
-
-    # non-stub ion glycosylation
-    if self._is_backbone:
-        X[offset + PyInt_AsLong(
-            int(self.peak_pair.fragment.glycosylation_size))] = 1
-    offset += k_glycosylated
-    return X, offset
 
 
 @cython.binding(True)

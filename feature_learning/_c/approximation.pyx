@@ -1,13 +1,26 @@
-import pkg_resources
-
+# cython: embedsignature=True
+# distutils: include_dirs = C:\Users\Asus\Miniconda2\lib\site-packages\numpy\core\include
+cimport cython
 import numpy as np
+cimport numpy as np
+
+np.import_array()
 
 from matplotlib import pyplot as plt
 
 
-# derived from statsmodels
+@cython.boundscheck(False)
+cdef size_t position_before(double[:] x, double val) nogil:
+    cdef:
+        size_t i, n
+    n = x.shape[0]
+    for i in range(n):
+        if x[i] > val:
+            return i
+    return 0
 
-class StepFunction(object):
+
+cdef class StepFunction(object):
     """
     A basic step function.
 
@@ -49,7 +62,6 @@ class StepFunction(object):
     >>> print(f2(3.0))
     3.0
     """
-
     def __init__(self, x, y, ival=0., sorted=False, side='left'):
 
         if side.lower() not in ['right', 'left']:
@@ -67,24 +79,34 @@ class StepFunction(object):
             msg = 'x and y must be 1-dimensional'
             raise ValueError(msg)
 
-        self.x = np.r_[-np.inf, _x]
-        self.y = np.r_[ival, _y]
-        self.ival = ival
+        self.x = self._npx = np.r_[-np.inf, _x]
+        self.y = self._npy = np.r_[ival, _y]
 
         if not sorted:
             asort = np.argsort(self.x)
-            self.x = np.take(self.x, asort, 0)
-            self.y = np.take(self.y, asort, 0)
+            self._npx = np.take(self.x, asort, 0)
+            self.x = self._npx
+            self._npy = np.take(self.y, asort, 0)
+            self.y = self._npy
         self.n = self.x.shape[0]
 
-    def __call__(self, time):
-        tind = np.searchsorted(self.x, time, self.side) - 1
-        return self.y[tind]
+    @cython.nonecheck(False)
+    cpdef scalar_or_array interpolate(self, scalar_or_array xval):
+        if scalar_or_array is not size_t:
+            return self._npy[np.searchsorted(self.x, xval, self.side) - 1]
+        else:
+            return self.interpolate_scalar(xval)
+
+    cdef double interpolate_scalar(self, double xval) nogil:
+        return self.y[position_before(self.x, xval) - 1]
+
+    def __call__(self, xval):
+        return self.interpolate(xval)
 
     def plot(self, ax=None):
         if ax is None:
             fig, ax = plt.subplots(1)
-        x = np.linspace(self.x[1:].min(), self.x.max())
+        x = np.linspace(np.array(self.x)[1:].min(), np.array(self.x).max())
         ax.plot(x, self(x))
         return ax
 
@@ -96,14 +118,7 @@ class StepFunction(object):
         return not (self == other)
 
 
-try:
-    _StepFunction = StepFunction
-    from feature_learning._c.approximation import StepFunction
-except ImportError:
-    pass
-
-
-class ECDF(StepFunction):
+cdef class ECDF(StepFunction):
     """
     Return the Empirical CDF of an array as a step function.
 
@@ -135,22 +150,3 @@ class ECDF(StepFunction):
         nobs = len(x)
         y = np.linspace(1. / nobs, 1, nobs)
         super(ECDF, self).__init__(x, y, side=side, sorted=True)
-
-
-try:
-    _ECDF = ECDF
-    from feature_learning._c.approximation import ECDF
-except ImportError:
-    pass
-
-
-class ESF(ECDF):
-    def __call__(self, time):
-        tind = np.searchsorted(self.x, time, self.side) - 1
-        return 1 - self.y[tind]
-
-
-PearsonResidualCDF = ECDF(
-    np.loadtxt(
-        pkg_resources.resource_stream(
-            __name__, "data/pearson.txt")))

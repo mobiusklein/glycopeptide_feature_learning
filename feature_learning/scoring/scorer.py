@@ -101,23 +101,7 @@ class _ModelPredictionCachingBase(object):
         return reliability
 
 
-class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, _ModelPredictionCachingBase):
-
-    def __init__(self, scan, sequence, mass_shift=None, model_fit=None, partition=None):
-        super(MultinomialRegressionScorer, self).__init__(scan, sequence, mass_shift)
-        self.structure = self.target
-        self.model_fit = model_fit
-        self.partition = partition
-        self.error_tolerance = None
-        self._init_cache()
-
-    def __reduce__(self):
-        return self.__class__, (self.scan, self.target, self.mass_shift, self.model_fit, self.partition)
-
-    def match(self, error_tolerance=2e-5, *args, **kwargs):
-        self.error_tolerance = error_tolerance
-        return super(MultinomialRegressionScorer, self).match(
-            error_tolerance=error_tolerance, *args, **kwargs)
+class MultinomialRegressionScorerBase(_ModelPredictionCachingBase):
 
     def _calculate_pearson_residuals(self, use_reliability=True, base_reliability=0.5):
         r"""Calculate the raw Pearson residuals of the Multinomial model
@@ -299,6 +283,38 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, _ModelPredicti
             coverage = 0.0
         return coverage
 
+    def glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
+                     coverage_weight=0.5, **kwargs):
+        if self._glycan_score is None:
+            self._glycan_score = self.calculate_glycan_score(
+                error_tolerance, use_reliability, base_reliability, core_weight, coverage_weight, **kwargs)
+        return self._glycan_score
+
+    def peptide_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, **kwargs):
+        if self._peptide_score is None:
+            self._peptide_score = self.calculate_peptide_score(
+                error_tolerance, use_reliability, base_reliability, **kwargs)
+        return self._peptide_score
+
+    def __reduce__(self):
+        return self.__class__, (self.scan, self.target, self.mass_shift, self.model_fit, self.partition)
+
+
+class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, MultinomialRegressionScorerBase):
+
+    def __init__(self, scan, sequence, mass_shift=None, model_fit=None, partition=None):
+        super(MultinomialRegressionScorer, self).__init__(scan, sequence, mass_shift)
+        self.structure = self.target
+        self.model_fit = model_fit
+        self.partition = partition
+        self.error_tolerance = None
+        self._init_cache()
+
+    def match(self, error_tolerance=2e-5, *args, **kwargs):
+        self.error_tolerance = error_tolerance
+        return super(MultinomialRegressionScorer, self).match(
+            error_tolerance=error_tolerance, *args, **kwargs)
+
     def calculate_glycan_score(self, use_reliability=True, base_reliability=0.5, core_weight=0.4, coverage_weight=0.6):
         c, intens, t, yhat = self._get_predicted_intensities()
         if self.model_fit.reliability_model is None or not use_reliability:
@@ -383,19 +399,6 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, _ModelPredicti
         peptide_score *= coverage_score
         return peptide_score
 
-    def glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
-                     coverage_weight=0.5, **kwargs):
-        if self._glycan_score is None:
-            self._glycan_score = self.calculate_glycan_score(
-                error_tolerance, use_reliability, base_reliability, core_weight, coverage_weight, **kwargs)
-        return self._glycan_score
-
-    def peptide_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, **kwargs):
-        if self._peptide_score is None:
-            self._peptide_score = self.calculate_peptide_score(
-                error_tolerance, use_reliability, base_reliability, **kwargs)
-        return self._peptide_score
-
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
                         glycosylated_weight=None, stub_weight=None,
                         use_reliability=True, base_reliability=0.5,
@@ -470,7 +473,7 @@ class _ModelMixtureBase(object):
             [fn(self, *args, **kwargs) for _ in self._iter_model_fits()])
 
 
-class MultinomialRegressionMixtureScorer(MultinomialRegressionScorer, _ModelMixtureBase):
+class MultinomialRegressionMixtureScorer(_ModelMixtureBase, MultinomialRegressionScorer):
 
     def __init__(self, scan, sequence, mass_shift=None, model_fits=None, partition=None, power=4):
         super(MultinomialRegressionMixtureScorer, self).__init__(
@@ -653,7 +656,6 @@ class SplitScorer(MultinomialRegressionScorer):
         peptide_score = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6)
         if np.all(np.isnan(peptide_score)):
             peptide_score = 0.0
-
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
         # peptide backbone coverage without separate term for glycosylation site parsimony
         n_term_ions, c_term_ions = self._compute_coverage_vectors()[:2]
@@ -745,7 +747,7 @@ class SplitScorer(MultinomialRegressionScorer):
         return score
 
 
-class MixtureSplitScorer(SplitScorer, _ModelMixtureBase):
+class MixtureSplitScorer(_ModelMixtureBase, SplitScorer):
     def __init__(self, scan, sequence, mass_shift=None, model_fits=None, partition=None, power=4):
         super(MixtureSplitScorer, self).__init__(
             scan, sequence, mass_shift, model_fit=model_fits[0], partition=partition)
@@ -822,13 +824,13 @@ class PartialSplitScorer(SplitScorer):
         return max(glycan_score, 0)
 
 
-class MixturePartialSplitScorer(PartialSplitScorer, _ModelMixtureBase):
+class MixturePartialSplitScorer(_ModelMixtureBase, PartialSplitScorer):
     def __init__(self, scan, sequence, mass_shift=None, model_fits=None, partition=None, power=4):
         super(MixturePartialSplitScorer, self).__init__(
             scan, sequence, mass_shift, model_fit=model_fits[0], partition=partition)
         self.model_fits = list(model_fits)
         self.power = power
-        self._feature_cache = self._init_cache()
+        self._init_cache()
         self.mixture_coefficients = None
 
     def __reduce__(self):

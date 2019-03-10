@@ -15,14 +15,14 @@ def make_extensions():
         print("Installation requires `numpy`")
         raise
     try:
-        import brainpy
+        import ms_deisotope
     except ImportError:
-        print("Installation requires `brainpy`, install with `python -m pip install brain-isotopic-distribution`")
+        print("Installation requires `ms_deisotope`, install with `python -m pip install brain-isotopic-distribution`")
         raise
     try:
-        import ms_peak_picker
+        import glycopeptidepy
     except ImportError:
-        print("Installation requires `ms_peak_picker`")
+        print("Installation requires `glycopeptidepy`")
         raise
     from Cython.Build import cythonize
     cython_directives = {
@@ -31,9 +31,21 @@ def make_extensions():
     }
     extensions = cythonize([
         Extension(name='feature_learning._c.data_source', sources=["feature_learning/_c/data_source.pyx"],
-                  include_dirs=[brainpy.get_include(), ms_peak_picker.get_include(), numpy.get_include()]),
+                  include_dirs=[numpy.get_include()]),
         Extension(name='feature_learning._c.peak_relations', sources=["feature_learning/_c/peak_relations.pyx"],
-                  include_dirs=[brainpy.get_include(), ms_peak_picker.get_include(), numpy.get_include()]),
+                  include_dirs=[numpy.get_include()]),
+        Extension(name='feature_learning._c.amino_acid_classification',
+                  sources=["feature_learning/_c/amino_acid_classification.pyx"],
+                  include_dirs=[numpy.get_include()]),
+        Extension(name='feature_learning._c.approximation',
+                  sources=["feature_learning/_c/approximation.pyx"],
+                  include_dirs=[numpy.get_include()]),
+        Extension(name='feature_learning._c.model_types',
+                  sources=["feature_learning/_c/model_types.pyx"],
+                  include_dirs=[numpy.get_include()]),
+        Extension(name='feature_learning._c.scoring.scorer',
+                  sources=["feature_learning/_c/scoring/scorer.pyx"],
+                  include_dirs=[numpy.get_include()]),
     ], compiler_directives=cython_directives)
     return extensions
 
