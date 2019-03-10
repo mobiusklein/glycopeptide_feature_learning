@@ -43,8 +43,8 @@ def make_extensions():
         Extension(name='feature_learning._c.model_types',
                   sources=["feature_learning/_c/model_types.pyx"],
                   include_dirs=[numpy.get_include()]),
-        Extension(name='feature_learning._c.scoring.scorer',
-                  sources=["feature_learning/_c/scoring/scorer.pyx"],
+        Extension(name='feature_learning.scoring._c.scorer',
+                  sources=["feature_learning/scoring/_c/scorer.pyx"],
                   include_dirs=[numpy.get_include()]),
     ], compiler_directives=cython_directives)
     return extensions

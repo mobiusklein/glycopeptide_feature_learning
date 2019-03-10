@@ -6,6 +6,8 @@ from glycopeptidepy import IonSeries
 
 from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial import (
     CoverageWeightedBinomialScorer)
+from glycan_profiling.tandem.glycopeptide.scoring.simple_score import SignatureAwareCoverageScorer
+from glycan_profiling.tandem.glycopeptide.scoring.precursor_mass_accuracy import MassAccuracyMixin
 
 from feature_learning.multinomial_regression import (
     PearsonResidualCDF, least_squares_scale_coefficient)
@@ -101,7 +103,7 @@ class _ModelPredictionCachingBase(object):
         return reliability
 
 
-class MultinomialRegressionScorerBase(_ModelPredictionCachingBase):
+class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyMixin):
 
     def _calculate_pearson_residuals(self, use_reliability=True, base_reliability=0.5):
         r"""Calculate the raw Pearson residuals of the Multinomial model
@@ -605,7 +607,7 @@ class NaivePredicateTreeWithoutReliability(NaivePredicateTree):
     _short_peptide_scorer_type = ShortPeptideNaiveScorerWithoutReliability
 
 
-class SplitScorer(MultinomialRegressionScorer):
+class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer):
 
     _glycan_score = None
     _peptide_score = None
@@ -616,8 +618,12 @@ class SplitScorer(MultinomialRegressionScorer):
         self.model_fit = model_fit
         self.partition = partition
         self.error_tolerance = None
-        self._cached_model = None
-        self._cached_transform = None
+        self._init_cache()
+
+    def match(self, error_tolerance=2e-5, *args, **kwargs):
+        self.error_tolerance = error_tolerance
+        return super(SplitScorer, self).match(
+            error_tolerance=error_tolerance, *args, **kwargs)
 
     def calculate_peptide_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5,
                                 coverage_weight=1.0, *args, **kwargs):
@@ -659,7 +665,7 @@ class SplitScorer(MultinomialRegressionScorer):
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
         # peptide backbone coverage without separate term for glycosylation site parsimony
         n_term_ions, c_term_ions = self._compute_coverage_vectors()[:2]
-        coverage_score = ((n_term_ions + c_term_ions[::-1])).sum() / float(self.n_theoretical)
+        coverage_score = ((n_term_ions + c_term_ions[::-1])).sum() / (2.0 * (len(self.target) - 1))
         # the 0.17 term ensures that the maximum value of the -log10 transform of the cdf is
         # mapped to approximately 1.0 (1.02). The maximum value is guaranteed to 6.0 because
         # the minimum value returned from the CDF is 0 + 1e-6 padding, which maps to 6.
@@ -707,19 +713,6 @@ class SplitScorer(MultinomialRegressionScorer):
             0.17 * stub_component)).sum()) * coverage + oxonium_component
         return max(glycan_score, 0)
 
-    def glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
-                     coverage_weight=0.5, **kwargs):
-        if self._glycan_score is None:
-            self._glycan_score = self.calculate_glycan_score(
-                error_tolerance, use_reliability, base_reliability, core_weight, coverage_weight, **kwargs)
-        return self._glycan_score
-
-    def peptide_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, **kwargs):
-        if self._peptide_score is None:
-            self._peptide_score = self.calculate_peptide_score(
-                error_tolerance, use_reliability, base_reliability, **kwargs)
-        return self._peptide_score
-
     def _localization_score(self, glycosylated_weight=1.0, **kwargs):
         (n_term, c_term, stub_count,
          glycosylated_n_term_ions, glycosylated_c_term_ions) = self._compute_coverage_vectors()
@@ -747,13 +740,21 @@ class SplitScorer(MultinomialRegressionScorer):
         return score
 
 
+try:
+    from feature_learning.scoring._c.scorer import (calculate_peptide_score, _calculate_pearson_residuals)
+    SplitScorer.calculate_peptide_score = calculate_peptide_score
+    MultinomialRegressionScorerBase._calculate_pearson_residuals = _calculate_pearson_residuals
+except ImportError as err:
+    print(err)
+
+
 class MixtureSplitScorer(_ModelMixtureBase, SplitScorer):
     def __init__(self, scan, sequence, mass_shift=None, model_fits=None, partition=None, power=4):
         super(MixtureSplitScorer, self).__init__(
             scan, sequence, mass_shift, model_fit=model_fits[0], partition=partition)
         self.model_fits = list(model_fits)
         self.power = power
-        self._feature_cache = self._init_cache()
+        self._init_cache()
         self.mixture_coefficients = None
 
     def __reduce__(self):

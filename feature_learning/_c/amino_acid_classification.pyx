@@ -120,8 +120,7 @@ cpdef EnumValue classify_residue_frank(residue):
         return <EnumValue>result
 
 
-@memoize.memoize(10000)
-def classify_amide_bond_frank(AminoAcidResidueBase n_term, AminoAcidResidueBase c_term):
+cdef tuple _classify_amide_bond_frank(AminoAcidResidueBase n_term, AminoAcidResidueBase c_term):
     if n_term == Proline:
         return AminoAcidClassification_pro, AminoAcidClassification_x
     elif c_term == Proline:
@@ -153,3 +152,36 @@ def classify_amide_bond_frank(AminoAcidResidueBase n_term, AminoAcidResidueBase 
         return AminoAcidClassification_x, AminoAcidClassification_his
 
     return AminoAcidClassification_x, AminoAcidClassification_x
+
+
+cdef dict build_frank_amide_bond_classifier():
+    cdef:
+        dict result
+        set residues
+        AminoAcidResidueBase res, res2
+        tuple key
+    result = {}
+    residues = residue.get_all_residues()
+
+    for res in residues:
+        for res2 in residues:
+            key = (res, res2)
+            result[key] = _classify_amide_bond_frank(res, res2)
+    return result
+
+
+cdef dict frank_amide_bond_classifier = build_frank_amide_bond_classifier()
+
+
+cpdef tuple classify_amide_bond_frank(residue, residue2):
+    cdef:
+        tuple key
+        PyObject* result
+
+    key = (residue, residue2)
+    result = PyDict_GetItem(frank_amide_bond_classifier, key)
+    if result == NULL:
+        return AminoAcidClassification_x, AminoAcidClassification_x
+    else:
+        return <tuple>result
+    

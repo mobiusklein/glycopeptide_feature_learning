@@ -18,8 +18,6 @@ from .common import (
 
 from ms_deisotope import DeconvolutedPeakSet
 
-from glycan_profiling.structure.fragment_match_map import PeakFragmentPair
-
 
 # Lacking a reasonable definition of the "space between fragmentation sites"
 SMALLEST_UNIT = 1000 * 2e-5
@@ -461,11 +459,6 @@ try:
     LinkFeature.is_valid_match = LinkFeature_is_valid_match
 except ImportError as err:
     print(err)
-# try:
-#     _LinkFeature = LinkFeature
-#     from feature_learning._c.peak_relations import LinkFeature
-# except ImportError as err:
-#     print(err)
 
 
 class PeakRelation(object):

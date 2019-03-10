@@ -9,6 +9,7 @@ from scipy.stats import norm
 from scipy.linalg import solve_triangular, cho_solve
 
 from glypy.utils import Enum
+from glypy.structure.glycan_composition import FrozenMonosaccharideResidue
 from glycopeptidepy.structure.fragment import IonSeries
 
 from glycan_profiling.structure.fragment_match_map import PeakFragmentPair
@@ -476,11 +477,14 @@ except ImportError as err:
     print(err)
 
 
+_FUC = FrozenMonosaccharideResidue.from_iupac_lite("Fuc")
+
+
 class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
     def encode_stub_fucosylation(self, X, offset):
         k = 2
         if self.is_stub_glycopeptide():
-            i = int(self.peak_pair.fragment.glycosylation['Fuc'] > 0)
+            i = int(self.peak_pair.fragment.glycosylation._getitem_fast(_FUC) > 0)
             X[offset + i] = 1
         offset += k
         return X, offset
@@ -496,6 +500,13 @@ class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
         for i in range(2):
             names.append("stub glycopeptide:is_fucosylated %r" % (i))
         return names
+
+
+try:
+    from feature_learning._c.model_types import encode_stub_fucosylation
+    StubGlycopeptideFucosylationModel.encode_stub_fucosylation = encode_stub_fucosylation
+except ImportError as err:
+    print(err)
 
 
 class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
@@ -522,18 +533,17 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
     def encode_neighboring_residues(self, X, offset):
         k_ftypes = (FragmentTypeClassification_max + 1)
 
-        for _ in range(1, self.bond_offset_depth + 1):
-            if self.is_backbone():
-                nterm = self.get_nterm_neighbor(self.bond_offset_depth)
+        if self.is_backbone():
+            for i in range(1, self.bond_offset_depth + 1):
+                nterm = self.get_nterm_neighbor(i)
                 if nterm is not None:
                     X[offset + nterm.value] = 1
-            offset += k_ftypes
-        for _ in range(1, self.bond_offset_depth + 1):
-            if self.is_backbone():
-                cterm = self.get_cterm_neighbor(self.bond_offset_depth)
+                offset += k_ftypes
+            for i in range(1, self.bond_offset_depth + 1):
+                cterm = self.get_cterm_neighbor(i)
                 if cterm is not None:
                     X[offset + cterm.value] = 1
-            offset += k_ftypes
+                offset += k_ftypes
         return X, offset
 
     def build_feature_vector(self, X, offset):
@@ -673,8 +683,11 @@ class StubChargeModel(CleavageSiteCenterDistanceModel):
 
 
 try:
-    from feature_learning._c.model_types import encode_stub_charge
+    from feature_learning._c.model_types import (
+        encode_stub_charge,
+        StubChargeModel_build_feature_vector)
     StubChargeModel.encode_stub_charge = encode_stub_charge
+    StubChargeModel.build_feature_vector = StubChargeModel_build_feature_vector
 except ImportError as err:
     print(err)
 

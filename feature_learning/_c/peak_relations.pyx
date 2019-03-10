@@ -241,7 +241,8 @@ cdef class MassOffsetFeature(FeatureBase):
 
 
 @cython.binding(True)
-cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak, FragmentMatchMap solution_map, structure=None):
+cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
+                                      FragmentMatchMap solution_map, structure=None):
     cdef:
         bint is_peak_expected, validated_aa
         list matched_fragments, flanking_amino_acids
@@ -283,9 +284,7 @@ cdef class FittedFeatureBase(object):
 
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=None):
-        print("Calling FittedFeatureBase.find_matches")
         result = self.feature.find_matches(peak, peak_list, structure)
-        print(len(result))
         return result
 
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
@@ -365,7 +364,7 @@ cdef class FragmentationModelBase(object):
             if fragment.get_series().name != self.series.name:
                 continue
             for i in range(n):
-                feature = <FragmentationFeatureBase?>PyList_GET_ITEM(self.feature_table, i)
+                feature = <FragmentationFeatureBase>PyList_GET_ITEM(self.feature_table, i)
                 rels = feature.find_matches(peak, deconvoluted_peak_set, structure)
                 k = PyList_GET_SIZE(rels)
                 for j in range(k):
@@ -428,13 +427,26 @@ cdef class FragmentationModelBase(object):
         return (gamma * a) / ((gamma * a) + ((1 - gamma) * b))
 
 
+cdef list get_item_default_list(dict d, object key):
+    cdef:
+        PyObject* ptemp
+        list result
+    ptemp = PyDict_GetItem(d, key)
+    if ptemp == NULL:
+        result = []
+        PyDict_SetItem(d, key, result)
+        return result
+    result = <list>ptemp
+    return result
+
+
 cdef class FragmentationModelCollectionBase(object):
     cdef:
         public dict models
 
-    cpdef find_matches(self, scan, FragmentMatchMap solution_map, structure):
+    cpdef dict find_matches(self, scan, FragmentMatchMap solution_map, structure):
         cdef:
-            object match_to_features
+            dict match_to_features, models
             DeconvolutedPeakSet deconvoluted_peak_set
 
             PeakFragmentPair peak_fragment
@@ -452,32 +464,38 @@ cdef class FragmentationModelCollectionBase(object):
             PyObject* ptemp
             size_t i, n, j, k
 
-        match_to_features = defaultdict(list)
+        # match_to_features = defaultdict(list)
+        match_to_features = dict()
         deconvoluted_peak_set = scan.deconvoluted_peak_set
+        models = self.models
         for obj in solution_map.members:
             peak_fragment = <PeakFragmentPair>obj
             peak = peak_fragment.peak
             fragment = peak_fragment.fragment
 
-            ptemp = PyDict_GetItem(self.models, fragment.get_series())
+            ptemp = PyDict_GetItem(models, fragment.get_series())
             if ptemp == NULL:
                 continue
             model = <FragmentationModelBase>ptemp
             n = model.get_size()
             for i in range(n):
-                feature = <FragmentationFeatureBase?>PyList_GET_ITEM(model.feature_table, i)
+                feature = <FragmentationFeatureBase>PyList_GET_ITEM(model.feature_table, i)
                 rels = feature.find_matches(peak, deconvoluted_peak_set, structure)
                 k = PyList_GET_SIZE(rels)
                 for j in range(k):
                     rel = <PeakRelation>PyList_GET_ITEM(rels, j)
                     if feature.is_valid_match(rel.from_peak, rel.to_peak, solution_map, structure):
-                        match_to_features[rel.from_peak].append(rel)
-                        match_to_features[rel.to_peak].append(rel)
+                        PyList_Append(
+                            get_item_default_list(match_to_features, rel.from_peak),
+                            rel)
+                        PyList_Append(
+                            get_item_default_list(match_to_features, rel.to_peak),
+                            rel)
         return match_to_features
 
     cpdef dict score(self, scan, FragmentMatchMap solution_map, structure):
         cdef:
-            object match_to_features
+            dict match_to_features
 
             PeakFragmentPair peak_fragment
             PeakRelation rel
@@ -491,26 +509,32 @@ cdef class FragmentationModelCollectionBase(object):
             
             list features
             dict fragment_probabilities
+            dict models
 
             PyObject* ptemp
             size_t i, n, j, k
-
+        models = self.models
         match_to_features = self.find_matches(scan, solution_map, structure)
         fragment_probabilities = {}
         for obj in solution_map.members:
             peak_fragment = <PeakFragmentPair>obj
             peak = peak_fragment.peak
-            fragment = peak_fragment.fragment
+            fragment = <FragmentBase>peak_fragment.fragment
 
-            features = match_to_features[peak]
-            ptemp = PyDict_GetItem(self.models, fragment.get_series())
+            ptemp = PyDict_GetItem(models, fragment.get_series())
             if ptemp == NULL:
                 continue
             model = <FragmentationModelBase>ptemp
 
-            features = match_to_features[pair.peak]
-            fragment_probabilities[peak_fragment] = model._score_peak(
-                peak, features, solution_map, structure)
+            ptemp = PyDict_GetItem(match_to_features, peak)
+            if ptemp == NULL:
+                features = []
+            else:
+                features = <list>ptemp
+            PyDict_SetItem(
+                fragment_probabilities,
+                peak_fragment,
+                model._score_peak(peak, features, solution_map, structure))
         return fragment_probabilities
 
 

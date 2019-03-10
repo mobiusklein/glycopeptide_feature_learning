@@ -59,3 +59,6 @@ cpdef EnumValue get_nterm_neighbor(_FragmentType self, int offset=*)
 cpdef EnumValue get_cterm_neighbor(_FragmentType self, int offset=*)
 
 cpdef int get_cleavage_site_distance_from_center(_FragmentType self)
+
+
+cpdef list classify_sequence_by_residues(_PeptideSequenceCore sequence)

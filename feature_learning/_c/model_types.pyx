@@ -27,6 +27,7 @@ from glycopeptidepy._c.structure.fragment cimport PeptideFragment, FragmentBase,
 
 from glypy.utils.enum import Enum
 from glypy.utils.cenum cimport EnumValue, IntEnumValue, EnumMeta
+from glypy.structure.glycan_composition import FrozenMonosaccharideResidue
 
 from glycopeptidepy.structure.fragment import IonSeries
 
@@ -203,6 +204,7 @@ cdef class _FragmentType(object):
         self.build_feature_vector(X, offset)
         return X
 
+    @cython.boundscheck(False)
     cpdef build_feature_vector(self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
         cdef:
             Py_ssize_t k_ftypes, k_series, k_unassigned, k_charge
@@ -255,6 +257,7 @@ cdef class _FragmentType(object):
 
 
 @cython.binding(True)
+@cython.boundscheck(False)
 cpdef np.ndarray[feature_dtype_t, ndim=2] encode_classification(cls, list classification):
     cdef:
         size_t i, n, j, k
@@ -292,7 +295,9 @@ cpdef from_peak_peptide_fragment_pair(cls, PeakFragmentPair peak_fragment_pair, 
         FragmentBase fragment
     peak = peak_fragment_pair.peak
     fragment = peak_fragment_pair.fragment
-    nterm, cterm = classify_amide_bond_frank(*fragment.flanking_amino_acids)
+    residue = <object>PyList_GET_ITEM(fragment.flanking_amino_acids, 0)
+    residue2 = <object>PyList_GET_ITEM(fragment.flanking_amino_acids, 1)
+    nterm, cterm = classify_amide_bond_frank(residue, residue2)
     glycosylation = fragment.is_glycosylated
     inst = cls(
         nterm, cterm, FragmentSeriesClassification[fragment.get_series().name],
@@ -366,17 +371,31 @@ def build_fragment_intensity_matches(cls, gpsm):
     return fragment_classification, intensities, total
 
 
-@cython.binding(True)
-cpdef EnumValue get_nterm_neighbor(_FragmentType self, int offset=1):
-    cdef:
-        int index
-    index = get_nterm_index_from_fragment(<PeptideFragment>self.get_fragment(), self.sequence)
-    index -= offset
+cdef EnumValue _get_nterm_neighbor_fast(_FragmentType self, int offset, int index):
+    index = index - offset
     if index < 0:
         return None
     else:
         residue = self.sequence.get(index).amino_acid
         return classify_residue_frank(residue)
+
+
+@cython.binding(True)
+cpdef EnumValue get_nterm_neighbor(_FragmentType self, int offset=1):
+    cdef:
+        int index
+    index = get_nterm_index_from_fragment(<PeptideFragment>self.get_fragment(), self.sequence)
+    return _get_nterm_neighbor_fast(self, offset, index)
+
+
+cdef EnumValue _get_cterm_neighbor_fast(_FragmentType self, int offset, int index):
+    index = index + offset
+    if index > self.sequence.get_size() - 1:
+        return None
+    else:
+        residue = self.sequence.get(index).amino_acid
+        return classify_residue_frank(residue)
+
 
 @cython.binding(True)
 cpdef EnumValue get_cterm_neighbor(_FragmentType self, int offset=1):
@@ -391,32 +410,35 @@ cpdef EnumValue get_cterm_neighbor(_FragmentType self, int offset=1):
         return classify_residue_frank(residue)
 
 @cython.binding(True)
+@cython.boundscheck(False)
 def encode_neighboring_residues(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
-        Py_ssize_t k_ftypes, k, start
-        long bond_offset_depth
+        Py_ssize_t k_ftypes, k, i
+        long bond_offset_depth, index
         EnumValue nterm, cterm
 
     bond_offset_depth = PyInt_AsLong(self.bond_offset_depth)
     k_ftypes = (FragmentTypeClassification_max + 1)
     k = (k_ftypes * 2) * bond_offset_depth
 
-    for _ in range(1, bond_offset_depth + 1):
-        if self._is_backbone:
-            nterm = get_nterm_neighbor(self, bond_offset_depth)
+    if self._is_backbone:
+        index = index = get_nterm_index_from_fragment(<PeptideFragment>self.get_fragment(), self.sequence)
+        for i in range(1, bond_offset_depth + 1):
+            nterm = _get_nterm_neighbor_fast(self, i, index)
             if nterm is not None:
                 X[offset + nterm.int_value()] = 1
-        offset += k_ftypes
-    for _ in range(1, bond_offset_depth + 1):
-        if self._is_backbone:
-            cterm = get_cterm_neighbor(self, bond_offset_depth)
+            offset += k_ftypes
+        index = index = get_cterm_index_from_fragment(<PeptideFragment>self.get_fragment(), self.sequence)
+        for i in range(1, bond_offset_depth + 1):
+            cterm = _get_cterm_neighbor_fast(self, i, index)
             if cterm is not None:
                 X[offset + cterm.int_value()] = 1
-        offset += k_ftypes
+            offset += k_ftypes
     return X, offset
 
 
 @cython.binding(True)
+@cython.boundscheck(False)
 def specialize_proline(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
         Py_ssize_t k_charge_cterm_pro, k_series_cterm_pro, k_glycosylated_proline
@@ -444,6 +466,7 @@ def specialize_proline(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X
 
 
 @cython.binding(True)
+@cython.boundscheck(False)
 def encode_stub_information(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
         Py_ssize_t k_glycosylated_stubs, k_sequence_composition_stubs
@@ -475,18 +498,35 @@ def encode_stub_information(_FragmentType self, np.ndarray[feature_dtype_t, ndim
     return X, offset
 
 
+cdef object _FUC = FrozenMonosaccharideResidue.from_iupac_lite("Fuc")
+
+@cython.boundscheck(False)
+@cython.binding(True)
+def encode_stub_fucosylation(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+    cdef:
+        int k, i
+    k = 2
+    if self._is_stub_glycopeptide:
+        i = PyInt_AsLong(self.peak_pair.fragment.glycosylation._getitem_fast(_FUC)) > 0
+        X[offset + i] = 1
+    offset += k
+    return X, offset
+
+
+
 @cython.binding(True)
 cpdef int get_cleavage_site_distance_from_center(_FragmentType self):
     cdef:
         int index, center
         size_t seq_size
-    index = get_cterm_index_from_fragment(self.get_fragment(), self.sequence)
+    index = get_cterm_index_from_fragment(<PeptideFragment>self.get_fragment(), self.sequence)
     seq_size = self.sequence.get_size()
     center = (seq_size / 2)
     return abs(center - index)
 
 
 @cython.binding(True)
+@cython.boundscheck(False)
 def encode_cleavage_site_distance_from_center(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
         Py_ssize_t k_distance, k_series, k
@@ -506,6 +546,7 @@ def encode_cleavage_site_distance_from_center(_FragmentType self, np.ndarray[fea
 
 
 @cython.binding(True)
+@cython.boundscheck(False)
 def encode_stub_charge(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
         Py_ssize_t k_glycosylated_stubs, k_stub_charges, k_glycosylated_stubs_x_charge
@@ -526,7 +567,57 @@ def encode_stub_charge(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X
     offset += k_glycosylated_stubs_x_charge
     return X, offset
 
-def classify_sequence_by_residues(_PeptideSequenceCore sequence):
+
+cdef:
+    object _specialize_proline = specialize_proline
+    object _encode_stub_information = encode_stub_information
+    object _encode_stub_fucosylation = encode_stub_fucosylation
+    object _encode_neighboring_residues = encode_neighboring_residues
+    object _encode_cleavage_site_distance_from_center = encode_cleavage_site_distance_from_center
+    object _encode_stub_charge = encode_stub_charge
+
+
+@cython.binding(True)
+@cython.boundscheck(False)
+def StubChargeModel_build_feature_vector(_FragmentType self, X, offset):
+    # X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
+    # X, offset = self.encode_stub_charge(X, offset)
+
+    # Directly invoke feature vector construction because super() costs too much
+    # in a tight loop
+    cdef:
+        tuple out
+    out = <tuple>_FragmentType.build_feature_vector(self, X, offset)
+    X = <object>PyTuple_GetItem(out, 0)
+    offset = <object>PyTuple_GetItem(out, 1)
+    
+    out = <tuple>_specialize_proline(self, X, offset)
+    X = <object>PyTuple_GetItem(out, 0)
+    offset = <object>PyTuple_GetItem(out, 1)
+    
+    out = <tuple>_encode_stub_information(self, X, offset)
+    X = <object>PyTuple_GetItem(out, 0)
+    offset = <object>PyTuple_GetItem(out, 1)
+    
+    out = <tuple>_encode_stub_fucosylation(self, X, offset)
+    X = <object>PyTuple_GetItem(out, 0)
+    offset = <object>PyTuple_GetItem(out, 1)
+    
+    out = <tuple>_encode_neighboring_residues(self, X, offset)
+    X = <object>PyTuple_GetItem(out, 0)
+    offset = <object>PyTuple_GetItem(out, 1)
+    
+    out = <tuple>_encode_cleavage_site_distance_from_center(self, X, offset)
+    X = <object>PyTuple_GetItem(out, 0)
+    offset = <object>PyTuple_GetItem(out, 1)
+    
+    out = <tuple>_encode_stub_charge(self, X, offset)
+    X = <object>PyTuple_GetItem(out, 0)
+    offset = <object>PyTuple_GetItem(out, 1)
+    return X, offset
+
+
+cpdef list classify_sequence_by_residues(_PeptideSequenceCore sequence):
     cdef:
         size_t i, n, m
         int* residue_tp_counts

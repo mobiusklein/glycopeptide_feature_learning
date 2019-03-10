@@ -32,6 +32,7 @@ from feature_learning.multinomial_regression import (
 cdef StepFunction PearsonResidualCDF = _PearsonResidualCDF
 
 
+@cython.final
 @cython.freelist(10000)
 cdef class BackbonePosition(object):
 
@@ -43,7 +44,6 @@ cdef class BackbonePosition(object):
         self.predicted = predicted
         self.reliability = reliability
         return self
-
 
 
 cdef scalar_or_array pad(scalar_or_array x, double pad=0.5):
@@ -195,3 +195,55 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
     peptide_score += corr_score
     peptide_score *= coverage_score ** coverage_weight
     return peptide_score
+
+
+@cython.binding(True)
+@cython.boundscheck(False)
+@cython.cdivision(True)
+def _calculate_pearson_residuals(self, bint use_reliability=True, double base_reliability=0.5):
+    r"""Calculate the raw Pearson residuals of the Multinomial model
+
+    .. math::
+        \frac{y - \hat{y}}{\hat{y} * (1 - \hat{y}) * r}
+
+    Parameters
+    ----------
+    use_reliability : bool, optional
+        Whether or not to use the fragment reliabilities to adjust the weight of
+        each matched peak
+    base_reliability : float, optional
+        The lowest reliability a peak may have, compressing the range of contributions
+        from the model based on the experimental evidence
+
+    Returns
+    -------
+    np.ndarray
+        The Pearson residuals
+    """
+    cdef:
+        list c
+        np.ndarray[np.float64_t, ndim=1] intens, yhat, reliability
+        np.ndarray[np.float64_t, ndim=1] pearson_residuals
+        double t
+        double intens_i_norm, delta_i, denom_i
+        size_t i, n
+        np.npy_intp knd
+    c, intens, t, yhat = self._get_predicted_intensities()
+    if self.model_fit.reliability_model is None or not use_reliability:
+        reliability = np.ones_like(yhat)
+    else:
+        reliability = self._get_reliabilities(c, base_reliability=base_reliability)
+    # the last positionis the unassigned term, ignore it
+    n = PyList_GET_SIZE(c) - 1
+    knd = n
+    pearson_residuals = np.PyArray_ZEROS(1, &knd, np.NPY_FLOAT64, 0)
+    for i in range(n):
+        # standardize intensity
+        intens_i_norm = intens[i] / t
+        delta_i = (intens_i_norm - yhat[i]) ** 2
+        # reduce penalty for exceeding predicted intensity
+        if (intens_i_norm > yhat[i]):
+            delta_i /= 2.
+        denom_i = yhat[i] * (1 - yhat[i]) * reliability[i]
+        pearson_residuals[i] = (delta_i / denom_i)
+    return pearson_residuals
