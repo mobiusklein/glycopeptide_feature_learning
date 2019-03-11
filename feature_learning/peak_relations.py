@@ -874,8 +874,8 @@ except ImportError as err:
 
 
 class FragmentationModel(FragmentationModelBase):
-    def __init__(self, series, features=None, on_frequency=None, off_frequency=None,
-                 prior_probability_of_match=None, error_tolerance=2e-5):
+    def __init__(self, series, features=None, on_frequency=-1, off_frequency=-1,
+                 prior_probability_of_match=-1, error_tolerance=2e-5):
         if features is None:
             features = []
         self.series = series
@@ -890,7 +890,7 @@ class FragmentationModel(FragmentationModelBase):
         self.prior_probability_of_match = prior_probability_of_match
         # gamma
         self.offset_probability = -1
-        if None not in (self.on_frequency, self.off_frequency, self.prior_probability_of_match):
+        if -1 not in (self.on_frequency, self.off_frequency, self.prior_probability_of_match):
             self.offset_probability = self._compute_offset_probability()
 
     def _compute_offset_probability(self):
