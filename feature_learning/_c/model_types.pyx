@@ -339,13 +339,9 @@ def build_fragment_intensity_matches(cls, gpsm):
     for peak_fragment_pair in solution_map.members:
         peak = peak_fragment_pair.peak
         fragment = peak_fragment_pair.fragment
-        if peak._index.neutral_mass != -1:
-            peak_key = peak._index.neutral_mass
-        else:
-            peak_key = peak
-        if peak_key not in counted:
+        if peak not in counted:
             matched_total += peak.intensity
-            counted.add(peak_key)
+            counted.add(peak)
 
         series = fragment.get_series()
         if series.name == 'oxonium_ion':
