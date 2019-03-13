@@ -184,7 +184,7 @@ cdef class _FragmentType(object):
             self[2].name, self[3], self[4])
 
     cdef long get_feature_count(self):
-        return PyInt_AsLong(type(self).feature_count)        
+        return PyInt_AsLong(type(self).feature_count)
 
     cpdef np.ndarray[feature_dtype_t, ndim=1] _allocate_feature_array(self):
         cdef:
@@ -340,9 +340,13 @@ def build_fragment_intensity_matches(cls, gpsm):
     for peak_fragment_pair in solution_map.members:
         peak = peak_fragment_pair.peak
         fragment = peak_fragment_pair.fragment
-        if peak._index.neutral_mass not in counted:
+        if peak._index.neutral_mass != -1:
+            peak_key = peak._index.neutral_mass
+        else:
+            peak_key = peak
+        if peak_key not in counted:
             matched_total += peak.intensity
-            counted.add(peak._index.neutral_mass)
+            counted.add(peak_key)
 
         series = fragment.get_series()
         if series.name == 'oxonium_ion':
@@ -590,27 +594,27 @@ def StubChargeModel_build_feature_vector(_FragmentType self, X, offset):
     out = <tuple>_FragmentType.build_feature_vector(self, X, offset)
     X = <object>PyTuple_GetItem(out, 0)
     offset = <object>PyTuple_GetItem(out, 1)
-    
+
     out = <tuple>_specialize_proline(self, X, offset)
     X = <object>PyTuple_GetItem(out, 0)
     offset = <object>PyTuple_GetItem(out, 1)
-    
+
     out = <tuple>_encode_stub_information(self, X, offset)
     X = <object>PyTuple_GetItem(out, 0)
     offset = <object>PyTuple_GetItem(out, 1)
-    
+
     out = <tuple>_encode_stub_fucosylation(self, X, offset)
     X = <object>PyTuple_GetItem(out, 0)
     offset = <object>PyTuple_GetItem(out, 1)
-    
+
     out = <tuple>_encode_neighboring_residues(self, X, offset)
     X = <object>PyTuple_GetItem(out, 0)
     offset = <object>PyTuple_GetItem(out, 1)
-    
+
     out = <tuple>_encode_cleavage_site_distance_from_center(self, X, offset)
     X = <object>PyTuple_GetItem(out, 0)
     offset = <object>PyTuple_GetItem(out, 1)
-    
+
     out = <tuple>_encode_stub_charge(self, X, offset)
     X = <object>PyTuple_GetItem(out, 0)
     offset = <object>PyTuple_GetItem(out, 1)

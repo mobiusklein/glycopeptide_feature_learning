@@ -219,5 +219,5 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
         json.dump(export, fh, sort_keys=1, indent=2)
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    main.main()
