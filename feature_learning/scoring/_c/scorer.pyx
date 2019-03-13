@@ -1,5 +1,4 @@
 # cython: embedsignature=True
-# distutils: include_dirs = C:\Users\Asus\Miniconda2\lib\site-packages\numpy\core\include
 cimport cython
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport PyTuple_GetItem, PyTuple_Size, PyList_GET_ITEM, PyList_GET_SIZE

@@ -1,5 +1,4 @@
 # cython: embedsignature=True
-# distutils: include_dirs = C:\Users\Asus\Miniconda2\lib\site-packages\numpy\core\include
 cimport cython
 import numpy as np
 cimport numpy as np
