@@ -15,11 +15,11 @@ from .common import intensity_rank
 from .matching import SpectrumMatchAnnotator
 
 
-def _parse_charge(z, use_list=False):
+def _parse_charge(z, list_only=False, **kwargs):
     '''Pyteomics _parse_charge is very general-purpose, and
     can't be sped up, so we monkey-patch it here.'''
     try:
-        if not use_list:
+        if not list_only:
             return int(z.replace('+', ''))
         else:
             return map(_parse_charge, z.split(" "))

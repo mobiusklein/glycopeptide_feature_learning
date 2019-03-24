@@ -109,4 +109,10 @@ setup(name='feature_learning',
       package_data={
           "feature_learning": ["feature_learning/data/*"],
       },
+      entry_points={
+          'console_scripts': [
+              "fit-glycopeptide-regression-model = feature_learning.fit_model:main",
+              "partition-glycopeptide-training-data = feature_learning.fit_model:partition_glycopeptide_training_data",
+          ],
+      },
       cmdclass=cmdclass)

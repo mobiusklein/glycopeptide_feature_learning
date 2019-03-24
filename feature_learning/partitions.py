@@ -22,15 +22,15 @@ def classify_proton_mobility(scan, structure):
         return 'immobile'
 
 
-partition_cell_spec = namedtuple("partition_cell_spec", ("peptide_length_range",
-                                                         "glycan_size_range",
-                                                         "charge",
-                                                         "proton_mobility",
-                                                         "glycan_type",
-                                                         "glycan_count"))
+_partition_cell_spec = namedtuple("partition_cell_spec", ("peptide_length_range",
+                                                          "glycan_size_range",
+                                                          "charge",
+                                                          "proton_mobility",
+                                                          "glycan_type",
+                                                          "glycan_count"))
 
 
-class partition_cell_spec(partition_cell_spec):
+class partition_cell_spec(_partition_cell_spec):
 
     def test(self, gpsm):
         glycan_size = sum(gpsm.structure.glycan_composition.values())
@@ -100,9 +100,18 @@ glycosylation_type = (GlycosylationType.n_linked.name,)
 glycosylation_count = (1, 2,)
 
 
-partition_by = map(lambda x: partition_cell_spec(*x), itertools.product(
-    peptide_backbone_length_ranges, glycan_size_ranges, precursor_charges, proton_mobilities, glycosylation_type,
-    glycosylation_count))
+def _make_partition_by():
+    dimensions = itertools.product(
+        peptide_backbone_length_ranges,
+        glycan_size_ranges,
+        precursor_charges,
+        proton_mobilities,
+        glycosylation_type,
+        glycosylation_count)
+    return [partition_cell_spec(*x) for x in dimensions]
+
+
+partition_by = _make_partition_by()
 
 
 class partition_cell(make_struct("partition_cell", ("subset", "fit", "spec"))):
@@ -174,18 +183,20 @@ def partition_observations(gpsms, exclusive=True):
     return partition_map
 
 
-def shuffler(seed=None):
+def make_shuffler(seed=None):
     if seed is None:
         return np.random.shuffle
-    else:
-        return np.random.RandomState(int(seed)).shuffle
+    return np.random.RandomState(int(seed)).shuffle
+
+
+def _identity(x):
+    return x
 
 
 class KFoldSplitter(object):
     def __init__(self, n_splits, shuffler=None):
         if shuffler is None:
-            def shuffler(x):
-                return x
+            shuffler = _identity
         self.n_splits = n_splits
         self.shuffler = shuffler
 
@@ -216,7 +227,9 @@ class KFoldSplitter(object):
         for test_index in self._mask(data):
             train_index = indices[np.logical_not(test_index)]
             test_index = indices[test_index]
-            yield data[train_index], data[test_index]
+            train_group = data[train_index]
+            test_group = data[test_index]
+            yield train_group, test_group
 
 
 def crossvalidation_sets(gpsms, kfolds=3, shuffler=None, stratified=True):

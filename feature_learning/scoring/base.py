@@ -1,4 +1,3 @@
-import numpy as np
 from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase
 from glycan_profiling.tandem.spectrum_match import Unmodified
 

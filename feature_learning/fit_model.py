@@ -1,7 +1,13 @@
 import os
+import sys
 import glob
 import json
 import multiprocessing
+
+try:
+    from collections import Iterable
+except ImportError:
+    from collections.abc import Iterable
 
 import click
 
@@ -67,6 +73,35 @@ def match_spectra(matches, error_tolerance):
 def partition_training_data(training_instances):
     partition_map = partitions.partition_observations(training_instances)
     return partition_map
+
+
+def save_partitions(partition_map, output_directory):
+    from glycan_profiling.output.text_format import AnnotatedMGFSerializer
+
+    try:
+        os.makedirs(output_directory)
+    except OSError:
+        pass
+
+    for partition, cell in partition_map.items():
+        fields = partition.to_json()
+        fields = sorted(fields.items())
+
+        def format_field(field):
+            if isinstance(field, basestring):
+                return field
+            elif isinstance(field, Iterable):
+                return '-'.join(map(str, field))
+            else:
+                return str(field)
+
+        fname = '_'.join(["%s_%s" % (k, format_field(v)) for k, v in fields])
+        path = os.path.join(output_directory, fname + '.mgf')
+        with AnnotatedMGFSerializer(open(path, 'wb')) as writer:
+            for k, v in fields:
+                writer.add_global_parameter(k, str(v))
+            for scan in cell.subset:
+                writer.save(scan)
 
 
 def get_peak_relation_features():
@@ -217,6 +252,19 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
         export.append((spec.to_json(), fit.to_json(False)))
     with open(output_path, 'wt') as fh:
         json.dump(export, fh, sort_keys=1, indent=2)
+
+
+@click.command("partition-glycopeptide-training-data")
+@click.option('-t', '--threshold', type=float, default=50.0)
+@click.argument('paths', metavar='PATH', type=click.Path(exists=True, dir_okay=False), nargs=-1)
+@click.argument('outdir', metavar='OUTDIR', type=click.Path(dir_okay=True, file_okay=False), nargs=1)
+def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5):
+    click.echo("Loading data from %s" % (', '.join(paths)))
+    training_instances = get_training_data(paths, blacklist_path, threshold)
+    match_spectra(training_instances, error_tolerance)
+    click.echo("Partitioning %d instances" % (len(training_instances), ))
+    partition_map = partition_training_data(training_instances)
+    save_partitions(partition_map, outdir)
 
 
 if __name__ == "__main__":
