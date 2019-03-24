@@ -139,7 +139,7 @@ def fit_peak_relation_features(partition_map):
     bar = click.progressbar(
         cell_sequence, label="Fitting Peak Relationships",
         width=15, show_percent=True, show_eta=False,
-        item_show_func=lambda x: "%s" % (x[0].compact('\t'),) if x is not None else '')
+        item_show_func=lambda x: "%s" % (x[0].compact(' '),) if x is not None else '')
     with bar:
         for spec, cell, subset in bar:
             key = frozenset([gpsm.title for gpsm in subset])
@@ -265,6 +265,18 @@ def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, output_p
     click.echo("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(training_instances)
     save_partitions(partition_map, outdir)
+
+
+def info(type, value, tb):
+    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+        sys.__excepthook__(type, value, tb)
+    else:
+        import ipdb, traceback
+        traceback.print_exception(type, value, tb)
+        ipdb.post_mortem(tb)
+
+
+sys.excepthook = info
 
 
 if __name__ == "__main__":

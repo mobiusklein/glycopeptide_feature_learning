@@ -133,8 +133,11 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
         return peak_set
 
     def _activation(self, scan):
+        method = scan.get('annotations', {}).get('activation_method')
+        if method is None or method.startswith("unknown"):
+            method = 'hcd'
         return ActivationInformation(
-            scan.get('annotations', {}).get('activation_method'),
+            method,
             scan.get('annotations', {}).get('activation_energy'))
 
     def _scan_title(self, scan):
@@ -148,6 +151,8 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
     def _make_scan(self, scan):
         scan = super(AnnotatedMGFDeserializer, self)._make_scan(scan)
         precursor_info = scan.precursor_information
+        scan.annotations.pop("is_hcd", None)
+        scan.annotations.pop("is_exd", None)
         return AnnotatedScan(
             scan.id, scan.title, precursor_info,
             scan.ms_level, scan.scan_time, scan.index,
