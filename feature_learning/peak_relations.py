@@ -55,8 +55,7 @@ def delta_finder(gsms, delta):
         match_count = 0
         for fragment_site in fragments:
             for fragment in fragment_site:
-                for peak in gsm.deconvoluted_peak_set.all_peaks_for(fragment.mass):
-                    match_count += 1
+                match_count += len(gsm.deconvoluted_peak_set.all_peaks_for(fragment.mass))
 
         total_explained += match_count
         total_sites += n_frag_sites
@@ -281,7 +280,7 @@ try:
     _FeatureBase = FeatureBase
     from feature_learning._c.peak_relations import FeatureBase as CFeatureBase
 
-    class FeatureBase(CFeatureBase):
+    class FeatureBase(CFeatureBase): # pylint: disable=function-redefined
         from_json = classmethod(_load_feature_from_json)
 
 except ImportError:
@@ -1041,10 +1040,9 @@ except ImportError as err:
                 for feature in model.feature_table:
                     rels = feature.find_matches(peak, deconvoluted_peak_set, structure)
                     for rel in rels:
-                        for rel in rels:
-                            if feature.feature.is_valid_match(rel.from_peak, rel.to_peak, solution_map, structure):
-                                match_to_features[rel.from_peak].append(rel)
-                                match_to_features[rel.to_peak].append(rel)
+                        if feature.feature.is_valid_match(rel.from_peak, rel.to_peak, solution_map, structure):
+                            match_to_features[rel.from_peak].append(rel)
+                            match_to_features[rel.to_peak].append(rel)
             return match_to_features
 
         def score(self, scan, solution_map, structure):

@@ -136,17 +136,17 @@ def fit_peak_relation_features(partition_map):
     cell_sequence = [
         (spec, cell, partition_map.adjacent(spec, 10))
         for spec, cell in partition_map.items()]
-    bar = click.progressbar(
+    progressbar = click.progressbar(
         cell_sequence, label="Fitting Peak Relationships",
         width=15, show_percent=True, show_eta=False,
         item_show_func=lambda x: "%s" % (x[0].compact(' '),) if x is not None else '')
-    with bar:
-        for spec, cell, subset in bar:
+    with progressbar:
+        for spec, cell, subset in progressbar:
             key = frozenset([gpsm.title for gpsm in subset])
             if key in group_to_fit:
                 cell.fit = group_to_fit[key]
                 continue
-            if bar.is_hidden:
+            if progressbar.is_hidden:
                 click.echo("%s %d" % (spec, len(subset)))
             for series in [IonSeries.b, IonSeries.y, ]:
                 fm = peak_relations.FragmentationModel(series)
@@ -255,7 +255,7 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
 
 
 @click.command("partition-glycopeptide-training-data")
-@click.option('-t', '--threshold', type=float, default=50.0)
+@click.option('-t', '--threshold', type=float, default=0.0)
 @click.argument('paths', metavar='PATH', type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @click.argument('outdir', metavar='OUTDIR', type=click.Path(dir_okay=True, file_okay=False), nargs=1)
 def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5):

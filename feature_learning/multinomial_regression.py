@@ -1245,6 +1245,10 @@ class MultinomialRegressionFit(object):
     def __ne__(self, other):
         return not (self == other)
 
+    def __repr__(self):
+        template = '{self.__class__.__name__}(<{self.model_type} with {self.coef.size} parameters>)'
+        return template.format(self=self)
+
 
 def save_array(a):
     buf = io.BytesIO()

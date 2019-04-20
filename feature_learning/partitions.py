@@ -3,6 +3,7 @@ import itertools
 from collections import namedtuple, defaultdict, OrderedDict
 
 import numpy as np
+from ms_deisotope.data_source import ProcessedScan
 
 from glycopeptidepy.structure.glycan import GlycosylationType
 from glypy.utils import make_struct
@@ -222,7 +223,14 @@ class KFoldSplitter(object):
     def split(self, data):
         n_samples = len(data)
         indices = np.arange(n_samples)
-        data = np.array(data)
+        temp = np.array(data)
+        if not isinstance(temp[0], type(data[0])) and not isinstance(data[0], list):
+            temp = np.ones(n_samples, dtype=object)
+            temp[:] = data
+            data = temp
+            assert type(temp[0]) == type(data[0])
+        else:
+            data = temp
         self.shuffler(data)
         for test_index in self._mask(data):
             train_index = indices[np.logical_not(test_index)]
@@ -257,9 +265,12 @@ def crossvalidation_sets(gpsms, kfolds=3, shuffler=None, stratified=True):
     splits = [(list(), list()) for i in range(kfolds)]
     for combinable, v in combinables:
         for i, pair in enumerate(combinable):
+            assert not isinstance(pair[0], ProcessedScan)
+            assert not isinstance(pair[1], ProcessedScan)
             try:
                 if isinstance(pair[0][0], np.ndarray):
                     pair = [np.hstack(pair[0]), np.hstack(pair[1])]
+
                 splits[i][0].extend(pair[0])
                 splits[i][1].extend(pair[1])
             except (IndexError, ValueError):

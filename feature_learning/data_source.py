@@ -5,7 +5,7 @@ from ms_deisotope.data_source import ProcessedScan, ActivationInformation
 from ms_deisotope.output.mgf import ProcessedMGFDeserializer, pymgf
 
 from glycan_profiling.structure import FragmentCachingGlycopeptide
-from glycan_profiling.tandem.glycopeptide.scoring import CoverageWeightedBinomialScorer
+from glycan_profiling.tandem.glycopeptide.scoring import LogIntensityScorer
 
 from glycopeptidepy.algorithm import reverse_preserve_sequon
 from glycopeptidepy.utils import memoize
@@ -72,7 +72,8 @@ class AnnotatedScan(ProcessedScan):
         return self._structure
 
     def match(self, **kwargs):
-        self.matcher = CoverageWeightedBinomialScorer.evaluate(self, self.structure, **kwargs)
+        self.matcher = LogIntensityScorer.evaluate(
+            self, self.structure, **kwargs)
         return self.matcher
 
     @property

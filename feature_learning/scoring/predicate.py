@@ -1,4 +1,6 @@
 import math
+import json
+
 from collections import defaultdict, deque
 
 from ms_deisotope.data_source import ChargeNotProvided
@@ -11,19 +13,79 @@ from .base import (DummyScorer, ModelBindingScorer)
 
 
 class PredicateBase(object):
+    """A base class for defining a model tree layer based upon some
+    property of a query of scan and glycopeptide
+
+    Attributes
+    ----------
+    root: :class:`dict`
+    """
     def __init__(self, root):
         self.root = root
 
     def value_for(self, scan, structure, *args, **kwargs):
+        """Obtain the value for this predicate from the query
+
+        Parameters
+        ----------
+        scan : :class:`~.ProcessedScan`
+            The processed mass spectrum to analyze
+        structure : :class:`~.PeptideSequence`
+            The structure to map against the spectrum.
+
+        Returns
+        -------
+        object
+        """
         raise NotImplementedError()
 
     def query(self, point, *args, **kwargs):
+        """Find the appropriate branch or leaf to continue the search in
+
+        Parameters
+        ----------
+        point : object
+            A value of the appropriate type returned by :meth:`value_for`
+
+        Returns
+        -------
+        object
+        """
         raise NotImplementedError()
 
     def find_nearest(self, point, *args, **kwargs):
+        """Find the nearest appropriate branch of leaf to continue the search
+        in.
+
+        Only used if :meth:`query` cannot find an appropriate match.
+
+        Parameters
+        ----------
+        point : object
+            A value of the appropriate type returned by :meth:`value_for`
+
+        Returns
+        -------
+        object
+        """
         raise NotImplementedError()
 
     def get(self, scan, structure, *args, **kwargs):
+        """Find the next model tree layer (branch) or model
+        specification (leaf) in the tree that fits the query
+        parameters.
+
+        Parameters
+        ----------
+        scan : :class:`~.ProcessedScan`
+            The processed mass spectrum to analyze
+        structure : :class:`~.PeptideSequence`
+            The structure to map against the spectrum.
+
+        Returns
+        -------
+        object
+        """
         value = self.value_for(scan, structure, *args, **kwargs)
         try:
             result = self.query(value, *args, **kwargs)
@@ -38,7 +100,9 @@ class PredicateBase(object):
 
 
 class IntervalPredicate(PredicateBase):
-
+    """A predicate layer which selects its matches by
+    interval inclusion
+    """
     def query(self, point, *args, **kwargs):
         for key, branch in self.root.items():
             if key[0] <= point <= key[1]:
@@ -48,7 +112,7 @@ class IntervalPredicate(PredicateBase):
     def find_nearest(self, point, *args, **kwargs):
         best_key = None
         best_distance = float('inf')
-        for key, branch in self.root.items():
+        for key, _ in self.root.items():
             centroid = (key[0] + key[1]) / 2.
             distance = math.sqrt((centroid - point) ** 2)
             if distance < best_distance:
@@ -58,18 +122,27 @@ class IntervalPredicate(PredicateBase):
 
 
 class PeptideLengthPredicate(IntervalPredicate):
+    """An :class:`IntervalPredicate` whose point value
+    is the length of a peptide
+    """
     def value_for(self, scan, structure, *args, **kwargs):
         peptide_size = len(structure)
         return peptide_size
 
 
 class GlycanSizePredicate(IntervalPredicate):
+    """An :class:`IntervalPredicate` whose point value is the
+    overall size of a glycan composition aggregate.
+    """
     def value_for(self, scan, structure, *args, **kwargs):
         glycan_size = sum(structure.glycan_composition.values())
         return glycan_size
 
 
 class MappingPredicate(PredicateBase):
+    """A predicate layer which selects its matches by
+    :class:`~.Mapping` lookup.
+    """
     def query(self, point, *args, **kwargs):
         try:
             return self.root[point]
@@ -82,7 +155,7 @@ class MappingPredicate(PredicateBase):
     def find_nearest(self, point, *args, **kwargs):
         best_key = None
         best_distance = float('inf')
-        for key, branch in self.root.items():
+        for key, _ in self.root.items():
             distance = math.sqrt(self._distance(key, point) ** 2)
             if distance < best_distance:
                 best_distance = distance
@@ -91,6 +164,9 @@ class MappingPredicate(PredicateBase):
 
 
 class ChargeStatePredicate(MappingPredicate):
+    """A :class:`MappingPredicate` whose point value is the charge
+    state of the query scan's precursor ion.
+    """
     def value_for(self, scan, structure, *args, **kwargs):
         charge = scan.precursor_information.charge
         return charge
@@ -108,7 +184,9 @@ class ChargeStatePredicate(MappingPredicate):
 
 
 class ProtonMobilityPredicate(MappingPredicate):
-
+    """A :class:`MappingPredicate` whose point value is the proton mobility
+    class of the query scan and structure
+    """
     def _distance(self, x, y):
         enum = {'mobile': 0, 'partial': 1, 'immobile': 2}
         return enum[x] - enum[y]
@@ -118,6 +196,9 @@ class ProtonMobilityPredicate(MappingPredicate):
 
 
 class GlycanTypeCountPredicate(PredicateBase):
+    """A :class:`PredicateBase` which selects based upon the type and number
+    of the glycans attached to the query peptide.
+    """
     def value_for(self, scan, structure, *args, **kwargs):
         return structure.glycosylation_manager
 
@@ -139,7 +220,7 @@ class GlycanTypeCountPredicate(PredicateBase):
         for key, branch in self.root.items():
             count = glycosylation_manager.count_glycosylation_type(key)
             if count != 0:
-                for cnt, value in branch.items():
+                for cnt, _ in branch.items():
                     distance = math.sqrt((count - cnt) ** 2)
                     if distance < best_distance:
                         best_distance = distance
@@ -150,7 +231,7 @@ class GlycanTypeCountPredicate(PredicateBase):
         if best_key is None:
             count = len(glycosylation_manager)
             for key, branch in self.root.items():
-                for cnt, value in branch.items():
+                for cnt, _ in branch.items():
                     distance = math.sqrt((count - cnt) ** 2)
                     if key not in point.values():
                         distance += 1
@@ -161,9 +242,9 @@ class GlycanTypeCountPredicate(PredicateBase):
 
 
 class PredicateTreeBase(DummyScorer):
+    """A base class for predicate tree based model determination.
+    """
 
-    # _scorer_type = MultinomialRegressionScorer
-    # _short_peptide_scorer_type = ShortPeptideMultinomialRegressionScorer
     _scorer_type = None
     _short_peptide_scorer_type = None
 
@@ -172,6 +253,19 @@ class PredicateTreeBase(DummyScorer):
         self.size = 5
 
     def get_model_for(self, scan, structure, *args, **kwargs):
+        """Locate the appropriate model for the query scan and glycopeptide
+
+        Parameters
+        ----------
+        scan : :class:`~.ProcessedScan`
+            The query scan
+        structure : :class:`~.PeptideSequence`
+            The query peptide
+
+        Returns
+        -------
+        object
+        """
         i = 0
         layer = self.root
         while i < self.size:
@@ -243,10 +337,20 @@ class PredicateTreeBase(DummyScorer):
     def to_json(self):
         d_list = []
         for node in self:
-            partition_cell_spec = node.kwargs.get('partition')
+            partition_cell_spec_inst = node.kwargs.get('partition')
             for model_fit in node.kwargs.get('model_fits', []):
-                d_list.append((partition_cell_spec.to_json(), model_fit.to_json(False)))
+                d_list.append((partition_cell_spec_inst.to_json(), model_fit.to_json(False)))
         return d_list
+
+    @classmethod
+    def from_file(cls, path):
+        if not hasattr(path, 'read'):
+            fh = open(path, 'rt')
+        else:
+            fh = path
+        data = json.load(fh)
+        inst = cls.from_json(data)
+        return inst
 
     @classmethod
     def _scorer_type_for_spec(cls, spec):
