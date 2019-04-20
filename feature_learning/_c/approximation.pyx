@@ -16,7 +16,7 @@ cdef size_t position_before(double[:] x, double val) nogil:
     for i in range(n):
         if x[i] > val:
             return i
-    return 0
+    return n
 
 
 cdef class StepFunction(object):
@@ -91,13 +91,19 @@ cdef class StepFunction(object):
 
     @cython.nonecheck(False)
     cpdef scalar_or_array interpolate(self, scalar_or_array xval):
-        if scalar_or_array is not size_t:
+        if scalar_or_array is not double:
             return self._npy[np.searchsorted(self.x, xval, self.side) - 1]
         else:
             return self.interpolate_scalar(xval)
 
-    cdef double interpolate_scalar(self, double xval) nogil:
-        return self.y[position_before(self.x, xval) - 1]
+    cpdef position_before(self, double xval):
+        return position_before(self.x, xval)
+
+    cdef double interpolate_scalar(self, double xval) except -1:
+        cdef:
+            size_t index
+        index = position_before(self.x, xval) - 1
+        return self.y[index]
 
     def __call__(self, xval):
         return self.interpolate(xval)

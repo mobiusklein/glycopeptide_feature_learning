@@ -57,7 +57,8 @@ cdef class StepFunction(object):
         public object side
 
     cpdef scalar_or_array interpolate(self, scalar_or_array xval)
-    cdef double interpolate_scalar(self, double xval) nogil
+    cpdef position_before(self, double xval)
+    cdef double interpolate_scalar(self, double xval) except -1
 
 
 cdef class ECDF(StepFunction):
