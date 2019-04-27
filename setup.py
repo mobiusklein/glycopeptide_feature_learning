@@ -113,6 +113,7 @@ setup(name='feature_learning',
           'console_scripts': [
               "fit-glycopeptide-regression-model = feature_learning.fit_model:main",
               "partition-glycopeptide-training-data = feature_learning.fit_model:partition_glycopeptide_training_data",
+              "msms-feature-learning = feature_learning.fit_model:cli"
           ],
       },
       cmdclass=cmdclass)

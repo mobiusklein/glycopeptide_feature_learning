@@ -17,12 +17,12 @@ from feature_learning.utils import distcorr
 from .predicate import PredicateTreeBase, ModelBindingScorer
 
 
-def pad(x, pad=0.5):
-    return (1 - pad) * x + pad
+def pad(x, p=0.5):
+    return (1 - p) * x + p
 
 
-def unpad(x, pad=0.5):
-    return (x - pad) / (1 - pad)
+def unpad(x, p=0.5):
+    return (x - p) / (1 - p)
 
 
 class CachedModelPrediction(object):
@@ -147,35 +147,6 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
         denom *= (reliability[:-1])  # divide by the reliability
         pearson_residuals = delta / denom
         return pearson_residuals
-
-    def _calculate_pearson_residual_score(self, use_reliability=True, base_reliability=0.5):
-        """Compute a model-based score by summing the Pearson residuals after transforming
-        through them an empirically measured CDF and followed by a -log10 transform.
-
-        Parameters
-        ----------
-        use_reliability : bool, optional
-            Whether or not to use the fragment reliabilities to adjust the weight of
-            each matched peak
-        base_reliability : float, optional
-            The lowest reliability a peak may have, compressing the range of contributions
-            from the model based on the experimental evidence
-
-
-        Returns
-        -------
-        float:
-            The model score
-        """
-        pearson_residuals = self._calculate_pearson_residuals(use_reliability, base_reliability)
-        model_score = -np.log10(PearsonResidualCDF(pearson_residuals) + 1e-6).sum()
-        if np.isnan(model_score):
-            model_score = 0.0
-        c, intens, t, yhat = self._get_predicted_intensities()
-        reliability = self._get_reliabilities(c, base_reliability=base_reliability)[:-1]
-        reliability = unpad(reliability, base_reliability)
-        intensity_component = np.log10(intens[:-1]).dot(reliability + 1.0)
-        return model_score + intensity_component
 
     def _get_intensity_observed_expected(self, use_reliability=False, base_reliability=0.5):
         """Get the vector of matched experimental intensities and their predicted intensities.
@@ -314,6 +285,37 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, MultinomialReg
         self.partition = partition
         self.error_tolerance = None
         self._init_cache()
+
+    def _calculate_pearson_residual_score(self, use_reliability=True, base_reliability=0.5):
+        """Compute a model-based score by summing the Pearson residuals after transforming
+        through them an empirically measured CDF and followed by a -log10 transform.
+
+        Parameters
+        ----------
+        use_reliability : bool, optional
+            Whether or not to use the fragment reliabilities to adjust the weight of
+            each matched peak
+        base_reliability : float, optional
+            The lowest reliability a peak may have, compressing the range of contributions
+            from the model based on the experimental evidence
+
+        Returns
+        -------
+        float:
+            The model score
+        """
+        pearson_residuals = self._calculate_pearson_residuals(
+            use_reliability, base_reliability)
+        model_score = - \
+            np.log10(PearsonResidualCDF(pearson_residuals) + 1e-6).sum()
+        if np.isnan(model_score):
+            model_score = 0.0
+        c, intens, t, yhat = self._get_predicted_intensities()
+        reliability = self._get_reliabilities(
+            c, base_reliability=base_reliability)[:-1]
+        reliability = unpad(reliability, base_reliability)
+        intensity_component = np.log10(intens[:-1]).dot(reliability + 1.0)
+        return model_score + intensity_component
 
     def match(self, error_tolerance=2e-5, *args, **kwargs):
         self.error_tolerance = error_tolerance

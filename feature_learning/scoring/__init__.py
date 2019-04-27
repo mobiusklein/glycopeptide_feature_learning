@@ -10,4 +10,5 @@ from feature_learning.scoring.predicate import (
 
 from feature_learning.scoring.scorer import (
     PredicateTree, PartitionTree, MultinomialRegressionScorer,
-    ShortPeptideMultinomialRegressionScorer)
+    ShortPeptideMultinomialRegressionScorer, PartialSplitScorer,
+    PartialSplitScorerTree)

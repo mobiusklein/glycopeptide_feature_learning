@@ -2,8 +2,12 @@
 *.pyd
 feature_learning/_c/*.c
 feature_learning/_c/*.html
+feature_learning/scoring/_c/*.c
+feature_learning/scoring/_c/*.html
 data/
 ext/
+ref/
+.ipynb_checkpoints/
 *.json*
 *sublime*
 build/*

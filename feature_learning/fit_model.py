@@ -18,6 +18,8 @@ from feature_learning import (
     _common_features, partitions,
     multinomial_regression)
 
+from feature_learning.scoring import PartialSplitScorerTree
+
 import glypy
 from glycopeptidepy.structure.fragment import IonSeries
 
@@ -265,6 +267,29 @@ def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, output_p
     click.echo("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(training_instances)
     save_partitions(partition_map, outdir)
+
+
+@click.command("strip-model")
+@click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
+@click.argument("outpath", type=click.Path(exists=True, dir_okay=False, writable=True))
+def strip_model_arrays(inpath, outpath):
+    model_tree = PartialSplitScorerTree.from_file(inpath)
+    d = model_tree.to_json()
+    with click.open_file(outpath, "wt") as fh:
+        json.dump(d, fh)
+
+
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
+@click.group(context_settings=CONTEXT_SETTINGS)
+def cli():
+    pass
+
+
+cli.add_command(main, "fit-model")
+cli.add_command(partition_glycopeptide_training_data, "partition-samples")
+cli.add_command(strip_model_arrays, "strip-model")
 
 
 def info(type, value, tb):
