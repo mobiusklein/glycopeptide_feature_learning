@@ -38,6 +38,33 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
     def __reduce__(self):
         return self.__class__, (self.tp, self.args, self.kwargs)
 
+    @property
+    def model_fit(self):
+        try:
+            return self.kwargs['model_fits'][0]
+        except KeyError:
+            try:
+                return self.kwargs['model_fit']
+            except KeyError:
+                return None
+
+    @property
+    def model_fits(self):
+        try:
+            return self.kwargs['model_fits']
+        except KeyError:
+            return None
+
+    @property
+    def partition_label(self):
+        try:
+            return self.kwargs['partition']
+        except KeyError:
+            return None
+
+    def __lt__(self, other):
+        return self.partition_label < other.partition_label
+
 
 class DummyScorer(GlycopeptideSpectrumMatcherBase):
     def __init__(self, *args, **kwargs):

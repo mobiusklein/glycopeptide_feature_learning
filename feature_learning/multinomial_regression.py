@@ -1249,6 +1249,12 @@ class MultinomialRegressionFit(object):
         template = '{self.__class__.__name__}(<{self.model_type} with {self.coef.size} parameters>)'
         return template.format(self=self)
 
+    def feature_names(self):
+        return self.model_type.feature_names()
+
+    def feature_dict(self):
+        return OrderedDict(zip(self.feature_names(), self.coef))
+
 
 def save_array(a):
     buf = io.BytesIO()
