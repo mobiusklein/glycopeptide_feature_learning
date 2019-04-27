@@ -98,6 +98,40 @@ cdef class FeatureBase(object):
         #     return v
         return True
 
+    def __lt__(self, FeatureBase other):
+        cdef:
+            bint v
+        v = self.intensity_ratio < other.intensity_ratio
+        if not v:
+            return v
+        v = self.from_charge < other.from_charge
+        if not v:
+            return v
+        v = self.to_charge < other.to_charge
+        if not v:
+            return v
+        v = self.feature_type < other.feature_type
+        if not v:
+            return v
+        return True
+
+    def __gt__(self, FeatureBase other):
+        cdef:
+            bint v
+        v = self.intensity_ratio > other.intensity_ratio
+        if not v:
+            return v
+        v = self.from_charge > other.from_charge
+        if not v:
+            return v
+        v = self.to_charge > other.to_charge
+        if not v:
+            return v
+        v = self.feature_type > other.feature_type
+        if not v:
+            return v
+        return True
+
     def __ne__(self, other):
         return not (self == other)
 
@@ -136,7 +170,7 @@ cdef class FeatureBase(object):
 
 
 cdef class MassOffsetFeature(FeatureBase):
-    
+
     cdef:
         public double offset
         public Py_hash_t _hash
@@ -451,14 +485,14 @@ cdef class FragmentationModelCollectionBase(object):
 
             PeakFragmentPair peak_fragment
             PeakRelation rel
-            
+
             DeconvolutedPeak peak
             FragmentBase fragment
-            
+
             FragmentationFeatureBase feature
-            
+
             FragmentationModelBase model
-            
+
             list rels
 
             PyObject* ptemp
@@ -499,14 +533,14 @@ cdef class FragmentationModelCollectionBase(object):
 
             PeakFragmentPair peak_fragment
             PeakRelation rel
-            
+
             DeconvolutedPeak peak
             FragmentBase fragment
-            
+
             FragmentationFeatureBase feature
-            
+
             FragmentationModelBase model
-            
+
             list features
             dict fragment_probabilities
             dict models
@@ -583,9 +617,9 @@ cdef class PeakRelation(object):
         self.from_peak = from_peak
         self.to_peak = to_peak
         self.feature = feature
-        
+
         self.intensity_ratio = intensity_ratio_function(from_peak, to_peak)
-        
+
         self.from_charge = from_peak.charge
         self.to_charge = to_peak.charge
 

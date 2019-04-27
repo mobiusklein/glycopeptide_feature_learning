@@ -1,5 +1,6 @@
 import numpy as np
 from itertools import chain
+from functools import total_ordering
 
 from collections import Counter, defaultdict, namedtuple
 from collections import Mapping
@@ -242,6 +243,36 @@ class FeatureBase(object):
         # v = self.terminal == other.terminal
         # if not v:
         #     return v
+        return True
+
+    def __lt__(self, other):
+        v = self.intensity_ratio < other.intensity_ratio
+        if not v:
+            return v
+        v = self.from_charge < other.from_charge
+        if not v:
+            return v
+        v = self.to_charge < other.to_charge
+        if not v:
+            return v
+        v = self.feature_type < other.feature_type
+        if not v:
+            return v
+        return True
+
+    def __gt__(self, other):
+        v = self.intensity_ratio > other.intensity_ratio
+        if not v:
+            return v
+        v = self.from_charge > other.from_charge
+        if not v:
+            return v
+        v = self.to_charge > other.to_charge
+        if not v:
+            return v
+        v = self.feature_type > other.feature_type
+        if not v:
+            return v
         return True
 
     def __ne__(self, other):
@@ -581,6 +612,7 @@ except ImportError as err:
                 (p * self.on_series) + ((1 - p) * self.off_series))
 
 
+@total_ordering
 class FittedFeature(FittedFeatureBase):
     def __init__(self, feature, series, on_series, off_series, relations=None, on_count=0, off_count=0):
         if relations is None:
@@ -639,6 +671,21 @@ class FittedFeature(FittedFeatureBase):
         v = np.isclose(self.on_series, other.on_series) and np.isclose(self.off_series, other.off_series)
         if not v:
             return v
+        return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __lt__(self, other):
+        v = self.feature < other.feature
+        if not v:
+            return False
+        v = self.on_series < other.on_series
+        if not v:
+            return False
+        v = self.off_series < other.off_series
+        if not v:
+            return False
         return True
 
     def __repr__(self):
@@ -811,6 +858,21 @@ class FragmentationFeature(FragmentationFeatureBase):
         self.series = series
         self.fits = dict(fits)
 
+    def __eq__(self, other):
+        v = (self.feature == other.feature)
+        if not v:
+            return False
+        v = (self.series == other.series)
+        if not v:
+            return False
+        v = (self.fits == other.fits)
+        if not v:
+            return False
+        return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
     def __len__(self):
         return len(self.fits)
 
@@ -950,9 +1012,22 @@ class FragmentationModel(FragmentationModelBase):
                 peak_pair.peak, features, solution_map, structure)
         return fragment_probabilities
 
+    @property
+    def n_feature_types(self):
+        """The number of distinct feature types to learn.
+        """
+        return len(self.feature_table)
+
+    @property
+    def n_feature_fits(self):
+        """The number of distinct feature specializations learned.
+        """
+        return len(self.features)
+
     def __repr__(self):
         template = ("{self.__class__.__name__}({self.series}, "
-                    "{self.offset_probability:g}|{self.prior_probability_of_match})")
+                    "{self.offset_probability:g}|{self.prior_probability_of_match}, "
+                    "{self.n_feature_types}, {self.n_feature_fits})")
         return template.format(self=self)
 
     def __eq__(self, other):
@@ -1090,6 +1165,7 @@ class FragmentationModelCollection(FragmentationModelCollectionBase):
     def __eq__(self, other):
         if self.models == other.models:
             return True
+        return False
 
     def __ne__(self, other):
         return not (self == other)
