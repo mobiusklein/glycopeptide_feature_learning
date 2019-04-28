@@ -246,33 +246,39 @@ class FeatureBase(object):
         return True
 
     def __lt__(self, other):
-        v = self.intensity_ratio < other.intensity_ratio
+        eq_count = 0
+        v = self.intensity_ratio <= other.intensity_ratio
+        eq_count += self.intensity_ratio == other.intensity_ratio
         if not v:
             return v
-        v = self.from_charge < other.from_charge
+        v = self.from_charge <= other.from_charge
+        eq_count += self.from_charge == other.from_charge
         if not v:
             return v
-        v = self.to_charge < other.to_charge
+        v = self.to_charge <= other.to_charge
+        eq_count += self.to_charge == other.to_charge
         if not v:
             return v
-        v = self.feature_type < other.feature_type
-        if not v:
-            return v
+        if eq_count == 3:
+            return False
         return True
 
     def __gt__(self, other):
-        v = self.intensity_ratio > other.intensity_ratio
+        eq_count = 0
+        v = self.intensity_ratio >= other.intensity_ratio
+        eq_count += self.intensity_ratio == other.intensity_ratio
         if not v:
             return v
-        v = self.from_charge > other.from_charge
+        v = self.from_charge >= other.from_charge
+        eq_count += self.from_charge == other.from_charge
         if not v:
             return v
-        v = self.to_charge > other.to_charge
+        v = self.to_charge >= other.to_charge
+        eq_count += self.to_charge == other.to_charge
         if not v:
             return v
-        v = self.feature_type > other.feature_type
-        if not v:
-            return v
+        if eq_count == 3:
+            return False
         return True
 
     def __ne__(self, other):
