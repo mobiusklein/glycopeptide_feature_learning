@@ -1,3 +1,4 @@
+import logging
 import six
 import base64
 import io
@@ -19,6 +20,9 @@ from .amino_acid_classification import (
     AminoAcidClassification, classify_amide_bond_frank, classify_residue_frank)
 from .approximation import PearsonResidualCDF
 from .peak_relations import FragmentationModelCollection
+
+logger = logging.getLogger("msms_feature_learning.multinomial_regression")
+logger.addHandler(logging.NullHandler())
 
 
 array_dtype = np.dtype("<d")
@@ -326,6 +330,8 @@ class FragmentType(_FragmentType):
         try:
             fit = multinomial_fit(breaks, matched, totals, reliabilities=reliabilities, **kwargs)
         except np.linalg.LinAlgError:
+            logger.debug(
+                "Fitting the model with per-fragment reliability information failed.", exc_info=True)
             fit = multinomial_fit(breaks, matched, totals, reliabilities=None, **kwargs)
         return MultinomialRegressionFit(model_type=cls, reliability_model=reliability_model, **fit)
 
@@ -880,7 +886,7 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
     iter_ = 0
     for iter_ in range(control['maxit']):
         if control['trace']:
-            print("Iteration %d" % (iter_,))
+            print("Iteration %d" % (iter_, ))
         z = phi * beta0
         H = phi * np.diag(S_inv0)
         if control['trace']:

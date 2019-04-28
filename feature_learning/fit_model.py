@@ -2,7 +2,7 @@ import os
 import sys
 import glob
 import json
-import multiprocessing
+import logging
 
 try:
     from collections import Iterable
@@ -171,25 +171,16 @@ def fit_peak_relation_features(partition_map):
     return group_to_fit
 
 
-def fit_regression_model(partition_map, regression_model=None, use_mixture=True, n_processes=1):
+def fit_regression_model(partition_map, regression_model=None, use_mixture=True):
     if regression_model is None:
         regression_model = multinomial_regression.StubChargeModel
     model_fits = []
-    if n_processes == 1:
-        for spec, cell in partition_map.items():
-            click.echo("%s %d" % (spec, len(cell.subset)))
-            _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture)
-            click.echo(fits[0].deviance)
-            for fit in fits:
-                model_fits.append((spec, fit))
-    else:
-        pool = multiprocessing.Pool(n_processes)
-        workload = (tuple(kv) + (regression_model,) for kv in partition_map.items())
-        for spec, fits in pool.map(task_fn, workload):
-            click.echo("%s %d" % (spec, len(fits[0].weights)))
-            click.echo(fits[0].deviance)
-            for fit in fits:
-                model_fits.append((spec, fit))
+    for spec, cell in partition_map.items():
+        click.echo("%s %d" % (spec, len(cell.subset)))
+        _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture)
+        click.echo(fits[0].deviance)
+        for fit in fits:
+            model_fits.append((spec, fit))
     return model_fits
 
 
@@ -204,9 +195,11 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True):
         fit = regression_model.fit_regression(
             cell.subset, reliability_model=fm, base_reliability=0.5)
         if np.isinf(fit.estimate_dispersion()):
+            click.echo("Infinite dispersion, refitting without per-fragment weights")
             fit = regression_model.fit_regression(
                 cell.subset, reliability_model=None)
-    except ValueError:
+    except ValueError as ex:
+        click.echo("%r, refitting without per-fragment weights" % (ex, ))
         fit = regression_model.fit_regression(
             cell.subset, reliability_model=None)
     fit.reliability_model = fm
@@ -305,4 +298,4 @@ sys.excepthook = info
 
 
 if __name__ == "__main__":
-    main.main()
+    cli.main()
