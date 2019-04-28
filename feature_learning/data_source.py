@@ -65,6 +65,14 @@ class AnnotatedScan(ProcessedScan):
     # sharing of the peak set
     matcher = None
 
+    def __reduce__(self):
+        return self.__class__, (self.id, self.title, self.precursor_information,
+                                self.ms_level, self.scan_time, self.index, self.peak_set,
+                                self.deconvoluted_peak_set, self.polarity, self.activation,
+                                self.acquisition_information, self.isolation_window,
+                                self.instrument_configuration, self.product_scans,
+                                self.annotations)
+
     @property
     def structure(self):
         if self._structure is None:
@@ -86,14 +94,6 @@ class AnnotatedScan(ProcessedScan):
     @property
     def mass_shift(self):
         return self.annotations.get('mass_shift', "Unmodified")
-
-    def decoy(self):
-        if '_decoy' not in self.annotations:
-            copy = self.clone()
-            copy._structure = reverse_preserve_sequon(copy.structure)
-            self.annotations['_decoy'] = copy
-            return copy
-        return self.annotations['_decoy']
 
     def plot(self, ax=None):
         art = SpectrumMatchAnnotator(self.match(), ax=ax)
