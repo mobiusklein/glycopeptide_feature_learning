@@ -67,7 +67,7 @@ def match_spectra(matches, error_tolerance):
     with progbar:
         for i, match in progbar:
             match.match(error_tolerance=error_tolerance)
-            if progbar.is_hidden and (i + 1) % 1000 == 0:
+            if progbar.is_hidden and i % 1000 == 0 and i != 0:
                 click.echo("%d Spectra Matched" % (i,))
     return matches
 
@@ -86,6 +86,7 @@ def save_partitions(partition_map, output_directory):
         pass
 
     for partition, cell in partition_map.items():
+        click.echo("%s - %d" % (partition, len(cell.subset)))
         fields = partition.to_json()
         fields = sorted(fields.items())
 
@@ -102,6 +103,7 @@ def save_partitions(partition_map, output_directory):
         with AnnotatedMGFSerializer(open(path, 'wb')) as writer:
             for k, v in fields:
                 writer.add_global_parameter(k, str(v))
+            writer.add_global_parameter("total spectra", str(len(cell.subset)))
             for scan in cell.subset:
                 writer.save(scan)
 
@@ -171,14 +173,14 @@ def fit_peak_relation_features(partition_map):
     return group_to_fit
 
 
-def fit_regression_model(partition_map, regression_model=None, use_mixture=True):
+def fit_regression_model(partition_map, regression_model=None, use_mixture=True, **kwargs):
     if regression_model is None:
         regression_model = multinomial_regression.StubChargeModel
     model_fits = []
     for spec, cell in partition_map.items():
         click.echo("%s %d" % (spec, len(cell.subset)))
-        _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture)
-        click.echo(fits[0].deviance)
+        _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture, **kwargs)
+        click.echo("%f" % fits[0].deviance)
         for fit in fits:
             model_fits.append((spec, fit))
     return model_fits
@@ -189,15 +191,15 @@ def task_fn(args):
     return _fit_model_inner(spec, cell, regression_model)
 
 
-def _fit_model_inner(spec, cell, regression_model, use_mixture=True):
+def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
     fm = peak_relations.FragmentationModelCollection(cell.fit)
     try:
         fit = regression_model.fit_regression(
-            cell.subset, reliability_model=fm, base_reliability=0.5)
+            cell.subset, reliability_model=fm, base_reliability=0.5, **kwargs)
         if np.isinf(fit.estimate_dispersion()):
             click.echo("Infinite dispersion, refitting without per-fragment weights")
             fit = regression_model.fit_regression(
-                cell.subset, reliability_model=None)
+                cell.subset, reliability_model=None, **kwargs)
     except ValueError as ex:
         click.echo("%r, refitting without per-fragment weights" % (ex, ))
         fit = regression_model.fit_regression(
@@ -214,13 +216,13 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True):
             click.echo("Fitting Mismatch Model with %d cases" % len(mismatches))
             try:
                 mismatch_fit = regression_model.fit_regression(
-                    mismatches, reliability_model=fm, base_reliability=0.5)
+                    mismatches, reliability_model=fm, base_reliability=0.5, **kwargs)
                 if np.isinf(mismatch_fit.estimate_dispersion()):
                     mismatch_fit = regression_model.fit_regression(
-                        mismatches, reliability_model=None)
+                        mismatches, reliability_model=None, **kwargs)
             except ValueError:
                 mismatch_fit = regression_model.fit_regression(
-                    mismatches, reliability_model=None)
+                    mismatches, reliability_model=None, **kwargs)
             fits.append(mismatch_fit)
     return (spec, fits)
 
@@ -231,7 +233,12 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True):
 @click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option('-o', '--output-path', type=click.Path())
 @click.option('-m', '--error-tolerance', type=float, default=2e-5)
-def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5):
+@click.option("--debug", is_flag=True, default=False)
+def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False):
+    if debug:
+        logger = logging.getLogger()
+        logger.setLevel("DEBUG")
+        logger.addHandler(logging.StreamHandler(sys.stdout))
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
     match_spectra(training_instances, error_tolerance)
@@ -240,7 +247,7 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
     click.echo("Fitting Peak Relation Features")
     fit_peak_relation_features(partition_map)
     click.echo("Fitting Peak Intensity Regression")
-    model_fits = fit_regression_model(partition_map)
+    model_fits = fit_regression_model(partition_map, trace=debug)
     click.echo("Writing Models To %s" % (output_path,))
     export = []
     for spec, fit in model_fits:
@@ -256,7 +263,6 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
 def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5):
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
-    match_spectra(training_instances, error_tolerance)
     click.echo("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(training_instances)
     save_partitions(partition_map, outdir)

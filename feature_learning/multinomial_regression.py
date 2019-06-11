@@ -881,16 +881,26 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
         # link function
         eta[i] = np.log(mu[i]) + np.log(1 + np.exp(logit(np.sum(mu[i]))))
         assert not np.any(np.isnan(eta[i]))
+    tracing = control['trace']
 
     dev = deviance(y, mu, n, reliabilities)
+    if tracing:
+        logger.info(
+            "Initial Parameters:\ny =\n%s\nmu =\n%s\neta =\n%s\nreliability =\n%s\ndev = %s\n",
+            map(np.array2string, y),
+            map(np.array2string, mu),
+            map(np.array2string, eta),
+            map(np.array2string, reliabilities),
+            dev)
     iter_ = 0
     for iter_ in range(control['maxit']):
-        if control['trace']:
-            print("Iteration %d" % (iter_, ))
         z = phi * beta0
         H = phi * np.diag(S_inv0)
-        if control['trace']:
-            assert not np.any(np.isnan(H))
+        if tracing:
+            logger.info(
+                "Iteration %d\n", iter_)
+        # if tracing:
+        #     assert not np.any(np.isnan(H))
         for i in range(len(y)):
             reliability = reliabilities[i]
             # Variance of Y_i, multinomial, e.g. covariance matrix
@@ -904,8 +914,8 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
             z += n[i] * x[i].T.dot(y[i] - mu[i] + W.dot(eta[i]))
             # Sum of covariances, close to the Hessian (log-likelihood)
             H += n[i] * x[i].T.dot(W.dot(x[i]))
-            if control['trace']:
-                assert not np.any(np.isnan(H))
+            # if tracing:
+            #     assert not np.any(np.isnan(H))
 
         H += np.identity(H.shape[0])
         # H = CtC, H_inv = C_inv * Ct_inv
@@ -914,16 +924,21 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
         C = np.linalg.cholesky(H).T
         # Solve for updated coefficients. Use back substitution algorithm.
         beta = solve_triangular(C, solve_triangular(C, z, trans="T"))
-        # if control['trace']:
+        if tracing:
+            logger.info(
+                "H =\n%s\nC =\n%s\nbeta =\n%s\n",
+                np.array2string(H),
+                np.array2string(C),
+                np.array2string(beta))
+        # if tracing:
         #     assert np.all(np.abs(beta) < 1e3)
-
         for i in range(len(y)):
             # linear predictor
             eta[i] = x[i].dot(beta)
             # canonical poisson inverse link
-            if control['trace']:
-                mu_i_temp = np.exp(eta[i])
-                assert not np.any(np.isinf(mu_i_temp))
+            # if tracing:
+            #     mu_i_temp = np.exp(eta[i])
+            #     assert not np.any(np.isinf(mu_i_temp))
             mu[i] = np.exp(eta[i])
             # Apply a normalizing constraint for multinomial
             # inverse link to expected value from linear predictor
@@ -932,8 +947,8 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
         dev_new = deviance(y, mu, n, reliabilities)
         if adjust_dispersion:
             phi = (nu_tau2 + dev_new) / (nu + np.sum(lengths))
-        if control['trace']:
-            print("[%d] deviance = %f" % (iter_, dev_new))
+        if tracing:
+            logger.info("Deviance = %f", dev_new)
         rel_error = np.abs((dev_new - dev) / dev)
         # converged?
         if (not np.isinf(dev)) and (rel_error < control["epsilon"]):
