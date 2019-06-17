@@ -55,14 +55,6 @@ cdef int intensity_ratio_function(DeconvolutedPeak peak1, DeconvolutedPeak peak2
 
 
 cdef class FeatureBase(object):
-    cdef:
-        public str name
-        public double tolerance
-        public double intensity_ratio
-        public int from_charge
-        public int to_charge
-        public object feature_type
-        public object terminal
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None):
         raise NotImplementedError()
@@ -178,11 +170,6 @@ cdef class FeatureBase(object):
 
 
 cdef class MassOffsetFeature(FeatureBase):
-
-    cdef:
-        public double offset
-        public Py_hash_t _hash
-
 
     @cython.cdivision(True)
     cpdef bint test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2):
@@ -312,18 +299,6 @@ cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak f
 
 
 cdef class FittedFeatureBase(object):
-    cdef:
-        public FeatureBase feature
-        public int from_charge
-        public int to_charge
-        public IonSeriesBase series
-        public double on_series
-        public double off_series
-
-        public long on_count
-        public long off_count
-        public list relations
-
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=None):
         result = self.feature.find_matches(peak, peak_list, structure)
@@ -340,10 +315,6 @@ cdef class FittedFeatureBase(object):
 
 
 cdef class FragmentationFeatureBase(object):
-    cdef:
-        public FeatureBase feature
-        public IonSeriesBase series
-        public dict fits
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=None):
         cdef:
@@ -370,15 +341,6 @@ cdef class FragmentationFeatureBase(object):
 
 
 cdef class FragmentationModelBase(object):
-    cdef:
-        public IonSeriesBase series
-        public list features
-        public list feature_table
-        public double error_tolerance
-        public double on_frequency
-        public double off_frequency
-        public double prior_probability_of_match
-        public double offset_probability
 
     cdef size_t get_size(self):
         return PyList_GET_SIZE(self.feature_table)
@@ -483,8 +445,6 @@ cdef list get_item_default_list(dict d, object key):
 
 
 cdef class FragmentationModelCollectionBase(object):
-    cdef:
-        public dict models
 
     cpdef dict find_matches(self, scan, FragmentMatchMap solution_map, structure):
         cdef:
@@ -583,14 +543,6 @@ cdef class FragmentationModelCollectionBase(object):
 
 @cython.freelist(100000)
 cdef class PeakRelation(object):
-    cdef:
-        public DeconvolutedPeak from_peak
-        public DeconvolutedPeak to_peak
-        public int intensity_ratio
-        public object feature
-        public object series
-        public int from_charge
-        public int to_charge
 
     def __init__(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak, feature, intensity_ratio=None, series=None):
         if intensity_ratio is None:
