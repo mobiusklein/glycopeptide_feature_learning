@@ -1,6 +1,5 @@
 import numpy as np
 from itertools import chain
-from functools import total_ordering
 
 from collections import Counter, defaultdict, namedtuple
 from collections import Mapping
@@ -618,7 +617,6 @@ except ImportError as err:
                 (p * self.on_series) + ((1 - p) * self.off_series))
 
 
-@total_ordering
 class FittedFeature(FittedFeatureBase):
     def __init__(self, feature, series, on_series, off_series, relations=None, on_count=0, off_count=0):
         if relations is None:
@@ -682,10 +680,20 @@ class FittedFeature(FittedFeatureBase):
     def __ne__(self, other):
         return not (self == other)
 
-    def __lt__(self, other):
-        v = self.feature < other.feature
+    def __gt__(self, other):
+        if self.feature != other.feature:
+            return self.feature > other.feature
+        v = self.on_series > other.on_series
         if not v:
             return False
+        v = self.off_series > other.off_series
+        if not v:
+            return False
+        return True
+
+    def __lt__(self, other):
+        if self.feature != other.feature:
+            return self.feature < other.feature
         v = self.on_series < other.on_series
         if not v:
             return False
@@ -693,6 +701,12 @@ class FittedFeature(FittedFeatureBase):
         if not v:
             return False
         return True
+
+    def __ge__(self, other):
+        return self == other or self > other
+
+    def __le__(self, other):
+        return self == other or self < other
 
     def __repr__(self):
         temp = ("<FittedFeature {feature.name}, {terms} u:{on_series:0.4g}"
