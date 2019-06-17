@@ -815,6 +815,10 @@ def cho2inv(C, lower=False):
     return cho_solve((C, lower), np.identity(C.shape[0]))
 
 
+def _array2string(X):
+    return np.array2string(X, max_line_width=80, precision=6, separator=', ')
+
+
 def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_dispersion=True, prior_coef=None, prior_disp=None, **control):
     """Fit a multinomial generalized linear model to bond-type by intensity observations
     of glycopeptide fragmentation.
@@ -887,10 +891,10 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
     if tracing:
         logger.info(
             "Initial Parameters:\ny =\n%s\nmu =\n%s\neta =\n%s\nreliability =\n%s\ndev = %s\n",
-            '\n'.join(map(np.array2string, y)),
-            '\n'.join(map(np.array2string, mu)),
-            '\n'.join(map(np.array2string, eta)),
-            '\n'.join(map(np.array2string, reliabilities)),
+            '\n'.join(map(_array2string, y)),
+            '\n'.join(map(_array2string, mu)),
+            '\n'.join(map(_array2string, eta)),
+            '\n'.join(map(_array2string, reliabilities)),
             dev)
     iter_ = 0
     for iter_ in range(control['maxit']):
@@ -927,9 +931,9 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
         if tracing:
             logger.info(
                 "H =\n%s\nC =\n%s\nbeta =\n%s\n",
-                np.array2string(H),
-                np.array2string(C),
-                np.array2string(beta))
+                _array2string(H),
+                _array2string(C),
+                _array2string(beta))
         # if tracing:
         #     assert np.all(np.abs(beta) < 1e3)
         for i in range(len(y)):
