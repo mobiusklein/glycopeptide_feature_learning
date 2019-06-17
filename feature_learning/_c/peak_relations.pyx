@@ -4,6 +4,8 @@ cimport cython
 import numpy as np
 cimport numpy as np
 
+from libc.math cimport fabs
+
 from cpython.object cimport PyObject
 from cpython.dict cimport PyDict_GetItem, PyDict_SetItem
 from cpython.tuple cimport PyTuple_GET_ITEM, PyTuple_GET_SIZE
@@ -26,6 +28,12 @@ from collections import defaultdict
 
 cdef str NOISE = "noise"
 cdef int OUT_OF_RANGE_INT = 999
+
+
+@cython.nonecheck(False)
+@cython.cdivision(True)
+cdef bint isclose(double x, double y, double rtol=1.e-5, double atol=1.e-8) nogil:
+    return fabs(x-y) <= (atol + rtol * fabs(y))
 
 
 @cython.cdivision(True)
@@ -178,7 +186,7 @@ cdef class MassOffsetFeature(FeatureBase):
            ((self.from_charge == OUT_OF_RANGE_INT and self.to_charge == OUT_OF_RANGE_INT) or
                 (self.from_charge == peak1.charge and self.to_charge == peak2.charge)):
 
-            return abs((peak1.neutral_mass + self.offset - peak2.neutral_mass) / peak2.neutral_mass) <= self.tolerance
+            return fabs((peak1.neutral_mass + self.offset - peak2.neutral_mass) / peak2.neutral_mass) <= self.tolerance
         return False
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None):
@@ -210,10 +218,38 @@ cdef class MassOffsetFeature(FeatureBase):
                            self.to_charge))
 
     def __eq__(self, other):
-        v = np.isclose(self.offset, other.offset)
-        if not v:
-            return v
-        return super(MassOffsetFeature, self).__eq__(other)
+        if isinstance(other, MassOffsetFeature):
+            v = isclose(self.offset, (<MassOffsetFeature>other).offset)
+            if not v:
+                return v
+            return super(MassOffsetFeature, self).__eq__(other)
+        return False
+
+    def __lt__(self, other):
+        cdef:
+            bint v
+        if isinstance(other, MassOffsetFeature):
+            v = isclose(self.offset, (<MassOffsetFeature>other).offset)
+            if v:
+                return False
+            v = self.offset < (<MassOffsetFeature>other).offset
+            if not v:
+                return False
+            return super(MassOffsetFeature, self).__lt__(other)
+        return False
+
+    def __gt__(self, other):
+        cdef:
+            bint v
+        if isinstance(other, MassOffsetFeature):
+            v = isclose(self.offset, (<MassOffsetFeature>other).offset)
+            if v:
+                return False
+            v = self.offset > (<MassOffsetFeature>other).offset
+            if not v:
+                return False
+            return super(MassOffsetFeature, self).__gt__(other)
+        return False
 
     def __hash__(self):
         return self._hash
