@@ -887,10 +887,10 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
     if tracing:
         logger.info(
             "Initial Parameters:\ny =\n%s\nmu =\n%s\neta =\n%s\nreliability =\n%s\ndev = %s\n",
-            map(np.array2string, y),
-            map(np.array2string, mu),
-            map(np.array2string, eta),
-            map(np.array2string, reliabilities),
+            '\n'.join(map(np.array2string, y)),
+            '\n'.join(map(np.array2string, mu)),
+            '\n'.join(map(np.array2string, eta)),
+            '\n'.join(map(np.array2string, reliabilities)),
             dev)
     iter_ = 0
     for iter_ in range(control['maxit']):
