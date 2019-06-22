@@ -594,6 +594,77 @@ cdef class PeakRelation(object):
     def __reduce__(self):
         return self.__class__, (self.from_peak, self.to_peak, self.feature, self.intensity_ratio, self.series)
 
+    def __eq__(self, PeakRelation other):
+        cdef:
+            bint v
+        if other is None:
+            return False
+        v = self.from_peak == other.from_peak
+        if not v:
+            return v
+        v = self.to_peak == other.to_peak
+        if not v:
+            return v
+        v = self.feature == other.feature
+        if not v:
+            return v
+        v = self.intensity_ratio == other.intensity_ratio
+        if not v:
+            return v
+        v = self.from_charge == other.from_charge
+        if not v:
+            return v
+        v = self.to_charge == other.to_charge
+        if not v:
+            return v
+        v = self.series == other.series
+        if not v:
+            return v
+        return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __lt__(self, PeakRelation other):
+        cdef:
+            bint v
+        v = self.from_peak.neutral_mass < other.from_peak.neutral_mass
+        if not v:
+            return v
+        v = self.to_peak.neutral_mass < other.to_peak.neutral_mass
+        if not v:
+            return v
+        v = self.from_charge < other.from_charge
+        if not v:
+            return v
+        v = self.to_charge < other.to_charge
+        if not v:
+            return v
+        v = self.intensity_ratio < other.intensity_ratio
+        if not v:
+            return v
+        return True
+
+    def __gt__(self, PeakRelation other):
+        cdef:
+            bint v
+        v = self.from_peak.neutral_mass > other.from_peak.neutral_mass
+        if not v:
+            return v
+        v = self.to_peak.neutral_mass > other.to_peak.neutral_mass
+        if not v:
+            return v
+        v = self.from_charge > other.from_charge
+        if not v:
+            return v
+        v = self.to_charge > other.to_charge
+        if not v:
+            return v
+        v = self.intensity_ratio > other.intensity_ratio
+        if not v:
+            return v
+        return True
+
     def __repr__(self):
         cdef:
             str template
