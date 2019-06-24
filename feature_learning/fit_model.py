@@ -223,6 +223,7 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
             except ValueError:
                 mismatch_fit = regression_model.fit_regression(
                     mismatches, reliability_model=None, **kwargs)
+            mismatch_fit.reliability_model = fm
             fits.append(mismatch_fit)
     return (spec, fits)
 
