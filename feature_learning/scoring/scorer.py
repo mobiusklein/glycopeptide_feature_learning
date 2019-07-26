@@ -106,6 +106,7 @@ class _ModelPredictionCachingBase(object):
 class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyMixin):
 
     _glycan_score = None
+    _glycan_coverage = None
     _peptide_score = None
 
     def _calculate_pearson_residuals(self, use_reliability=True, base_reliability=0.5):
@@ -231,7 +232,9 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
         intensities = yhat[:-1] * (least_squares_scale_coefficient(yhat[:-1], intens[:-1]) if scaled else 1.0)
         return zip(mz, intensities)
 
-    def _glycan_coverage(self, fragments, core_weight=0.4, coverage_weight=0.6):
+    def _calculate_glycan_coverage(self, fragments, core_weight=0.4, coverage_weight=0.6):
+        if self._glycan_coverage is not None:
+            return self._glycan_coverage
         series = IonSeries.stub_glycopeptide
         theoretical_set = list(self.target.stub_fragments(extended=True))
         core_fragments = set()
@@ -257,6 +260,7 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
         coverage = core_coverage * extended_coverage
         if np.isnan(coverage):
             coverage = 0.0
+        self._glycan_coverage = coverage
         return coverage
 
     def glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
@@ -357,7 +361,7 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, MultinomialReg
         if np.isnan(stub_component):
             stub_component = 0
         oxonium_component = self._signature_ion_score(self.error_tolerance)
-        coverage = self._glycan_coverage(c, core_weight, coverage_weight)
+        coverage = self._calculate_glycan_coverage(c, core_weight, coverage_weight)
         glycan_score = (np.log10(intens * t).dot(reliability + 1) + corr_score + stub_component
                         ) * coverage + oxonium_component
         return max(glycan_score, 0)
@@ -708,7 +712,7 @@ class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer)
         if np.all(np.isnan(stub_component)):
             stub_component = 0
         oxonium_component = self._signature_ion_score(self.error_tolerance)
-        coverage = self._glycan_coverage(c, core_weight, coverage_weight)
+        coverage = self._calculate_glycan_coverage(c, core_weight, coverage_weight)
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
         # the 0.17 term ensures that the maximum value of the -log10 transform of the cdf is
         # mapped to approximately 1.0 (1.02). The maximum value is guaranteed to 6.0 because
@@ -823,7 +827,7 @@ class PartialSplitScorer(SplitScorer):
         yhat = np.array(yhat)
         reliability = np.array(reliability)
         oxonium_component = self._signature_ion_score(self.error_tolerance)
-        coverage = self._glycan_coverage(c, core_weight, coverage_weight)
+        coverage = self._calculate_glycan_coverage(c, core_weight, coverage_weight)
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
         glycan_score = ((np.log10(intens * t) * mass_accuracy * (
             unpad(reliability, base_reliability) + 1)).sum()) * coverage + oxonium_component
