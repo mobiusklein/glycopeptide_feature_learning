@@ -33,3 +33,6 @@ cdef class BackbonePosition(object):
 
     @staticmethod
     cdef BackbonePosition _create(_FragmentType match, double intensity, double predicted, double reliability)
+
+
+cpdef _calculate_pearson_residuals(self, bint use_reliability=*, double base_reliability=*)

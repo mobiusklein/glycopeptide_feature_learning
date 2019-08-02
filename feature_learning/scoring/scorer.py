@@ -232,7 +232,7 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
         intensities = yhat[:-1] * (least_squares_scale_coefficient(yhat[:-1], intens[:-1]) if scaled else 1.0)
         return zip(mz, intensities)
 
-    def _calculate_glycan_coverage(self, fragments, core_weight=0.4, coverage_weight=0.6):
+    def _calculate_glycan_coverage(self, core_weight=0.4, coverage_weight=0.6, **kwargs):
         if self._glycan_coverage is not None:
             return self._glycan_coverage
         series = IonSeries.stub_glycopeptide
@@ -254,9 +254,10 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
                 extended_matches.add(peak_pair.fragment_name)
         n = self._get_internal_size(self.target.glycan_composition)
         k = 2.0
+        d = max(n * np.log(n) / k, n)
         core_coverage = ((len(core_matches) * 1.0) / len(core_fragments)) ** core_weight
         extended_coverage = min(float(len(core_matches) + len(
-            extended_matches)) / (n * np.log(n) / k), 1.0) ** coverage_weight
+            extended_matches)) / d, 1.0) ** coverage_weight
         coverage = core_coverage * extended_coverage
         if np.isnan(coverage):
             coverage = 0.0
@@ -712,7 +713,7 @@ class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer)
         if np.all(np.isnan(stub_component)):
             stub_component = 0
         oxonium_component = self._signature_ion_score(self.error_tolerance)
-        coverage = self._calculate_glycan_coverage(c, core_weight, coverage_weight)
+        coverage = self._calculate_glycan_coverage(core_weight, coverage_weight)
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
         # the 0.17 term ensures that the maximum value of the -log10 transform of the cdf is
         # mapped to approximately 1.0 (1.02). The maximum value is guaranteed to 6.0 because
@@ -750,9 +751,10 @@ class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer)
 
 
 try:
-    from feature_learning.scoring._c.scorer import (calculate_peptide_score, _calculate_pearson_residuals)
-    SplitScorer.calculate_peptide_score = calculate_peptide_score
+    from feature_learning.scoring._c.scorer import (calculate_peptide_score, _calculate_pearson_residuals, _calculate_glycan_coverage)
+    MultinomialRegressionScorer._calculate_glycan_coverage = _calculate_glycan_coverage
     MultinomialRegressionScorerBase._calculate_pearson_residuals = _calculate_pearson_residuals
+    SplitScorer.calculate_peptide_score = calculate_peptide_score
 except ImportError as err:
     print(err)
 
@@ -827,7 +829,7 @@ class PartialSplitScorer(SplitScorer):
         yhat = np.array(yhat)
         reliability = np.array(reliability)
         oxonium_component = self._signature_ion_score(self.error_tolerance)
-        coverage = self._calculate_glycan_coverage(c, core_weight, coverage_weight)
+        coverage = self._calculate_glycan_coverage(core_weight, coverage_weight)
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
         glycan_score = ((np.log10(intens * t) * mass_accuracy * (
             unpad(reliability, base_reliability) + 1)).sum()) * coverage + oxonium_component

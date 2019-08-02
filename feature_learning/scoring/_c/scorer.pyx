@@ -20,7 +20,10 @@ from glycan_profiling._c.structure.fragment_match_map cimport (
 
 from glycopeptidepy._c.structure.base cimport AminoAcidResidueBase, SequencePosition
 from glycopeptidepy._c.structure.sequence_methods cimport _PeptideSequenceCore
-from glycopeptidepy._c.structure.fragment cimport PeptideFragment, FragmentBase, IonSeriesBase, ChemicalShiftBase
+from glycopeptidepy._c.structure.fragment cimport (
+    PeptideFragment, FragmentBase, IonSeriesBase, ChemicalShiftBase, StubFragment)
+
+from glycopeptidepy.structure import IonSeries
 
 from feature_learning._c.model_types cimport _FragmentType
 from feature_learning._c.approximation cimport StepFunction
@@ -29,6 +32,16 @@ from feature_learning.multinomial_regression import (
     PearsonResidualCDF as _PearsonResidualCDF)
 
 cdef StepFunction PearsonResidualCDF = _PearsonResidualCDF
+
+
+cdef:
+    IonSeriesBase IonSeries_b, IonSeries_y, IonSeries_c, IonSeries_z, IonSeries_stub_glycopeptide
+
+IonSeries_b = IonSeries.b
+IonSeries_y = IonSeries.y
+IonSeries_c = IonSeries.c
+IonSeries_z = IonSeries.z
+IonSeries_stub_glycopeptide = IonSeries.stub_glycopeptide
 
 
 @cython.final
@@ -83,7 +96,7 @@ cdef double correlation(double* x, double* y, size_t n) nogil:
 @cython.boundscheck(False)
 @cython.cdivision(True)
 def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliability=True, double base_reliability=0.5,
-                            double coverage_weight=1.0, *args, **kwargs):
+                            double coverage_weight=1.0, **kwargs):
     cdef:
         list c, backbones
         tuple coverage_result
@@ -179,7 +192,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
     peptide_score = 0.0
     for i in range(n):
         ci = <_FragmentType>PyList_GET_ITEM(c, i)
-        temp = log10(intens_[i] * t) 
+        temp = log10(intens_[i] * t)
         temp *= 1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4
         temp *= unpad(reliability_[i], base_reliability) + 0.75
         # the 0.17 term ensures that the maximum value of the -log10 transform of the cdf is
@@ -197,9 +210,61 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
 
 
 @cython.binding(True)
+@cython.cdivision(True)
+@cython.boundscheck(False)
+def _calculate_glycan_coverage(self, double core_weight=0.4, double coverage_weight=0.6, **kwargs):
+    cdef:
+        set seen, core_fragments, core_matches, extended_matches
+        IonSeriesBase series
+        list theoretical_set
+        double total, n, k, d, core_coverage, extended_coverage, score
+        FragmentMatchMap solution_map
+        StubFragment frag
+        PeakFragmentPair peak_pair
+        size_t i, n_core_matches, n_extended_matches
+
+    if self._glycan_coverage is not None:
+            return self._glycan_coverage
+    seen = set()
+    series = IonSeries_stub_glycopeptide
+    theoretical_set = list(self.target.stub_fragments(extended=True))
+    core_fragments = set()
+    for i in range(len(theoretical_set)):
+        frag = <StubFragment>theoretical_set[i]
+        if not frag.is_extended:
+            core_fragments.add(frag._name)
+
+    total = 0
+    core_matches = set()
+    extended_matches = set()
+    solution_map = <FragmentMatchMap>self.solution_map
+
+    for obj in solution_map.members:
+        peak_pair = <PeakFragmentPair>obj
+        if (<FragmentBase>peak_pair.fragment).get_series() != series:
+            continue
+        elif peak_pair.fragment_name in core_fragments:
+            core_matches.add(peak_pair.fragment_name)
+        else:
+            extended_matches.add(peak_pair.fragment_name)
+
+    n = self._get_internal_size(self.target.glycan_composition)
+    k = 2.0
+    d = max(n * log(n) / k, n)
+    n_core_matches = len(core_matches)
+    n_extended_matches = len(extended_matches)
+    core_coverage = ((n_core_matches * 1.0) / len(core_fragments)) ** core_weight
+    extended_coverage = min(float(n_core_matches + n_extended_matches) / d, 1.0) ** coverage_weight
+    coverage = core_coverage * extended_coverage
+    if isnan(coverage):
+        coverage = 0.0
+    self._glycan_coverage = coverage
+    return coverage
+
+@cython.binding(True)
 @cython.boundscheck(False)
 @cython.cdivision(True)
-def _calculate_pearson_residuals(self, bint use_reliability=True, double base_reliability=0.5):
+cpdef _calculate_pearson_residuals(self, bint use_reliability=True, double base_reliability=0.5):
     r"""Calculate the raw Pearson residuals of the Multinomial model
 
     .. math::
