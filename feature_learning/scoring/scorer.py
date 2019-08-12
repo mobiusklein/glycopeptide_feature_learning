@@ -362,7 +362,7 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, MultinomialReg
         if np.isnan(stub_component):
             stub_component = 0
         oxonium_component = self._signature_ion_score(self.error_tolerance)
-        coverage = self._calculate_glycan_coverage(c, core_weight, coverage_weight)
+        coverage = self._calculate_glycan_coverage(core_weight, coverage_weight)
         glycan_score = (np.log10(intens * t).dot(reliability + 1) + corr_score + stub_component
                         ) * coverage + oxonium_component
         return max(glycan_score, 0)
