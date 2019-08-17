@@ -1,7 +1,7 @@
 import math
 import json
 
-from collections import defaultdict, deque
+from collections import defaultdict, deque, OrderedDict
 
 from ms_deisotope.data_source import ChargeNotProvided
 
@@ -91,8 +91,12 @@ class PredicateBase(object):
             result = self.query(value, *args, **kwargs)
             if result is None:
                 result = self.find_nearest(value, *args, **kwargs)
-        except (ValueError, KeyError):
+                # print(
+                #     "find_nearest: %s, %s -> %s -> %s" % (scan.id, structure, value, result))
+        except (ValueError, KeyError) as _err:
             result = self.find_nearest(value, *args, **kwargs)
+            # print("find_nearest: %s, %s -> %s -> %s (err = %r)" %
+            #       (scan.id, structure, value, result, _err))
         return result
 
     def __call__(self, scan, structure, *args, **kwargs):
@@ -114,7 +118,7 @@ class IntervalPredicate(PredicateBase):
         best_distance = float('inf')
         for key, _ in self.root.items():
             centroid = (key[0] + key[1]) / 2.
-            distance = math.sqrt((centroid - point) ** 2)
+            distance = abs((centroid - point))
             if distance < best_distance:
                 best_distance = distance
                 best_key = key
@@ -156,7 +160,7 @@ class MappingPredicate(PredicateBase):
         best_key = None
         best_distance = float('inf')
         for key, _ in self.root.items():
-            distance = math.sqrt(self._distance(key, point) ** 2)
+            distance = abs(self._distance(key, point))
             if distance < best_distance:
                 best_distance = distance
                 best_key = key
@@ -178,8 +182,10 @@ class ChargeStatePredicate(MappingPredicate):
             if point == ChargeNotProvided:
                 keys = sorted(self.root.keys())
                 n = len(keys)
+                if n % 2:
+                    n -= 1
                 if n > 0:
-                    return self.root[keys[int(n / 2)]]
+                    return self.root[keys[int(n // 2)]]
                 raise
 
 
@@ -221,7 +227,7 @@ class GlycanTypeCountPredicate(PredicateBase):
             count = glycosylation_manager.count_glycosylation_type(key)
             if count != 0:
                 for cnt, _ in branch.items():
-                    distance = math.sqrt((count - cnt) ** 2)
+                    distance = abs(count - cnt)
                     if distance < best_distance:
                         best_distance = distance
                         best_key = (key, cnt)
@@ -248,7 +254,7 @@ class PredicateTreeBase(DummyScorer):
     _scorer_type = None
     _short_peptide_scorer_type = None
 
-    def __init__(self, root):
+    def __init__(self, root): # pylint: disable=super-init-not-called
         self.root = root
         self.size = 5
 
@@ -308,13 +314,13 @@ class PredicateTreeBase(DummyScorer):
         for key in key_tuples:
             aggregate[key[i]].append(key)
         if i < n:
-            result = dict()
-            for k, vs in aggregate.items():
+            result = OrderedDict()
+            for k, vs in sorted(aggregate.items(), key=lambda x: x[0]):
                 result[k] = cls.build_tree(vs, i + 1, n, solution_map)
             return result
         else:
-            result = dict()
-            for k, vs in aggregate.items():
+            result = OrderedDict()
+            for k, vs in sorted(aggregate.items(), key=lambda x: x[0]):
                 if len(vs) > 1:
                     raise ValueError("Multiple specifications at a leaf node")
                 result[k] = solution_map[vs[0]]
