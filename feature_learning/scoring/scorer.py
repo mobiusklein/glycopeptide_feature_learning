@@ -478,7 +478,11 @@ class _ModelMixtureBase(object):
                 pearson = 1.0
             ps[i] = (1. / pearson) ** self.power
         total = ps.sum() + 1e-6 * ps.shape[0]
+        if np.isnan(total):
+            ps[np.isnan(ps)] = 0
+            total = ps.sum() + 1e-6 * ps.shape[0]
         return ps / total
+
 
     def _mixture_apply(self, fn, *args, **kwargs):
         return self.mixture_coefficients.dot(
