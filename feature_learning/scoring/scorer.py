@@ -483,7 +483,6 @@ class _ModelMixtureBase(object):
             total = ps.sum() + 1e-6 * ps.shape[0]
         return ps / total
 
-
     def _mixture_apply(self, fn, *args, **kwargs):
         return self.mixture_coefficients.dot(
             [fn(self, *args, **kwargs) for _ in self._iter_model_fits()])
@@ -881,6 +880,12 @@ class MixturePartialSplitScorer(_ModelMixtureBase, PartialSplitScorer):
         self.mixture_coefficients = self._calculate_mixture_coefficients()
         return super(MixturePartialSplitScorer, self).calculate_score(
             error_tolerance, peptide_weight, glycosylated_weight, base_reliability, *args, **kwargs)
+
+    def get_auxiliary_data(self):
+        data = super(MixturePartialSplitScorer, self).get_auxiliary_data()
+        data['mixture_coefficients'] = self.mixture_coefficients
+        data['partition'] = self.partition
+        return data
 
 
 class PartialSplitScorerTree(PredicateTree):
