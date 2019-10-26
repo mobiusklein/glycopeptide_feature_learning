@@ -474,7 +474,7 @@ class _ModelMixtureBase(object):
         ps = np.empty(len(self.model_fits))
         for i, model_fit in enumerate(self._iter_model_fits()):
             pearson = self._calculate_pearson_residuals().sum()
-            if np.isnan(pearson):
+            if np.isnan(pearson) or pearson == 0:
                 pearson = 1.0
             ps[i] = (1. / pearson) ** self.power
         total = ps.sum() + 1e-6 * ps.shape[0]
