@@ -249,8 +249,7 @@ cdef class _FragmentType(object):
 
         # non-stub ion glycosylation
         if self._is_backbone:
-            X[offset + PyInt_AsLong(
-                int(self.peak_pair.fragment.glycosylation_size))] = 1
+            X[offset + (<PeptideFragment>self.peak_pair.fragment).get_glycosylation_size()] = 1
         offset += k_glycosylated
         return X, offset
 
