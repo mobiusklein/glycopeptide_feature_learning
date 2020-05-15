@@ -51,7 +51,7 @@ class FragmentTypeClassification(AminoAcidClassification):
 
 
 try:
-    from feature_learning._c.model_types import (
+    from glycopeptide_feature_learning._c.model_types import (
         FragmentSeriesClassification,
         FragmentTypeClassification
     )
@@ -202,7 +202,7 @@ class FragmentTypeMeta(type):
 
 
 try:
-    from feature_learning._c.model_types import _FragmentType
+    from glycopeptide_feature_learning._c.model_types import _FragmentType
 except ImportError:
     pass
 
@@ -383,7 +383,7 @@ class FragmentType(_FragmentType):
 
 
 try:
-    from feature_learning._c.model_types import (
+    from glycopeptide_feature_learning._c.model_types import (
         encode_classification,
         build_fragment_intensity_matches,
         from_peak_peptide_fragment_pair
@@ -437,7 +437,7 @@ class ProlineSpecializingModel(FragmentType):
 
 
 try:
-    from feature_learning._c.model_types import specialize_proline
+    from glycopeptide_feature_learning._c.model_types import specialize_proline
     ProlineSpecializingModel.specialize_proline = specialize_proline
 except ImportError as err:
     print(err)
@@ -477,7 +477,7 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
 
 
 try:
-    from feature_learning._c.model_types import encode_stub_information
+    from glycopeptide_feature_learning._c.model_types import encode_stub_information
     StubGlycopeptideCompositionModel.encode_stub_information = encode_stub_information
 except ImportError as err:
     print(err)
@@ -509,7 +509,7 @@ class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
 
 
 try:
-    from feature_learning._c.model_types import encode_stub_fucosylation
+    from glycopeptide_feature_learning._c.model_types import encode_stub_fucosylation
     StubGlycopeptideFucosylationModel.encode_stub_fucosylation = encode_stub_fucosylation
 except ImportError as err:
     print(err)
@@ -574,7 +574,7 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
 
 
 try:
-    from feature_learning._c.model_types import (
+    from glycopeptide_feature_learning._c.model_types import (
         encode_neighboring_residues, get_nterm_neighbor, get_cterm_neighbor,
         get_nterm_index_from_fragment, get_cterm_index_from_fragment
     )
@@ -635,7 +635,7 @@ class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth2):
 
 
 try:
-    from feature_learning._c.model_types import (
+    from glycopeptide_feature_learning._c.model_types import (
         encode_cleavage_site_distance_from_center, get_cleavage_site_distance_from_center)
     CleavageSiteCenterDistanceModel.encode_cleavage_site_distance_from_center =\
         encode_cleavage_site_distance_from_center
@@ -689,7 +689,7 @@ class StubChargeModel(CleavageSiteCenterDistanceModel):
 
 
 try:
-    from feature_learning._c.model_types import (
+    from glycopeptide_feature_learning._c.model_types import (
         encode_stub_charge,
         StubChargeModel_build_feature_vector)
     StubChargeModel.encode_stub_charge = encode_stub_charge
@@ -745,7 +745,7 @@ def classify_sequence_by_residues(sequence):
 
 
 try:
-    from feature_learning._c.model_types import classify_sequence_by_residues
+    from glycopeptide_feature_learning._c.model_types import classify_sequence_by_residues
 except ImportError as err:
     print(err)
 

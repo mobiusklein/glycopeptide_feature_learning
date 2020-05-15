@@ -99,7 +99,7 @@ def classify_amide_bond_frank(n_term, c_term):
 
 
 try:
-    from feature_learning._c.amino_acid_classification import (
+    from glycopeptide_feature_learning._c.amino_acid_classification import (
         AminoAcidClassification, classify_residue_frank,
         classify_amide_bond_frank, proton_mobility
     )

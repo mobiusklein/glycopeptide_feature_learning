@@ -16,7 +16,7 @@ from glycopeptidepy._c.structure.fragment cimport (
     PeptideFragment, FragmentBase, IonSeriesBase, ChemicalShiftBase)
 
 
-from feature_learning._c.model_types cimport _FragmentType
+from glycopeptide_feature_learning._c.model_types cimport _FragmentType
 
 
 ctypedef fused scalar_or_array:

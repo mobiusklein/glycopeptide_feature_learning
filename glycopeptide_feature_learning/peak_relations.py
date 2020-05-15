@@ -314,7 +314,7 @@ class FeatureBase(object):
 
 try:
     _FeatureBase = FeatureBase
-    from feature_learning._c.peak_relations import FeatureBase as CFeatureBase
+    from glycopeptide_feature_learning._c.peak_relations import FeatureBase as CFeatureBase
 
     class FeatureBase(CFeatureBase): # pylint: disable=function-redefined
         from_json = classmethod(_load_feature_from_json)
@@ -416,7 +416,7 @@ class MassOffsetFeature(FeatureBase):
 
 try:
     _MassOffsetFeature = MassOffsetFeature
-    from feature_learning._c.peak_relations import MassOffsetFeature
+    from glycopeptide_feature_learning._c.peak_relations import MassOffsetFeature
 except ImportError:
     pass
 
@@ -490,7 +490,7 @@ class LinkFeature(MassOffsetFeature):
 
 
 try:
-    from feature_learning._c.peak_relations import LinkFeature_is_valid_match
+    from glycopeptide_feature_learning._c.peak_relations import LinkFeature_is_valid_match
     LinkFeature.is_valid_match = LinkFeature_is_valid_match
 except ImportError as err:
     print(err)
@@ -529,7 +529,7 @@ class PeakRelation(object):
 
 try:
     _PeakRelation = PeakRelation
-    from feature_learning._c.peak_relations import PeakRelation
+    from glycopeptide_feature_learning._c.peak_relations import PeakRelation
 except ImportError:
     pass
 
@@ -602,7 +602,7 @@ def feature_function_estimator(gpsms, feature_function, series=IonSeries.b, tole
 
 
 try:
-    from feature_learning._c.peak_relations import FittedFeatureBase
+    from glycopeptide_feature_learning._c.peak_relations import FittedFeatureBase
 except ImportError as err:
 
     class FittedFeatureBase(object):
@@ -854,7 +854,7 @@ def train_feature_function(gpsms, feature, preranked=True, error_tolerance=2e-5,
 
 
 try:
-    from feature_learning._c.peak_relations import FragmentationFeatureBase
+    from glycopeptide_feature_learning._c.peak_relations import FragmentationFeatureBase
 except ImportError as err:
     print(err)
 
@@ -916,7 +916,7 @@ class FragmentationFeature(FragmentationFeatureBase):
 
 
 try:
-    from feature_learning._c.peak_relations import FragmentationModelBase
+    from glycopeptide_feature_learning._c.peak_relations import FragmentationModelBase
 except ImportError as err:
     print(err)
 
@@ -1117,7 +1117,7 @@ def feature_divergence(models, feature):
 
 
 try:
-    from feature_learning._c.peak_relations import FragmentationModelCollectionBase
+    from glycopeptide_feature_learning._c.peak_relations import FragmentationModelCollectionBase
 except ImportError as err:
     print(err)
 

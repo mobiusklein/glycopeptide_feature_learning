@@ -1,10 +1,10 @@
 *.pyc
 *.pyd
-feature_learning/_c/*.c
-feature_learning/_c/*.html
-feature_learning/scoring/_c/*.c
-feature_learning/scoring/_c/*.html
-data/
+glycopeptide_feature_learning/_c/*.c
+glycopeptide_feature_learning/_c/*.html
+glycopeptide_feature_learning/scoring/_c/*.c
+glycopeptide_feature_learning/scoring/_c/*.html
+/data/
 ext/
 ref/
 .ipynb_checkpoints/

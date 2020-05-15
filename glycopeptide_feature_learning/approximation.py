@@ -98,7 +98,7 @@ class StepFunction(object):
 
 try:
     _StepFunction = StepFunction
-    from feature_learning._c.approximation import StepFunction
+    from glycopeptide_feature_learning._c.approximation import StepFunction
 except ImportError:
     pass
 
@@ -139,7 +139,7 @@ class ECDF(StepFunction):
 
 try:
     _ECDF = ECDF
-    from feature_learning._c.approximation import ECDF
+    from glycopeptide_feature_learning._c.approximation import ECDF
 except ImportError:
     pass
 

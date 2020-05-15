@@ -9,10 +9,10 @@ from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial imp
 from glycan_profiling.tandem.glycopeptide.scoring.simple_score import SignatureAwareCoverageScorer
 from glycan_profiling.tandem.glycopeptide.scoring.precursor_mass_accuracy import MassAccuracyMixin
 
-from feature_learning.multinomial_regression import (
+from glycopeptide_feature_learning.multinomial_regression import (
     PearsonResidualCDF, least_squares_scale_coefficient)
 
-from feature_learning.utils import distcorr
+from glycopeptide_feature_learning.utils import distcorr
 
 from .predicate import PredicateTreeBase, ModelBindingScorer
 
@@ -754,7 +754,7 @@ class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer)
 
 
 try:
-    from feature_learning.scoring._c.scorer import (calculate_peptide_score, _calculate_pearson_residuals, _calculate_glycan_coverage)
+    from glycopeptide_feature_learning.scoring._c.scorer import (calculate_peptide_score, _calculate_pearson_residuals, _calculate_glycan_coverage)
     MultinomialRegressionScorer._calculate_glycan_coverage = _calculate_glycan_coverage
     MultinomialRegressionScorerBase._calculate_pearson_residuals = _calculate_pearson_residuals
     SplitScorer.calculate_peptide_score = calculate_peptide_score

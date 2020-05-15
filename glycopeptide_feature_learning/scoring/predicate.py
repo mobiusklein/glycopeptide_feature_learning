@@ -5,8 +5,8 @@ from collections import defaultdict, deque, OrderedDict
 
 from ms_deisotope.data_source import ChargeNotProvided
 
-from feature_learning.partitions import classify_proton_mobility, partition_cell_spec
-from feature_learning.multinomial_regression import MultinomialRegressionFit
+from glycopeptide_feature_learning.partitions import classify_proton_mobility, partition_cell_spec
+from glycopeptide_feature_learning.multinomial_regression import MultinomialRegressionFit
 
 
 from .base import (DummyScorer, ModelBindingScorer)

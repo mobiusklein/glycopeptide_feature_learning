@@ -30,21 +30,21 @@ def make_extensions():
         "profile": False
     }
     extensions = cythonize([
-        Extension(name='feature_learning._c.data_source', sources=["feature_learning/_c/data_source.pyx"],
+        Extension(name='glycopeptide_feature_learning._c.data_source', sources=["glycopeptide_feature_learning/_c/data_source.pyx"],
                   include_dirs=[numpy.get_include()]),
-        Extension(name='feature_learning._c.peak_relations', sources=["feature_learning/_c/peak_relations.pyx"],
+        Extension(name='glycopeptide_feature_learning._c.peak_relations', sources=["glycopeptide_feature_learning/_c/peak_relations.pyx"],
                   include_dirs=[numpy.get_include()]),
-        Extension(name='feature_learning._c.amino_acid_classification',
-                  sources=["feature_learning/_c/amino_acid_classification.pyx"],
+        Extension(name='glycopeptide_feature_learning._c.amino_acid_classification',
+                  sources=["glycopeptide_feature_learning/_c/amino_acid_classification.pyx"],
                   include_dirs=[numpy.get_include()]),
-        Extension(name='feature_learning._c.approximation',
-                  sources=["feature_learning/_c/approximation.pyx"],
+        Extension(name='glycopeptide_feature_learning._c.approximation',
+                  sources=["glycopeptide_feature_learning/_c/approximation.pyx"],
                   include_dirs=[numpy.get_include()]),
-        Extension(name='feature_learning._c.model_types',
-                  sources=["feature_learning/_c/model_types.pyx"],
+        Extension(name='glycopeptide_feature_learning._c.model_types',
+                  sources=["glycopeptide_feature_learning/_c/model_types.pyx"],
                   include_dirs=[numpy.get_include()]),
-        Extension(name='feature_learning.scoring._c.scorer',
-                  sources=["feature_learning/scoring/_c/scorer.pyx"],
+        Extension(name='glycopeptide_feature_learning.scoring._c.scorer',
+                  sources=["glycopeptide_feature_learning/scoring/_c/scorer.pyx"],
                   include_dirs=[numpy.get_include()]),
     ], compiler_directives=cython_directives)
     return extensions
@@ -102,18 +102,18 @@ def status_msgs(*msgs):
     print('*' * 75)
 
 
-setup(name='feature_learning',
+setup(name='glycopeptide_feature_learning',
       packages=find_packages(),
       ext_modules=make_extensions(),
       include_package_data=True,
       package_data={
-          "feature_learning": ["feature_learning/data/*"],
+          "glycopeptide_feature_learning": ["glycopeptide_feature_learning/data/*"],
       },
       entry_points={
           'console_scripts': [
-              "fit-glycopeptide-regression-model = feature_learning.fit_model:main",
-              "partition-glycopeptide-training-data = feature_learning.fit_model:partition_glycopeptide_training_data",
-              "msms-feature-learning = feature_learning.fit_model:cli"
+              "fit-glycopeptide-regression-model = glycopeptide_feature_learning.fit_model:main",
+              "partition-glycopeptide-training-data = glycopeptide_feature_learning.fit_model:partition_glycopeptide_training_data",
+              "glycopeptide-feature-learning = glycopeptide_feature_learning.fit_model:cli"
           ],
       },
       cmdclass=cmdclass)

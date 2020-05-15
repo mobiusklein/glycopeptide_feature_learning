@@ -39,6 +39,8 @@ amino_acid_blocks = [
 amino_acid_blocks = list(map(AminoAcidSequenceBuildingBlock.from_str, amino_acid_blocks))
 
 
+# TODO: Use this to extract theset of amino acid blocks to learn instead of the
+# fixed common list.
 def build_building_block_set(gpsms):
     linking_amino_acids = Counter()
     for gpsm in gpsms:

@@ -31,9 +31,9 @@ from glypy.structure.glycan_composition import FrozenMonosaccharideResidue
 from glycopeptidepy.structure.fragment import IonSeries
 
 
-from feature_learning.amino_acid_classification import (
+from glycopeptide_feature_learning.amino_acid_classification import (
     AminoAcidClassification, classify_amide_bond_frank)
-from feature_learning._c.amino_acid_classification cimport (
+from glycopeptide_feature_learning._c.amino_acid_classification cimport (
     classify_residue_frank)
 
 

@@ -13,12 +13,12 @@ import click
 
 import numpy as np
 
-from feature_learning import (
+from glycopeptide_feature_learning import (
     data_source, peak_relations,
-    _common_features, partitions,
+    common_features, partitions,
     multinomial_regression)
 
-from feature_learning.scoring import PartialSplitScorerTree
+from glycopeptide_feature_learning.scoring import PartialSplitScorerTree
 
 import glypy
 from glycopeptidepy.structure.fragment import IonSeries
@@ -128,7 +128,7 @@ def get_peak_relation_features():
     }
 
     link_features = {}
-    for link in _common_features.amino_acid_blocks:
+    for link in common_features.amino_acid_blocks:
         feat = peak_relations.LinkFeature(link)
         link_features[feat] = lambda x: True
     return features, stub_features, link_features

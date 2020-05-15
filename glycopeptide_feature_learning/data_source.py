@@ -176,6 +176,6 @@ try:
     has_c = True
     _RankedPeak = RankedPeak
     _build_deconvoluted_peak_set_from_arrays = build_deconvoluted_peak_set_from_arrays
-    from feature_learning._c.data_source import RankedPeak, build_deconvoluted_peak_set_from_arrays
+    from glycopeptide_feature_learning._c.data_source import RankedPeak, build_deconvoluted_peak_set_from_arrays
 except ImportError:
     has_c = False
