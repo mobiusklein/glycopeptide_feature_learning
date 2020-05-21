@@ -20,7 +20,10 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
         return "ModelBindingScorer(%s)" % (repr(self.tp),)
 
     def __eq__(self, other):
-        return (self.tp == other.tp) and (self.args == other.args) and (self.kwargs == other.kwargs)
+        try:
+            return (self.tp == other.tp) and (self.args == other.args) and (self.kwargs == other.kwargs)
+        except AttributeError:
+            return False
 
     def __call__(self, scan, target, *args, **kwargs):
         mass_shift = kwargs.pop("mass_shift", Unmodified)

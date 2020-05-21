@@ -388,3 +388,11 @@ class PredicateTreeBase(DummyScorer):
 
     def __repr__(self):
         return "%s(%d)" % (self.__class__.__name__, len(self.root),)
+
+    def __eq__(self, other):
+        try:
+            my_root = self.root
+            other_root = other.root
+        except AttributeError:
+            return False
+        return my_root == other_root
