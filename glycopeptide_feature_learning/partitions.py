@@ -223,22 +223,12 @@ class KFoldSplitter(object):
     def split(self, data):
         n_samples = len(data)
         indices = np.arange(n_samples)
-        temp = np.array(data)
-        if n_samples == 0:
-            return
-        if not isinstance(temp[0], type(data[0])) and not isinstance(data[0], list):
-            temp = np.ones(n_samples, dtype=object)
-            temp[:] = data
-            data = temp
-            assert type(temp[0]) == type(data[0])
-        else:
-            data = temp
         self.shuffler(data)
         for test_index in self._mask(data):
             train_index = indices[np.logical_not(test_index)]
             test_index = indices[test_index]
-            train_group = data[train_index]
-            test_group = data[test_index]
+            train_group = [data[i] for i in train_index]
+            test_group = [data[i] for i in test_index]
             yield train_group, test_group
 
 
@@ -249,7 +239,6 @@ def crossvalidation_sets(gpsms, kfolds=3, shuffler=None, stratified=True):
     '''
     splitter = KFoldSplitter(kfolds, shuffler)
     if not stratified:
-        gpsms = np.array(gpsms)
         return list(splitter.split(gpsms))
     holders = defaultdict(list)
     for gpsm in gpsms:
