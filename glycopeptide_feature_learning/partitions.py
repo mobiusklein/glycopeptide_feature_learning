@@ -232,6 +232,28 @@ class KFoldSplitter(object):
             yield train_group, test_group
 
 
+def group_by_structure(gpsms):
+    holders = defaultdict(list)
+    for gpsm in gpsms:
+        holders[gpsm.structure].append(gpsm)
+    return holders
+
+
+def split_groups(groups, splitter=None):
+    if splitter is None:
+        splitter = KFoldSplitter(3)
+    combinables = []
+    singletons = set()
+    for k, v in groups.items():
+        if len(v) == 1:
+            singletons.add(k)
+        else:
+            combinables.append((splitter.split(v), v))
+    v = [groups[k][0] for k in singletons]
+    combinables.append((splitter.split(v), v))
+    return combinables
+
+
 def crossvalidation_sets(gpsms, kfolds=3, shuffler=None, stratified=True):
     '''
     Create k stratified cross-validation sets, stratified
@@ -240,18 +262,8 @@ def crossvalidation_sets(gpsms, kfolds=3, shuffler=None, stratified=True):
     splitter = KFoldSplitter(kfolds, shuffler)
     if not stratified:
         return list(splitter.split(gpsms))
-    holders = defaultdict(list)
-    for gpsm in gpsms:
-        holders[gpsm.structure].append(gpsm)
-    singletons = set()
-    combinables = []
-    for k, v in holders.items():
-        if len(v) == 1:
-            singletons.add(k)
-        else:
-            combinables.append((splitter.split(v), v))
-    v = [holders[k] for k in singletons]
-    combinables.append((splitter.split(v), v))
+    holders = group_by_structure(gpsms)
+    combinables = split_groups(holders, splitter)
 
     splits = [(list(), list()) for i in range(kfolds)]
     for combinable, v in combinables:
