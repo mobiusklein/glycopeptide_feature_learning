@@ -224,6 +224,8 @@ class KFoldSplitter(object):
         n_samples = len(data)
         indices = np.arange(n_samples)
         temp = np.array(data)
+        if n_samples == 0:
+            return
         if not isinstance(temp[0], type(data[0])) and not isinstance(data[0], list):
             temp = np.ones(n_samples, dtype=object)
             temp[:] = data

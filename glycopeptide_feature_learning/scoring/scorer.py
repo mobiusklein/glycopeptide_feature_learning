@@ -182,7 +182,7 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
             yhat = t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat))
         return p, yhat
 
-    def _get_predicted_intensities_series(self, series, use_reliability=True, base_reliability=0.5):
+    def get_predicted_intensities_series(self, series, use_reliability=True, base_reliability=0.5):
         c, intens, t, yhat = self._get_predicted_intensities()
         if self.model_fit.reliability_model is None or not use_reliability:
             reliability = np.ones_like(yhat)
