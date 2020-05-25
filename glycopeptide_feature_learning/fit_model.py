@@ -151,21 +151,24 @@ def fit_peak_relation_features(partition_map):
                 cell.fit = group_to_fit[key]
                 continue
             if progressbar.is_hidden:
-                click.echo("%s %d" % (spec, len(subset)))
+                click.echo("Fitting Peak Relationships for %s with %d observations" % (spec, len(subset)))
+            # NOTE: The feature filters are not used, but are not necessary with the current
+            # feature fitting algorithm. Future implementations using more feature classifications
+            # might require them.
             for series in [IonSeries.b, IonSeries.y, ]:
                 fm = peak_relations.FragmentationModel(series)
                 fm.fit_offset(subset)
-                for feature, filt in features.items():
+                for feature, _filt in features.items():
                     fits = fm.fit_feature(subset, feature)
                     fm.features.extend(fits)
-                for feature, filt in link_features.items():
+                for feature, _filt in link_features.items():
                     fits = fm.fit_feature(subset, feature)
                     fm.features.extend(fits)
                 cell.fit[series] = fm
             for series in [IonSeries.stub_glycopeptide]:
                 fm = peak_relations.FragmentationModel(series)
                 fm.fit_offset(subset)
-                for feature, filt in stub_features.items():
+                for feature, _filt in stub_features.items():
                     fits = fm.fit_feature(subset, feature)
                     fm.features.extend(fits)
                 cell.fit[series] = fm
@@ -178,9 +181,9 @@ def fit_regression_model(partition_map, regression_model=None, use_mixture=True,
         regression_model = multinomial_regression.StubChargeModel
     model_fits = []
     for spec, cell in partition_map.items():
-        click.echo("%s %d" % (spec, len(cell.subset)))
+        click.echo("Fitting peak intensity model for %s with %d observations" % (spec, len(cell.subset)))
         _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture, **kwargs)
-        click.echo("%f" % fits[0].deviance)
+        click.echo("Total Deviance: %f" % fits[0].deviance)
         for fit in fits:
             model_fits.append((spec, fit))
     return model_fits
