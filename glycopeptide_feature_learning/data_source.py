@@ -141,6 +141,34 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
             method,
             scan.get('annotations', {}).get('activation_energy'))
 
+    def _scan_index(self, scan):
+        """Returns the base 0 offset from the start
+        of the data file in number of scans to reach
+        this scan.
+
+        If the original format does not natively include
+        an index value, this value may be computed from
+        the byte offset index.
+
+        Parameters
+        ----------
+        scan : Mapping
+            The underlying scan information storage,
+            usually a `dict`
+
+        Returns
+        -------
+        int
+        """
+        try:
+            return self._title_to_index[super(AnnotatedMGFDeserializer, self)._scan_title(scan)]
+        except KeyError:
+            try:
+                return self._title_to_index[super(AnnotatedMGFDeserializer, self)._scan_title(scan) + '.']
+            except KeyError:
+                return -1
+        return -1
+
     def _scan_title(self, scan):
         title = super(AnnotatedMGFDeserializer, self)._scan_title(scan)
         try:
