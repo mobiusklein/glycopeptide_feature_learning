@@ -155,6 +155,13 @@ class PartitionMap(OrderedDict):
             matches.extend(cell.subset)
         return matches
 
+    def sort(self):
+        items = sorted(self.items(), key=lambda x: x[0])
+        self.clear()
+        for key, value in items:
+            self[key] = value
+        return self
+
 
 def partition_observations(gpsms, exclusive=True):
     partition_map = PartitionMap()
