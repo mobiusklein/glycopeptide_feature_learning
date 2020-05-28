@@ -279,7 +279,7 @@ def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, output_p
 
 @click.command("strip-model", short_help="Strip out extra arrays from serialized model JSON")
 @click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
-@click.argument("outpath", type=click.Path(exists=True, dir_okay=False, writable=True))
+@click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
 def strip_model_arrays(inpath, outpath):
     model_tree = PartialSplitScorerTree.from_file(inpath)
     d = model_tree.to_json()
@@ -289,7 +289,7 @@ def strip_model_arrays(inpath, outpath):
 
 @click.command("compile-model", short_help="Compile a model into a Python-loadable file.")
 @click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
-@click.argument("outpath", type=click.Path(exists=True, dir_okay=False, writable=True))
+@click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
 @click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full"]))
 def compile_model(inpath, outpath, model_type="partial-peptide"):
     model_cls = {
