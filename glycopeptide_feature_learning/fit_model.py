@@ -3,6 +3,10 @@ import sys
 import glob
 import json
 import logging
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 try:
     from collections import Iterable
@@ -18,7 +22,8 @@ from glycopeptide_feature_learning import (
     common_features, partitions,
     multinomial_regression)
 
-from glycopeptide_feature_learning.scoring import PartialSplitScorerTree
+from glycopeptide_feature_learning.scoring import (
+    PartialSplitScorerTree, SplitScorerTree)
 
 import glypy
 from glycopeptidepy.structure.fragment import IonSeries
@@ -231,7 +236,7 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
     return (spec, fits)
 
 
-@click.command('fit-glycopeptide-regression-model')
+@click.command('fit-glycopeptide-regression-model', short_help="Fit glycopeptide fragmentation model")
 @click.argument('paths', metavar='PATH', type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @click.option('-t', '--threshold', type=float, default=50.0)
 @click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
@@ -260,7 +265,7 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
         json.dump(export, fh, sort_keys=1, indent=2)
 
 
-@click.command("partition-glycopeptide-training-data")
+@click.command("partition-glycopeptide-training-data", short_help="Pre-separate training data along partitions")
 @click.option('-t', '--threshold', type=float, default=0.0)
 @click.argument('paths', metavar='PATH', type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @click.argument('outdir', metavar='OUTDIR', type=click.Path(dir_okay=True, file_okay=False), nargs=1)
@@ -272,7 +277,7 @@ def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, output_p
     save_partitions(partition_map, outdir)
 
 
-@click.command("strip-model")
+@click.command("strip-model", short_help="Strip out extra arrays from serialized model JSON")
 @click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
 @click.argument("outpath", type=click.Path(exists=True, dir_okay=False, writable=True))
 def strip_model_arrays(inpath, outpath):
@@ -280,6 +285,21 @@ def strip_model_arrays(inpath, outpath):
     d = model_tree.to_json()
     with click.open_file(outpath, "wt") as fh:
         json.dump(d, fh)
+
+
+@click.command("compile-model", short_help="Compile a model into a Python-loadable file.")
+@click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
+@click.argument("outpath", type=click.Path(exists=True, dir_okay=False, writable=True))
+@click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full"]))
+def compile_model(inpath, outpath, model_type="partial-peptide"):
+    model_cls = {
+        "partial-peptide": PartialSplitScorerTree,
+        "full": SplitScorerTree
+    }[model_type]
+    model_tree = model_cls.from_file(inpath)
+    stream = click.open_file(outpath, 'wb')
+    pickle.dump(model_tree, stream, 2)
+    stream.close()
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -293,6 +313,7 @@ def cli():
 cli.add_command(main, "fit-model")
 cli.add_command(partition_glycopeptide_training_data, "partition-samples")
 cli.add_command(strip_model_arrays, "strip-model")
+cli.add_command(compile_model, "compile-model")
 
 
 def info(type, value, tb):
