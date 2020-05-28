@@ -290,7 +290,7 @@ def strip_model_arrays(inpath, outpath):
 @click.command("compile-model", short_help="Compile a model into a Python-loadable file.")
 @click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
-@click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full"]))
+@click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full"]), default='partial-peptide')
 def compile_model(inpath, outpath, model_type="partial-peptide"):
     model_cls = {
         "partial-peptide": PartialSplitScorerTree,
