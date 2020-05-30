@@ -645,7 +645,7 @@ except ImportError as err:
     print(err)
 
 
-class StubChargeModel(CleavageSiteCenterDistanceModel):
+class StubChargeModel(NeighboringAminoAcidsModelDepth2):
 
     def encode_stub_charge(self, X, offset):
         k_glycosylated_stubs = (StubFragment_max_glycosylation_size * 2) + 1
