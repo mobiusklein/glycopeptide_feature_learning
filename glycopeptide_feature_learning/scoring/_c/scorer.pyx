@@ -124,7 +124,6 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
     backbones = []
     n = PyList_GET_SIZE(c)
     for i in range(n):
-        intens[i] = intens[i]
         ci = <_FragmentType>PyList_GET_ITEM(c, i)
         if ci.series in series_set:
             backbones.append(
@@ -210,6 +209,66 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
 
 
 @cython.binding(True)
+@cython.boundscheck(False)
+@cython.cdivision(True)
+def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_reliability=True, double base_reliability=0.5,
+                           double core_weight=0.4, double coverage_weight=0.6, **kwargs):
+    cdef:
+        list c, stubs
+        np.ndarray[np.float64_t, ndim=1] intens, yhat, reliability
+        size_t i, n
+        _FragmentType ci
+        double* reliability_
+        double* intens_
+        double oxonium_component, coverage
+        double glycan_score, temp, t
+
+    c, intens, t, yhat = self._get_predicted_intensities()
+    if self.model_fit.reliability_model is None or not use_reliability:
+        reliability = np.ones_like(yhat)
+    else:
+        reliability = self._get_reliabilities(c, base_reliability=base_reliability)
+    intens = intens / t
+    stubs = []
+    n = PyList_GET_SIZE(c)
+    for i in range(n):
+        ci = <_FragmentType>PyList_GET_ITEM(c, i)
+        if ci.series == IonSeries_stub_glycopeptide:
+            stubs.append(
+                BackbonePosition._create(
+                    ci, intens[i] / t, yhat[i], reliability[i]))
+    n = PyList_GET_SIZE(stubs)
+    if n == 0:
+        return 0
+
+    intens_ = <double*>PyMem_Malloc(sizeof(double) * n)
+    reliability_ = <double*>PyMem_Malloc(sizeof(double) * n)
+    c = []
+    for i in range(n):
+        pos = <BackbonePosition>PyList_GET_ITEM(stubs, i)
+        c.append(pos.match)
+        intens_[i] = pos.intensity
+        reliability_[i] = pos.reliability
+
+    glycan_score = 0.0
+    for i in range(n):
+        ci = <_FragmentType>PyList_GET_ITEM(c, i)
+        temp = log10(intens_[i] * t)
+        temp *= 1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4
+        # Put a bit more weight on the reliability since no correlation is used.
+        temp *= unpad(reliability_[i], base_reliability) + 1.0
+        glycan_score += temp
+
+    oxonium_component = self._signature_ion_score(error_tolerance)
+    coverage = self._calculate_glycan_coverage(core_weight, coverage_weight)
+    glycan_score = glycan_score * coverage + oxonium_component
+
+    PyMem_Free(intens_)
+    PyMem_Free(reliability_)
+    return max(glycan_score, 0)
+
+
+@cython.binding(True)
 @cython.cdivision(True)
 @cython.boundscheck(False)
 def _calculate_glycan_coverage(self, double core_weight=0.4, double coverage_weight=0.6, **kwargs):
@@ -260,6 +319,10 @@ def _calculate_glycan_coverage(self, double core_weight=0.4, double coverage_wei
         coverage = 0.0
     self._glycan_coverage = coverage
     return coverage
+
+
+
+
 
 @cython.binding(True)
 @cython.boundscheck(False)
