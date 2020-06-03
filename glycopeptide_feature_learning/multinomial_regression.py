@@ -683,7 +683,6 @@ class StubChargeModel(NeighboringAminoAcidsModelDepth2):
         X, offset = StubGlycopeptideCompositionModel.encode_stub_information(self, X, offset)
         X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(self, X, offset)
         X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(self, X, offset)
-        X, offset = CleavageSiteCenterDistanceModel.encode_cleavage_site_distance_from_center(self, X, offset)
         X, offset = StubChargeModel.encode_stub_charge(self, X, offset)
         return X, offset
 

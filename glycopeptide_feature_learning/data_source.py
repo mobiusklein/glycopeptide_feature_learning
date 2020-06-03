@@ -6,6 +6,7 @@ from ms_deisotope.output.mgf import ProcessedMGFDeserializer, pymgf
 
 from glycan_profiling.structure import FragmentCachingGlycopeptide
 from glycan_profiling.tandem.glycopeptide.scoring import LogIntensityScorer
+from glycan_profiling.chromatogram_tree.mass_shift import MassShift, mass_shift_index
 
 from glycopeptidepy.algorithm import reverse_preserve_sequon
 from glycopeptidepy.utils import memoize
@@ -81,7 +82,7 @@ class AnnotatedScan(ProcessedScan):
 
     def match(self, **kwargs):
         self.matcher = LogIntensityScorer.evaluate(
-            self, self.structure, **kwargs)
+            self, self.structure, mass_shift=self.mass_shift, **kwargs)
         return self.matcher
 
     @property
@@ -93,7 +94,7 @@ class AnnotatedScan(ProcessedScan):
 
     @property
     def mass_shift(self):
-        return self.annotations.get('mass_shift', "Unmodified")
+        return mass_shift_index.get(self.annotations.get('mass_shift', "Unmodified"))
 
     def plot(self, ax=None):
         art = SpectrumMatchAnnotator(self.match(), ax=ax)
