@@ -6,7 +6,9 @@ from ms_deisotope.output.mgf import ProcessedMGFDeserializer, pymgf
 
 from glycan_profiling.structure import FragmentCachingGlycopeptide
 from glycan_profiling.tandem.glycopeptide.scoring import LogIntensityScorer
-from glycan_profiling.chromatogram_tree.mass_shift import MassShift, mass_shift_index
+from glycan_profiling.chromatogram_tree.mass_shift import (
+    MassShift, mass_shift_index, MassShiftCollection, Unmodified,
+    Ammonium, Sodium, Potassium)
 
 from glycopeptidepy.algorithm import reverse_preserve_sequon
 from glycopeptidepy.utils import memoize
@@ -14,6 +16,9 @@ from glypy.utils import opener
 
 from .common import intensity_rank
 from .matching import SpectrumMatchAnnotator
+
+
+mass_shifts = MassShiftCollection([Unmodified, Ammonium, Sodium, Potassium])
 
 
 def _parse_charge(z, list_only=False, **kwargs):
@@ -94,7 +99,19 @@ class AnnotatedScan(ProcessedScan):
 
     @property
     def mass_shift(self):
-        return mass_shift_index.get(self.annotations.get('mass_shift', "Unmodified"))
+        mass_shift_name = self.annotations.get('mass_shift', "Unmodified")
+        try:
+            mass_shift = mass_shifts[mass_shift_name]
+            return mass_shift
+        except:
+            composition = mass_shift_index.get(mass_shift_name)
+            if composition is None:
+                import warnings
+                warnings.warn("Unknown mass shift %r" % (mass_shift_name, ))
+                composition = mass_shift_index['Unmodified'].copy()
+            mass_shift = MassShift(mass_shift_name, composition)
+            mass_shifts.append(mass_shift)
+            return mass_shift
 
     def plot(self, ax=None):
         art = SpectrumMatchAnnotator(self.match(), ax=ax)
