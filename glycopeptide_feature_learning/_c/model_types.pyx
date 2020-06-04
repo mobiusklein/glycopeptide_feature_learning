@@ -605,6 +605,10 @@ def StubChargeModel_build_feature_vector(_FragmentType self, X, offset):
     X = <object>PyTuple_GetItem(out, 0)
     offset = <object>PyTuple_GetItem(out, 1)
 
+    # out = <tuple>_encode_cleavage_site_distance_from_center(self, X, offset)
+    # X = <object>PyTuple_GetItem(out, 0)
+    # offset = <object>PyTuple_GetItem(out, 1)
+
     out = <tuple>_encode_stub_charge(self, X, offset)
     X = <object>PyTuple_GetItem(out, 0)
     offset = <object>PyTuple_GetItem(out, 1)
