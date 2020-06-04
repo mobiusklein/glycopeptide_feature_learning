@@ -3,6 +3,7 @@ import sys
 import glob
 import json
 import logging
+import warnings
 try:
     import cPickle as pickle
 except ImportError:
@@ -53,7 +54,8 @@ def get_training_data(paths, blacklist_path=None, threshold=50.0):
             for instance in reader:
                 if instance.annotations['ms2_score'] < threshold:
                     continue
-                if instance.mass_shift not in ("Unmodified", "Ammonium"):
+                if instance.mass_shift.name not in ("Unmodified", "Ammonium"):
+                    warnings.warn("Skipping mass shift %r" % (instance.mass_shift))
                     continue
                 key = (instance.title, str(instance.structure))
                 if key in seen:
