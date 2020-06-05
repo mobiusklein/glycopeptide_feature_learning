@@ -256,7 +256,7 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
         temp = log10(intens_[i] * t)
         temp *= 1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4
         # Put a bit more weight on the reliability since no correlation is used.
-        temp *= unpad(reliability_[i], base_reliability) + 1.0
+        temp *= unpad(reliability_[i], base_reliability) + 0.25
         glycan_score += temp
 
     oxonium_component = self._signature_ion_score(error_tolerance)
