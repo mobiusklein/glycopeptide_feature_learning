@@ -190,7 +190,8 @@ def fit_regression_model(partition_map, regression_model=None, use_mixture=True,
     for spec, cell in partition_map.items():
         click.echo("Fitting peak intensity model for %s with %d observations" % (spec, len(cell.subset)))
         _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture, **kwargs)
-        click.echo("Total Deviance: %f" % fits[0].deviance)
+        if fits:
+            click.echo("Total Deviance: %f" % fits[0].deviance)
         for fit in fits:
             model_fits.append((spec, fit))
     return model_fits
