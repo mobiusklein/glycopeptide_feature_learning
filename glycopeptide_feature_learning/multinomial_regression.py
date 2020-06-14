@@ -878,7 +878,7 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
         # ensure no value is 0 by adding 0.5
         mu[i] = (y[i] + 0.5) / (1 + n[i] + 0.5 * lengths[i])
         if np.sum(mu[i]) > 1.0:
-            raise ValueError('mu sums to greater than 1')
+            raise ValueError('mu sums to greater than 1: %r' % (np.sum(mu[i])))
         # put on the scale of mu
         y[i] = y[i] / n[i]
         # link function

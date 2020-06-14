@@ -212,8 +212,12 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
                 cell.subset, reliability_model=None, **kwargs)
     except ValueError as ex:
         click.echo("%r, refitting without per-fragment weights" % (ex, ))
-        fit = regression_model.fit_regression(
-            cell.subset, reliability_model=None)
+        try:
+            fit = regression_model.fit_regression(
+                cell.subset, reliability_model=None)
+        except Exception as err:
+            click.echo("Failed to fit model with error: %r" % (err, ))
+            return (spec, [])
     fit.reliability_model = fm
     fits = [fit]
     if use_mixture:
@@ -223,18 +227,21 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
             if r < 0.5:
                 mismatches.append(case)
         if mismatches:
-            click.echo("Fitting Mismatch Model with %d cases" % len(mismatches))
             try:
-                mismatch_fit = regression_model.fit_regression(
-                    mismatches, reliability_model=fm, base_reliability=0.5, **kwargs)
-                if np.isinf(mismatch_fit.estimate_dispersion()):
+                click.echo("Fitting Mismatch Model with %d cases" % len(mismatches))
+                try:
+                    mismatch_fit = regression_model.fit_regression(
+                        mismatches, reliability_model=fm, base_reliability=0.5, **kwargs)
+                    if np.isinf(mismatch_fit.estimate_dispersion()):
+                        mismatch_fit = regression_model.fit_regression(
+                            mismatches, reliability_model=None, **kwargs)
+                except ValueError:
                     mismatch_fit = regression_model.fit_regression(
                         mismatches, reliability_model=None, **kwargs)
-            except ValueError:
-                mismatch_fit = regression_model.fit_regression(
-                    mismatches, reliability_model=None, **kwargs)
-            mismatch_fit.reliability_model = fm
-            fits.append(mismatch_fit)
+                mismatch_fit.reliability_model = fm
+                fits.append(mismatch_fit)
+            except Exception as err:
+                click.echo("Failed to fit mismatch model with error: %r" % (err, ))
     return (spec, fits)
 
 
