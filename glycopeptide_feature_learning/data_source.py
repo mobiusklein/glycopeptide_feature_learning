@@ -84,7 +84,7 @@ class AnnotatedScan(ProcessedScan):
             raise ValueError("Must specify which dimension to make into a decoy")
         gp = self.structure
         if peptide:
-            gp = reverse_sequence(gp)
+            gp = reverse_sequence(gp, peptide_type=FragmentCachingGlycopeptide)
         if glycan:
             gp = DecoyFragmentCachingGlycopeptide.from_target(gp)
         dup = self.copy()
