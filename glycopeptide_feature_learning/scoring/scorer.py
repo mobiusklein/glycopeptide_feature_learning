@@ -834,10 +834,12 @@ class PartialSplitScorer(SplitScorer):
         oxonium_component = self._signature_ion_score(self.error_tolerance)
         coverage = self._calculate_glycan_coverage(core_weight, coverage_weight)
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
+        glycan_prior = self.target.glycan_prior
         glycan_score = ((np.log10(intens * t) * mass_accuracy * (
             # 0.5 is a balance. 0.25 is a bit weaker for some, 1.0 is biased
             # towards low information matches.
-            unpad(reliability, base_reliability) + .5)).sum()) * coverage + oxonium_component
+            unpad(reliability, base_reliability) + .5)).sum()) * coverage + oxonium_component + (
+                coverage * glycan_prior)
         return max(glycan_score, 0)
 
 
