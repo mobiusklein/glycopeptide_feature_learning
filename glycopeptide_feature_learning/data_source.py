@@ -4,13 +4,13 @@ from ms_deisotope import DeconvolutedPeak, DeconvolutedPeakSet, neutral_mass
 from ms_deisotope.data_source import ProcessedScan, ActivationInformation
 from ms_deisotope.output.mgf import ProcessedMGFDeserializer, pymgf
 
-from glycan_profiling.structure import FragmentCachingGlycopeptide
+from glycan_profiling.structure import FragmentCachingGlycopeptide, DecoyFragmentCachingGlycopeptide
 from glycan_profiling.tandem.glycopeptide.scoring import LogIntensityScorer
 from glycan_profiling.chromatogram_tree.mass_shift import (
     MassShift, mass_shift_index, MassShiftCollection, Unmodified,
     Ammonium, Sodium, Potassium)
 
-from glycopeptidepy.algorithm import reverse_preserve_sequon
+from glycopeptidepy.algorithm import reverse_preserve_sequon, reverse_sequence
 from glycopeptidepy.utils import memoize
 from glypy.utils import opener
 
@@ -79,6 +79,18 @@ class AnnotatedScan(ProcessedScan):
                                 self.instrument_configuration, self.product_scans,
                                 self.annotations)
 
+    def decoy(self, peptide=True, glycan=True):
+        if not (peptide | glycan):
+            raise ValueError("Must specify which dimension to make into a decoy")
+        gp = self.structure
+        if peptide:
+            gp = reverse_sequence(gp)
+        if glycan:
+            gp = DecoyFragmentCachingGlycopeptide.from_target(gp)
+        dup = self.copy()
+        dup._structure = gp
+        return dup
+
     @property
     def structure(self):
         if self._structure is None:
@@ -100,6 +112,8 @@ class AnnotatedScan(ProcessedScan):
     @property
     def mass_shift(self):
         mass_shift_name = self.annotations.get('mass_shift', "Unmodified")
+        if not isinstance(mass_shift_name, str):
+            mass_shift_name = mass_shift_name.encode('utf8')
         try:
             mass_shift = mass_shifts[mass_shift_name]
             return mass_shift
