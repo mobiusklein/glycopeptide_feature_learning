@@ -13,7 +13,15 @@ from .amino_acid_classification import proton_mobility
 
 
 def classify_proton_mobility(scan, structure):
-    k = proton_mobility(structure)
+    try:
+        k = structure.proton_mobility
+    except AttributeError:
+        k = proton_mobility(structure)
+        # Try to abuse non-strict attributes for caching.
+        try:
+            structure.proton_mobility = k
+        except AttributeError:
+            pass
     charge = scan.precursor_information.charge
     if k < charge:
         return 'mobile'
