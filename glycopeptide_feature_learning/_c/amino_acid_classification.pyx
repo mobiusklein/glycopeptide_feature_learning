@@ -69,7 +69,7 @@ cpdef int proton_mobility(_PeptideSequenceCore sequence):
     p = 0
     for i in range(sequence.get_size()):
         pos = sequence.get(i)
-        if pos.amino_acid.name in (Histidine, Lysine, Arginine):
+        if pos.amino_acid.name in (Histidine.name, Lysine.name, Arginine.name):
             p += 1
     return p
 
@@ -184,4 +184,4 @@ cpdef tuple classify_amide_bond_frank(residue, residue2):
         return AminoAcidClassification_x, AminoAcidClassification_x
     else:
         return <tuple>result
-    
+

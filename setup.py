@@ -17,7 +17,7 @@ def make_extensions():
     try:
         import ms_deisotope
     except ImportError:
-        print("Installation requires `ms_deisotope`, install with `python -m pip install brain-isotopic-distribution`")
+        print("Installation requires `ms_deisotope`, install with `python -m pip install ms_deisotope`")
         raise
     try:
         import glycopeptidepy

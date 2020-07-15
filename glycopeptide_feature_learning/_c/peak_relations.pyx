@@ -9,6 +9,7 @@ from libc.math cimport fabs
 from cpython.object cimport PyObject
 from cpython.dict cimport PyDict_GetItem, PyDict_SetItem
 from cpython.tuple cimport PyTuple_GET_ITEM, PyTuple_GET_SIZE
+from cpython.sequence cimport PySequence_List
 from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM, PyList_Append
 
 np.import_array()
@@ -432,8 +433,10 @@ cdef class FragmentationModelBase(object):
         gamma = self.offset_probability
         a = 1.0
         b = 1.0
-        grouped_features = dict()
         n = PyList_GET_SIZE(matched_features)
+        if n == 0:
+            return (gamma * a) / ((gamma * a) + ((1 - gamma) * b))
+        grouped_features = dict()
         for i in range(n):
             relation = <PeakRelation>PyList_GET_ITEM(matched_features, i)
             key = relation.peak_key()
@@ -444,7 +447,9 @@ cdef class FragmentationModelBase(object):
             else:
                 acc = <list>ptemp
             PyList_Append(acc, relation)
-        groups = grouped_features.values()
+        # Consider rewriting as a plain iteration over dictionary to avoid allocating
+        # a list?
+        groups = <list>(grouped_features.values())
         n = PyList_GET_SIZE(groups)
         for i in range(n):
             relations = <list>PyList_GET_ITEM(groups, i)
@@ -566,7 +571,7 @@ cdef class FragmentationModelCollectionBase(object):
 
             ptemp = PyDict_GetItem(match_to_features, peak)
             if ptemp == NULL:
-                features = []
+                features = EMPTY_LIST
             else:
                 features = <list>ptemp
             PyDict_SetItem(
@@ -576,20 +581,29 @@ cdef class FragmentationModelCollectionBase(object):
         return fragment_probabilities
 
 
+cdef list EMPTY_LIST = []
+
 
 @cython.freelist(100000)
+@cython.final
 cdef class PeakRelation(object):
 
     def __init__(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak, feature, intensity_ratio=None, series=None):
+        cdef:
+            int intensity_ratio_
         if intensity_ratio is None:
-            intensity_ratio = intensity_ratio_function(from_peak, to_peak)
+            intensity_ratio_ = intensity_ratio_function(from_peak, to_peak)
+        else:
+            intensity_ratio_ = intensity_ratio
+        if series is None:
+            series = NOISE
         self.from_peak = from_peak
         self.to_peak = to_peak
         self.feature = feature
-        self.intensity_ratio = intensity_ratio
+        self.intensity_ratio = intensity_ratio_
         self.from_charge = from_peak.charge
         self.to_charge = to_peak.charge
-        self.series = series or NOISE
+        self.series = series
 
     def __reduce__(self):
         return self.__class__, (self.from_peak, self.to_peak, self.feature, self.intensity_ratio, self.series)
