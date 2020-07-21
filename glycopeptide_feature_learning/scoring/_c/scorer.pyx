@@ -271,7 +271,8 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
 @cython.binding(True)
 @cython.cdivision(True)
 @cython.boundscheck(False)
-def _calculate_glycan_coverage(self, double core_weight=0.4, double coverage_weight=0.6, **kwargs):
+def _calculate_glycan_coverage(self, double core_weight=0.4, double coverage_weight=0.6,
+                               bint fragile_fucose=True, **kwargs):
     cdef:
         set seen, core_fragments, core_matches, extended_matches
         IonSeriesBase series
@@ -307,8 +308,14 @@ def _calculate_glycan_coverage(self, double core_weight=0.4, double coverage_wei
         else:
             extended_matches.add(peak_pair.fragment_name)
 
-    n = self._get_internal_size(self.target.glycan_composition)
+    glycan_composition = self.target.glycan_composition
+    n = self._get_internal_size(glycan_composition)
     k = 2.0
+    if not fragile_fucose:
+        side_group_count = self._glycan_side_group_count(
+            glycan_composition)
+        if side_group_count > 0:
+            k = 1.0
     d = max(n * log(n) / k, n)
     n_core_matches = len(core_matches)
     n_extended_matches = len(extended_matches)
