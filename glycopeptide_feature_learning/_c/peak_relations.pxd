@@ -36,6 +36,22 @@ cdef class MassOffsetFeature(FeatureBase):
 cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
                                       FragmentMatchMap solution_map, structure=*)
 
+cdef class FeatureFunctionEstimatorBase(object):
+    cdef:
+        public FeatureBase feature_function
+        public IonSeriesBase series
+        public double tolerance
+        public bint prepranked
+        public bint track_relations
+        public bint verbose
+        public double total_on_series_satisfied
+        public double total_off_series_satisfied
+        public double total_on_series
+        public double total_off_series
+        public list peak_relations
+
+    cpdef match_peaks(self, gpsm, DeconvolutedPeakSet peaks)
+
 
 cdef class FittedFeatureBase(object):
     cdef:

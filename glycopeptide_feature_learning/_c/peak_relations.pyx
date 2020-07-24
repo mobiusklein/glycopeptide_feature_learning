@@ -351,6 +351,60 @@ cdef class FittedFeatureBase(object):
             (p * self.on_series) + ((1 - p) * self.off_series))
 
 
+cdef class FeatureFunctionEstimatorBase(object):
+    cpdef match_peaks(self, gpsm, DeconvolutedPeakSet peaks):
+        cdef:
+            list related, matches, fragments
+            FragmentMatchMap solution_map
+            DeconvolutedPeak peak, match
+            size_t i_peaks, n_peaks, i_fragments, n_fragments, i_matches, n_matches
+            bint is_on_series, is_match_expected
+            PeakRelation pr
+            FragmentBase k
+
+        n_peaks = peaks.get_size()
+        related = []
+        solution_map = gpsm.solution_map
+        structure = gpsm.structure
+        for i_peaks in range(n_peaks):
+            peak = peaks.getitem(i_peaks)
+
+            fragments = solution_map.by_peak[peak]
+            n_fragments = PyList_GET_SIZE(fragments)
+            is_on_series = False
+            for i_fragments in range(n_fragments):
+                k = <FragmentBase>PyList_GET_ITEM(fragments, i_fragments)
+                if k.get_series() == self.series:
+                    is_on_series = True
+                    break
+
+            matches = self.feature_function.find_matches(peak, peaks, structure)
+            n_matches = PyList_GET_SIZE(matches)
+            for i_matches in range(n_matches):
+                match = <DeconvolutedPeak>PyList_GET_ITEM(matches, i_matches)
+                if peak is match:
+                    continue
+                pr = None
+                if self.track_relations:
+                    pr = PeakRelation(peak, match, self.feature_function, intensity_ratio_function(peak, match))
+                    related.append(pr)
+                is_match_expected = self.feature_function.is_valid_match(peak, match, solution_map, structure)
+                if is_on_series and is_match_expected:
+                    self.total_on_series_satisfied += 1
+                    if self.track_relations:
+                        pr.series = self.series
+                else:
+                    self.total_off_series_satisfied += 1
+                    if self.track_relations:
+                        pr.series = NOISE
+            if is_on_series:
+                self.total_on_series += 1
+            else:
+                self.total_off_series += 1
+        if len(related) > 0 and self.track_relations:
+            self.peak_relations.append((gpsm, related))
+
+
 cdef class FragmentationFeatureBase(object):
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=None):

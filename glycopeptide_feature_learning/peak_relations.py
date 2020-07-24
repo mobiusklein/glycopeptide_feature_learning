@@ -533,9 +533,111 @@ try:
 except ImportError:
     pass
 
+try:
+    from glycopeptide_feature_learning._c.peak_relations import FeatureFunctionEstimatorBase
+except ImportError:
+    class FeatureFunctionEstimatorBase(object):
+        def match_peaks(self, gpsm, peaks):
+            related = []
+            solution_map = gpsm.solution_map
+            structure = gpsm.structure
+            for peak in peaks:
+                is_on_series = bool(
+                    [k for k in solution_map.by_peak[peak] if k.get_series() == self.series])
+                matches = self.feature_function.find_matches(
+                    peak, peaks, structure)
+                for match in matches:
+                    if peak is match:
+                        continue
+                    if self.track_relations:
+                        pr = PeakRelation(
+                            peak, match, self.feature_function, intensity_ratio_function(peak, match))
+                        related.append(pr)
+                    is_match_expected = self.feature_function.is_valid_match(
+                        peak, match, solution_map, structure)
+                    if is_on_series and is_match_expected:
+                        self.total_on_series_satisfied += 1
+                        if self.track_relations:
+                            pr.series = self.series
+                    else:
+                        self.total_off_series_satisfied += 1
+                        if self.track_relations:
+                            pr.series = NOISE
+                if is_on_series:
+                    self.total_on_series += 1
+                else:
+                    self.total_off_series += 1
+            if len(related) > 0 and self.track_relations:
+                self.peak_relations.append((gpsm, related))
+
+
+class FeatureFunctionEstimator(FeatureFunctionEstimatorBase):
+    def __init__(self, feature_function, series, tolerance=2e-5, preranked=True,
+                 track_relations=True, verbose=False):
+        self.feature_function = feature_function
+        self.series = series
+        self.tolerance = tolerance
+        self.preranked = preranked
+        self.track_relations = track_relations
+        self.verbose = verbose
+
+        self.total_on_series_satisfied = 0.0
+        self.total_off_series_satisfied = 0.0
+        self.total_on_series = 0.0
+        self.total_off_series = 0.0
+        self.peak_relations = []
+
+    def preprocess_spectrum(self, gpsm):
+        peaks = gpsm.deconvoluted_peak_set
+        try:
+            if gpsm.matcher is None:
+                gpsm.match(error_tolerance=self.tolerance)
+        except Exception:
+            return None
+        if not self.preranked:
+            intensity_rank(peaks)
+            peaks = DeconvolutedPeakSet([p for p in peaks if p.rank > 0])
+            peaks.reindex()
+            gpsm.annotations['ranked_peaks'] = peaks
+        else:
+            try:
+                peaks = gpsm.annotations['ranked_peaks']
+            except KeyError:
+                intensity_rank(peaks)
+                peaks = DeconvolutedPeakSet([p for p in peaks if p.rank > 0])
+                peaks.reindex()
+                gpsm.annotations['ranked_peaks'] = peaks
+        return peaks
+
+    def fit_spectra(self, gpsms):
+        for i_scan, gpsm in enumerate(gpsms):
+            if self.verbose and i_scan % 1000 == 0:
+                print(i_scan, gpsm)
+            peaks = self.preprocess_spectrum(gpsm)
+            if peaks is None:
+                continue
+            self.match_peaks(gpsm, peaks)
+        total_on_series_satisfied_normalized = self.total_on_series_satisfied / \
+            max(self.total_on_series, 1)
+        total_off_series_satisfied_normalized = self.total_off_series_satisfied / \
+            max(self.total_off_series, 1)
+
+        return FittedFeature(self.feature_function, self.series, total_on_series_satisfied_normalized,
+                             total_off_series_satisfied_normalized, self.peak_relations,
+                             on_count=self.total_on_series_satisfied,
+                             off_count=self.total_off_series_satisfied)
+
 
 def feature_function_estimator(gpsms, feature_function, series=IonSeries.b, tolerance=2e-5, preranked=True,
                                track_relations=True, verbose=False):
+    ffe = FeatureFunctionEstimator(
+        feature_function, series, tolerance, preranked=preranked, track_relations=track_relations,
+        verbose=verbose)
+    return ffe.fit_spectra(gpsms)
+
+
+def _feature_function_estimator(gpsms, feature_function, series=IonSeries.b, tolerance=2e-5, preranked=True,
+                                track_relations=True, verbose=False):
     total_on_series_satisfied = 0.
     total_off_series_satisfied = 0.
     total_on_series = 0.
