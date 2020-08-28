@@ -766,7 +766,7 @@ class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer)
 
 try:
     from glycopeptide_feature_learning.scoring._c.scorer import (calculate_peptide_score, _calculate_pearson_residuals, _calculate_glycan_coverage)
-    MultinomialRegressionScorer._calculate_glycan_coverage = _calculate_glycan_coverage
+    MultinomialRegressionScorerBase._calculate_glycan_coverage = _calculate_glycan_coverage
     MultinomialRegressionScorerBase._calculate_pearson_residuals = _calculate_pearson_residuals
     SplitScorer.calculate_peptide_score = calculate_peptide_score
 except ImportError as err:
