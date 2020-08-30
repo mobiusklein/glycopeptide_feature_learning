@@ -317,6 +317,7 @@ try:
     from glycopeptide_feature_learning._c.peak_relations import FeatureBase as CFeatureBase
 
     class FeatureBase(CFeatureBase): # pylint: disable=function-redefined
+        __slots__ = ()
         from_json = classmethod(_load_feature_from_json)
 
 except ImportError:
@@ -708,6 +709,8 @@ try:
 except ImportError as err:
 
     class FittedFeatureBase(object):
+        __slots__ = ('feature', 'from_charge', 'to_charge', 'series', 'on_series', 'off_series', 'on_count',
+                     'off_count', 'relations')
         def find_matches(self, peak, peak_list, structure=None):
             return self.feature.find_matches(peak, peak_list, structure)
 
@@ -720,6 +723,8 @@ except ImportError as err:
 
 
 class FittedFeature(FittedFeatureBase):
+    __slots__ = ()
+
     def __init__(self, feature, series, on_series, off_series, relations=None, on_count=0, off_count=0):
         if relations is None:
             relations = []
@@ -961,6 +966,7 @@ except ImportError as err:
     print(err)
 
     class FragmentationFeatureBase(object):
+        __slots__ = ('feature', 'series', 'fits')
         def find_matches(self, peak, peak_list, structure=None):
             matches = self.feature.find_matches(peak, peak_list, structure)
             pairs = []
@@ -975,6 +981,8 @@ except ImportError as err:
 
 
 class FragmentationFeature(FragmentationFeatureBase):
+    __slots__ = ()
+
     def __init__(self, feature, fits, series):
         self.feature = feature
         self.series = series
@@ -1023,6 +1031,8 @@ except ImportError as err:
     print(err)
 
     class FragmentationModelBase(object):
+        __slots__ = ('series', 'features', 'feature_table', 'error_tolerance', 'on_frequency', 'off_frequency',
+                     'prior_probability_of_match', 'offset_probability', )
         def find_matches(self, scan, solution_map, structure):
             matches_to_features = defaultdict(list)
             deconvoluted_peak_set = scan.deconvoluted_peak_set
@@ -1304,3 +1314,19 @@ class FragmentationModelCollection(FragmentationModelCollectionBase):
         for series, model in d.items():
             models[IonSeries(series)] = FragmentationModel.from_json(model)
         return cls(models)
+
+    def compact(self):
+        features = dict()
+        for series_model in self.models.values():
+            for feature_group in series_model.feature_table:
+                try:
+                    feature_group.feature = features[feature_group.feature]
+                except KeyError:
+                    features[feature_group.feature] = feature_group.feature
+
+            for feature in series_model.features:
+                try:
+                    feature.feature = features[feature.feature]
+                except KeyError:
+                    features[feature.feature] = feature.feature
+                feature.relations = None

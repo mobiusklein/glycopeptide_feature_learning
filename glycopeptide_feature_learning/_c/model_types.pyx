@@ -161,10 +161,14 @@ cdef class _FragmentType(object):
 
     @property
     def peak(self):
+        if self.peak_pair is None:
+            raise ValueError("Does not represent a peak-fragment match!")
         return self.get_peak()
 
     @property
     def fragment(self):
+        if self.peak_pair is None:
+            raise ValueError("Does not represent a peak-fragment match!")
         return self.get_fragment()
 
     cpdef bint is_assigned(self):
@@ -181,6 +185,13 @@ cdef class _FragmentType(object):
             self[0].name if self[0] else '',
             self[1].name if self[1] else '',
             self[2].name, self[3], self[4])
+
+    def __repr__(self):
+        peak_pair = self.peak_pair
+        if peak_pair is None:
+            return "{self.__class__.__name__}(Unassigned)".format(self=self)
+        else:
+            return "{self.__class__.__name__}({self.fragment.name}, {self.peak.charge})".format(self=self)
 
     cdef long get_feature_count(self):
         return PyInt_AsLong(type(self).feature_count)

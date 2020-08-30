@@ -34,7 +34,7 @@ cdef class MassOffsetFeature(FeatureBase):
 
 
 cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                                      FragmentMatchMap solution_map, structure=*)
+                                      FragmentMatchMap solution_map, structure=*) except *
 
 cdef class FeatureFunctionEstimatorBase(object):
     cdef:

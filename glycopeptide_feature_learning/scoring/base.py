@@ -65,6 +65,20 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
         except KeyError:
             return None
 
+    def compact(self):
+        model_fits = self.model_fits
+        if model_fits is None:
+            model_fit = self.model_fit
+            if model_fit is not None:
+                model_fit.compact()
+        else:
+            for model_fit in model_fits:
+                model_fit.compact()
+            last = model_fits[0]
+            for model_fit in model_fits[1:]:
+                if model_fit.reliability_model == last.reliability_model:
+                    model_fit.reliability_model = last.reliability_model
+
     def __lt__(self, other):
         return self.partition_label < other.partition_label
 

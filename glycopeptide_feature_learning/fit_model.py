@@ -306,7 +306,12 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
         "partial-peptide": PartialSplitScorerTree,
         "full": SplitScorerTree
     }[model_type]
+    click.echo("Loading Model", err=True)
     model_tree = model_cls.from_file(inpath)
+    click.echo("Packing Model", err=True)
+    for node in model_tree:
+        node.compact()
+    click.echo("Saving Model", err=True)
     stream = click.open_file(outpath, 'wb')
     pickle.dump(model_tree, stream, 2)
     stream.close()

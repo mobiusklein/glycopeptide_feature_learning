@@ -308,7 +308,7 @@ cdef class MassOffsetFeature(FeatureBase):
 
 @cython.binding(True)
 cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                                      FragmentMatchMap solution_map, structure=None):
+                                      FragmentMatchMap solution_map, structure=None) except *:
     cdef:
         bint is_peak_expected, validated_aa
         list matched_fragments, flanking_amino_acids

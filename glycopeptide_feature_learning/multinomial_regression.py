@@ -983,6 +983,15 @@ class MultinomialRegressionFit(object):
         self.model_type = model_type
         self.reliability_model = reliability_model
 
+    def compact(self):
+        self.scaled_y = None
+        self.mu = None
+        self.weights = None
+        self.reliabilities = None
+        self.H = None
+        if self.reliability_model is not None:
+            self.reliability_model.compact()
+
     def copy(self):
         return self.__class__(
             self.coef, self.scaled_y, self.mu, self.reliabilities, self.dispersion,
