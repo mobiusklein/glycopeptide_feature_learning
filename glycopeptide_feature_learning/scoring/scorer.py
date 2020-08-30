@@ -812,9 +812,10 @@ class MixtureSplitScorer(_ModelMixtureBase, SplitScorer):
     def calculate_score(self, error_tolerance=2e-5, peptide_weight=0.65, glycosylated_weight=0.1,
                         base_reliability=0.5, *args, **kwargs):
         self.mixture_coefficients = self._calculate_mixture_coefficients()
-        return super(MixtureSplitScorer, self).calculate_score(
+        score = super(MixtureSplitScorer, self).calculate_score(
             error_tolerance, peptide_weight, glycosylated_weight, base_reliability, *args, **kwargs)
-
+        self._clear_cache()
+        return score
 
 class SplitScorerTree(PredicateTree):
     _scorer_type = MixtureSplitScorer
@@ -894,8 +895,10 @@ class MixturePartialSplitScorer(_ModelMixtureBase, PartialSplitScorer):
     def calculate_score(self, error_tolerance=2e-5, peptide_weight=0.65, glycosylated_weight=0.1,
                         base_reliability=0.5, *args, **kwargs):
         self.mixture_coefficients = self._calculate_mixture_coefficients()
-        return super(MixturePartialSplitScorer, self).calculate_score(
+        score = super(MixturePartialSplitScorer, self).calculate_score(
             error_tolerance, peptide_weight, glycosylated_weight, base_reliability, *args, **kwargs)
+        self._clear_cache()
+        return score
 
     def get_auxiliary_data(self):
         data = super(MixturePartialSplitScorer, self).get_auxiliary_data()
