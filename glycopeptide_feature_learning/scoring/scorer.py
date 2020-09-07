@@ -57,6 +57,7 @@ class _ModelPredictionCachingBase(object):
     def _init_cache(self):
         self._cached_model = None
         self._cached_transform = None
+        self._cached_reliabilities = None
 
     def _get_predicted_intensities(self):
         c, intens, t, X = self._transform_matched_peaks()
@@ -77,6 +78,7 @@ class _ModelPredictionCachingBase(object):
     def _clear_cache(self):
         self._cached_model = None
         self._cached_transform = None
+        self._cached_reliabilities = None
 
     def _transform_matched_peaks_uncached(self):
         model_fit = self.model_fit
@@ -94,9 +96,11 @@ class _ModelPredictionCachingBase(object):
             cached_data = self._get_cached_model_transform(self.model_fit)
             if cached_data.reliability_vector is not None:
                 return cached_data.reliability_vector
-
-        reliability = self.model_fit._calculate_reliability(
-            self, fragment_match_features, base_reliability=base_reliability)
+        if self._cached_reliabilities is None:
+            self._cached_reliabilities = reliability = self.model_fit._calculate_reliability(
+                self, fragment_match_features, base_reliability=base_reliability)
+        else:
+            reliability = self._cached_reliabilities
         if is_model_cached:
             if cached_data is not None:
                 cached_data.reliability_vector = reliability
@@ -473,9 +477,11 @@ class _ModelMixtureBase(object):
 
     def _clear_cache(self):
         self._feature_cache.clear()
+        self._cached_reliabilities = None
 
     def _init_cache(self):
         self._feature_cache = dict()
+        self._cached_reliabilities = None
 
     def _calculate_mixture_coefficients(self):
         if len(self.model_fits) == 1:
