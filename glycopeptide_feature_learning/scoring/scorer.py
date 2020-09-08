@@ -833,11 +833,10 @@ class PartialSplitScorer(SplitScorer):
     def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
                                coverage_weight=0.5, fragile_fucose=True, ** kwargs):
         c, intens, t, yhat = self._get_predicted_intensities()
-        reliability = np.ones_like(yhat)
-        # if self.model_fit.reliability_model is None or not use_reliability:
-        #     reliability = np.ones_like(yhat)
-        # else:
-        #     reliability = self._get_reliabilities(c, base_reliability=base_reliability)
+        if self.model_fit.reliability_model is None or not use_reliability:
+            reliability = np.ones_like(yhat)
+        else:
+            reliability = self._get_reliabilities(c, base_reliability=base_reliability)
         stubs = []
         intens = intens / t
         for i in range(len(c)):
