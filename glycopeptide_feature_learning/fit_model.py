@@ -26,6 +26,8 @@ from glycopeptide_feature_learning import (
 from glycopeptide_feature_learning.scoring import (
     PartialSplitScorerTree, SplitScorerTree)
 
+from glycopeptide_feature_learning.scoring.scorer import NaivePartialSplitScorerTree
+
 import glypy
 from glycopeptidepy.structure.fragment import IonSeries
 
@@ -300,11 +302,12 @@ def strip_model_arrays(inpath, outpath):
 @click.command("compile-model", short_help="Compile a model into a Python-loadable file.")
 @click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
-@click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full"]), default='partial-peptide')
+@click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full", "naive-partial-peptide"]), default='partial-peptide')
 def compile_model(inpath, outpath, model_type="partial-peptide"):
     model_cls = {
         "partial-peptide": PartialSplitScorerTree,
-        "full": SplitScorerTree
+        "full": SplitScorerTree,
+        "naive-partial-peptide": NaivePartialSplitScorerTree
     }[model_type]
     click.echo("Loading Model", err=True)
     model_tree = model_cls.from_file(inpath)
