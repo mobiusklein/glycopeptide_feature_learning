@@ -833,7 +833,7 @@ class PartialSplitScorer(SplitScorer):
     def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
                                coverage_weight=0.5, fragile_fucose=True, ** kwargs):
         c, intens, t, yhat = self._get_predicted_intensities()
-        use_reliability = False
+        # use_reliability = False
         if self.model_fit.reliability_model is None or not use_reliability:
             reliability = np.ones_like(yhat)
         else:
@@ -850,15 +850,26 @@ class PartialSplitScorer(SplitScorer):
         intens = np.array(intens)
         yhat = np.array(yhat)
         reliability = np.array(reliability)
+        if len(intens) > 1:
+            corr = np.corrcoef(intens, yhat)[0, 1]
+            if np.isnan(corr):
+                corr = -0.5
+        else:
+            corr = -0.5
+        corr = (1.0 + corr) / 2.0
+        corr_score = corr * np.sqrt(len(stubs)) + \
+            unpad(reliability, base_reliability).sum()
+
         oxonium_component = self._signature_ion_score(self.error_tolerance)
         coverage = self._calculate_glycan_coverage(
             core_weight, coverage_weight, fragile_fucose=fragile_fucose)
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
         glycan_prior = self.target.glycan_prior
-        glycan_score = ((np.log10(intens * t) * mass_accuracy * (
+        glycan_score = ((np.log10(intens * t) * mass_accuracy #*
             # 0.5 is a balance. 0.25 is a bit weaker for some, 1.0 is biased
             # towards low information matches.
-            unpad(reliability, base_reliability) + .5)).sum()) * coverage + oxonium_component + (
+            # (unpad(reliability, base_reliability) + .5)
+            ).sum() + corr_score) * coverage + oxonium_component + (
                 coverage * glycan_prior)
         return max(glycan_score, 0)
 
