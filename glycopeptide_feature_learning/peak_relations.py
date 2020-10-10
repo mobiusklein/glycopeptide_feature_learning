@@ -489,6 +489,10 @@ class LinkFeature(MassOffsetFeature):
             d['from_charge'], d['to_charge'], d['terminal'])
         return inst
 
+    def __reduce__(self):
+        return self.__class__, (self.amino_acid, self.tolerance, self.name, self.intensity_ratio,
+                                self.from_charge, self.to_charge, self.feature_type, self.terminal)
+
 
 try:
     from glycopeptide_feature_learning._c.peak_relations import LinkFeature_is_valid_match
@@ -912,6 +916,10 @@ class FittedFeature(FittedFeatureBase):
         )
         return inst
 
+    def __reduce__(self):
+        return self.__class__, (self.feature, self.series, self.on_series, self.off_series,
+                                None, self.on_count, self.off_count)
+
 
 FeatureSpecialization = namedtuple("FeatureSpecialization", ["from_charge", "to_charge", "intensity_ratio"])
 
@@ -987,6 +995,9 @@ class FragmentationFeature(FragmentationFeatureBase):
         self.feature = feature
         self.series = series
         self.fits = dict(fits)
+
+    def __reduce__(self):
+        return self.__class__, (self.feature, self.series, self.fits)
 
     def __eq__(self, other):
         v = (self.feature == other.feature)
@@ -1085,6 +1096,10 @@ class FragmentationModel(FragmentationModelBase):
         self.offset_probability = -1
         if -1 not in (self.on_frequency, self.off_frequency, self.prior_probability_of_match):
             self.offset_probability = self._compute_offset_probability()
+
+    def __reduce__(self):
+        return self.__class__, (self.series, self.features, self.on_frequency, self.off_frequency,
+                                self.prior_probability_of_match, self.error_tolerance)
 
     def _compute_offset_probability(self):
         p_is_fragment = self.on_frequency * self.prior_probability_of_match
@@ -1274,6 +1289,9 @@ class FragmentationModelCollection(FragmentationModelCollectionBase):
         if not isinstance(models, Mapping):
             models = {m.series: m for m in models}
         self.models = models
+
+    def __reduce__(self):
+        return self.__class__, (self.models, )
 
     def __getitem__(self, k):
         return self.models[k]

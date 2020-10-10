@@ -168,6 +168,10 @@ cdef class FeatureBase(object):
         d['terminal'] = self.terminal
         return d
 
+    def __reduce__(self):
+        return self.__class__, (self.tolerance, self.name, self.intensity_ratio, self.from_charge,
+                                self.to_charge, self.feature_type, self.terminal)
+
     @classmethod
     def from_json(cls, d):
         # feature_type = d['feature_type']
@@ -215,6 +219,9 @@ cdef class MassOffsetFeature(FeatureBase):
             terminal)
 
         self.offset = offset
+        self._init_hash()
+
+    def _init_hash(self):
         self._hash = hash((self.offset, self.intensity_ratio, self.from_charge,
                            self.to_charge))
 
@@ -297,6 +304,10 @@ cdef class MassOffsetFeature(FeatureBase):
         d = super(MassOffsetFeature, self).to_json()
         d['offset'] = self.offset
         return d
+
+    def __reduce__(self):
+        return self.__class__, (self.offset, self.tolerance, self.name, self.intensity_ratio,
+                                self.from_charge, self.to_charge, self.feature_type, self.terminal)
 
     @classmethod
     def from_json(cls, d):
