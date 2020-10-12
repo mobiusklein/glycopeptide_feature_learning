@@ -1,5 +1,12 @@
 import math
 import json
+import gzip
+import io
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 from collections import defaultdict, deque, OrderedDict
 
@@ -247,6 +254,22 @@ class GlycanTypeCountPredicate(PredicateBase):
         return self.root[best_key[0]][best_key[1]]
 
 
+def decompressing_reconstructor(cls, data):
+    if isinstance(data, (str, bytes)):
+        buff = io.BytesIO(data)
+        data = pickle.load(gzip.GzipFile(fileobj=buff))
+    return cls(data)
+
+
+def compressing_reducer(self):
+    data = self.root
+    buff = io.BytesIO()
+    writer = gzip.GzipFile(fileobj=buff, mode='wb')
+    pickle.dump(data, writer, 2)
+    data = buff.getvalue()
+    return decompressing_reconstructor, (self.__class__, data, )
+
+
 class PredicateTreeBase(DummyScorer):
     """A base class for predicate tree based model determination.
     """
@@ -384,7 +407,7 @@ class PredicateTreeBase(DummyScorer):
         return ModelBindingScorer(scorer_type, model_fits=models, partition=partition)
 
     def __reduce__(self):
-        return self.__class__, (self.root,)
+        return compressing_reducer(self)
 
     def __repr__(self):
         return "%s(%d)" % (self.__class__.__name__, len(self.root),)
