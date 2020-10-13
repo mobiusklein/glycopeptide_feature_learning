@@ -266,6 +266,7 @@ def compressing_reducer(self):
     buff = io.BytesIO()
     writer = gzip.GzipFile(fileobj=buff, mode='wb')
     pickle.dump(data, writer, 2)
+    writer.flush()
     data = buff.getvalue()
     return decompressing_reconstructor, (self.__class__, data, )
 
