@@ -254,8 +254,12 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
 @click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option('-o', '--output-path', type=click.Path())
 @click.option('-m', '--error-tolerance', type=float, default=2e-5)
-@click.option("--debug", is_flag=True, default=False)
-def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False):
+@click.option('-F', '--save-fit-statistics', is_flag=True, default=False,
+              help=('Include the intermediary results and statistics for each model fit, '
+                    'allowing the result to be used to describe the model parameters but at the cost of '
+                    'greatly increasing the size of the model output file'))
+@click.option("--debug", is_flag=True, default=False, help='Enable debug logging')
+def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False):
     if debug:
         logger = logging.getLogger()
         logger.setLevel("DEBUG")
@@ -272,7 +276,7 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
     click.echo("Writing Models To %s" % (output_path,))
     export = []
     for spec, fit in model_fits:
-        export.append((spec.to_json(), fit.to_json(False)))
+        export.append((spec.to_json(), fit.to_json(save_fit_statistics)))
     with open(output_path, 'wt') as fh:
         json.dump(export, fh, sort_keys=1, indent=2)
 
