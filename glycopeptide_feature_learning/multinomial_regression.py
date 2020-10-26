@@ -21,7 +21,7 @@ from .amino_acid_classification import (
 from .approximation import PearsonResidualCDF
 from .peak_relations import FragmentationModelCollection
 
-logger = logging.getLogger("msms_feature_learning.multinomial_regression")
+logger = logging.getLogger("glycopeptide_feature_learning.multinomial_regression")
 logger.addHandler(logging.NullHandler())
 
 

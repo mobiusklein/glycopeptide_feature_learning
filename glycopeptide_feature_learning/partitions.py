@@ -1,5 +1,5 @@
 import itertools
-
+import logging
 from collections import namedtuple, defaultdict, OrderedDict
 
 import numpy as np
@@ -10,6 +10,12 @@ from glypy.utils import make_struct
 
 
 from .amino_acid_classification import proton_mobility
+
+
+logger = logging.getLogger(
+    "glycopeptide_feature_learning.partitions")
+logger.addHandler(logging.NullHandler())
+
 
 
 def classify_proton_mobility(scan, structure):
@@ -104,8 +110,7 @@ peptide_backbone_length_ranges = [(a, a + 5) for a in range(0, 50, 5)]
 glycan_size_ranges = [(a, a + 4) for a in range(1, 20, 4)]
 precursor_charges = (2, 3, 4, 5, 6)
 proton_mobilities = ('mobile', 'partial', 'immobile')
-# glycosylation_type = tuple(GlycosylationType[i] for i in range(1, 4))
-glycosylation_type = (GlycosylationType.n_linked.name,)
+glycosylation_type = tuple(GlycosylationType[i] for i in range(1, 4))
 glycosylation_count = (1, 2,)
 
 
@@ -171,17 +176,19 @@ class PartitionMap(OrderedDict):
         return self
 
 
-def partition_observations(gpsms, exclusive=True):
+def partition_observations(gpsms, exclusive=True, partition_specifications=None):
+    if partition_specifications is None:
+        partition_specifications = partition_by
     partition_map = PartitionMap()
     j = 0
     cnt = 0
     interval = 250
-    for spec in partition_by:
+    for spec in partition_specifications:
         rest = []
         subset = []
         j += 1
         if j % interval == 0:
-            print(spec)
+            logger.info("Partitioning for %s", spec)
         for i in range(len(gpsms)):
             gpsm = gpsms[i]
             if not spec.test(gpsm):
@@ -191,7 +198,7 @@ def partition_observations(gpsms, exclusive=True):
             cnt += 1
         n = len(subset)
         if j % interval == 0:
-            print(cnt)
+            logger.info("Partitioned %d observations", cnt)
         if n > 0:
             partition_map[spec] = init_cell(subset, {}, spec)
         if exclusive:

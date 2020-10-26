@@ -260,10 +260,12 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
                     'greatly increasing the size of the model output file'))
 @click.option("--debug", is_flag=True, default=False, help='Enable debug logging')
 def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False):
+    logger = logging.getLogger()
     if debug:
-        logger = logging.getLogger()
         logger.setLevel("DEBUG")
-        logger.addHandler(logging.StreamHandler(sys.stdout))
+    else:
+        logger.setLevel("INFO")
+    logger.addHandler(logging.StreamHandler(sys.stdout))
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
     match_spectra(training_instances, error_tolerance)
