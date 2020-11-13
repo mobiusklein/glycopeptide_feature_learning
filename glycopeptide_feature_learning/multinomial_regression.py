@@ -887,8 +887,8 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
     tracing = control['trace']
 
     dev = deviance(y, mu, n, reliabilities)
-    if tracing:
-        logger.info(
+    if logger.isEnabledFor("DEBUG"):
+        logger.debug(
             "Initial Parameters:\ny =\n%s\nmu =\n%s\neta =\n%s\nreliability =\n%s\ndev = %s\n",
             '\n'.join(map(_array2string, y)),
             '\n'.join(map(_array2string, mu)),
@@ -899,9 +899,8 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
     for iter_ in range(control['maxit']):
         z = phi * beta0
         H = phi * np.diag(S_inv0)
-        if tracing:
-            logger.info(
-                "Iteration %d\n", iter_)
+        logger.info(
+            "Iteration %d\n", iter_)
         # if tracing:
         #     assert not np.any(np.isnan(H))
         for i in range(len(y)):
@@ -927,8 +926,8 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
         C = np.linalg.cholesky(H).T
         # Solve for updated coefficients. Use back substitution algorithm.
         beta = solve_triangular(C, solve_triangular(C, z, trans="T"))
-        if tracing:
-            logger.info(
+        if logger.isEnabledFor("DEBUG"):
+            logger.debug(
                 "H =\n%s\nC =\n%s\nbeta =\n%s\n",
                 _array2string(H),
                 _array2string(C),
@@ -957,7 +956,7 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
         if (not np.isinf(dev)) and (rel_error < control["epsilon"]):
             break
         if np.isinf(dev_new):
-            print("Infinite Deviance")
+            logger.info("Infinite Deviance")
             break
         dev = dev_new
     return dict(
