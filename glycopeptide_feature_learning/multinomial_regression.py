@@ -967,6 +967,8 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
 
 
 class MultinomialRegressionFit(object):
+    n_observations = 0
+
     def __init__(self, coef, scaled_y, mu, reliabilities, dispersion, weights, covariance_unscaled,
                  deviance, H, model_type=FragmentType, reliability_model=None, **info):
         self.coef = coef
@@ -981,6 +983,7 @@ class MultinomialRegressionFit(object):
         self.info = info
         self.model_type = model_type
         self.reliability_model = reliability_model
+        self.n_observations = len(scaled_y)
 
     def compact(self):
         self.scaled_y = None
@@ -1234,6 +1237,7 @@ class MultinomialRegressionFit(object):
         d['reliability_model'] = self.reliability_model.to_json() if self.reliability_model else None
         d['dispersion'] = self.dispersion
         d['model_type'] = self.model_type.__name__
+        d['n_observations'] = self.n_observations
         return d
 
     @classmethod
@@ -1263,6 +1267,7 @@ class MultinomialRegressionFit(object):
             H=fit_H,
             model_type=fit_model_type_name,
             reliability_model=fit_reliability_model)
+        fit.n_observations = d.get("n_observations", 0)
         return fit
 
     def __eq__(self, other):
