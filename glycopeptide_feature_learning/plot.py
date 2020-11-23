@@ -91,6 +91,7 @@ def mirror_predicted_spectrum(model, scan, target, *args, **kwargs):
     art.ax.spines['bottom'].set_visible(False)
     art.ax.vlines(100, -100, 100, lw=0.5)
     art.ax.set_xlim(100, 2050)
+    # Whitespace SENSITIVE to achieve the fake axes
     art.ax.set_ylabel('Relative Intensity                   ')
-    art.add_logo_plot(xrel=0.12, width=0.27, yrel=0.65, draw_glycan=True)
+    art.sequence_logo = art.add_logo_plot(xrel=0.12, width=0.27, yrel=0.65, draw_glycan=True, lw=0.1)
     return art
