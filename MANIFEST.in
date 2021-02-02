@@ -1,2 +1,2 @@
 # include requirements.txt
-recursive-include feature_learning/data *.txt
+recursive-include glycopeptide_feature_learning/data *.txt

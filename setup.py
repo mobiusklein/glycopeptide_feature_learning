@@ -103,6 +103,7 @@ def status_msgs(*msgs):
 
 
 setup(name='glycopeptide_feature_learning',
+      zip_safe=False,
       packages=find_packages(),
       ext_modules=make_extensions(),
       include_package_data=True,

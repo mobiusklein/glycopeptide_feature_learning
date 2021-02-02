@@ -36,6 +36,8 @@ def get_training_data(paths, blacklist_path=None, threshold=50.0):
     training_files = []
     for path in paths:
         training_files.extend(glob.glob(path))
+    if len(training_files) == 0:
+        raise click.ClickException("No training files found for patterns {}".format(', '.join(paths)))
     training_instances = []
     if blacklist_path is not None:
         with open(blacklist_path) as fh:
@@ -78,6 +80,8 @@ def match_spectra(matches, error_tolerance):
             match.match(error_tolerance=error_tolerance)
             if progbar.is_hidden and i % 1000 == 0 and i != 0:
                 click.echo("%d Spectra Matched" % (i,))
+    if not progbar.is_hidden:
+        click.echo("%d Spectra Matched" % (i,))
     return matches
 
 
@@ -249,7 +253,8 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
 
 
 @click.command('fit-glycopeptide-regression-model', short_help="Fit glycopeptide fragmentation model")
-@click.argument('paths', metavar='PATH', type=click.Path(exists=True, dir_okay=False), nargs=-1)
+@click.argument('paths', metavar='PATH', #type=click.Path(exists=True, dir_okay=False),
+                nargs=-1)
 @click.option('-t', '--threshold', type=float, default=50.0)
 @click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option('-o', '--output-path', type=click.Path())
@@ -268,6 +273,8 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
     logger.addHandler(logging.StreamHandler(sys.stdout))
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
+    if len(training_instances) == 0:
+        raise click.ClickException("No training examples were found.")
     match_spectra(training_instances, error_tolerance)
     click.echo("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(training_instances)
@@ -290,6 +297,8 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
 def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5):
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
+    if len(training_instances) == 0:
+        raise click.Abort("No training examples were found.")
     click.echo("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(training_instances)
     save_partitions(partition_map, outdir)

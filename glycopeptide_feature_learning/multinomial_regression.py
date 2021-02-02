@@ -14,6 +14,7 @@ from glypy.structure.glycan_composition import FrozenMonosaccharideResidue
 from glycopeptidepy.structure.fragment import IonSeries
 
 from glycan_profiling.structure.fragment_match_map import PeakFragmentPair
+from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
 from ms_deisotope import DeconvolutedPeak
 
 from .amino_acid_classification import (
@@ -465,8 +466,8 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
         return X, offset
 
     @classmethod
-    def feature_names(self):
-        names = super(StubGlycopeptideCompositionModel, self).feature_names()
+    def feature_names(cls):
+        names = super(StubGlycopeptideCompositionModel, cls).feature_names()
         for i in range(StubFragment_max_glycosylation_size + 1):
             names.append("stub glycopeptide:is_glycosylated %r" % (i))
         for label, tp in sorted(FragmentTypeClassification, key=lambda x: x[1].value):
@@ -501,8 +502,8 @@ class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
         return X, offset
 
     @classmethod
-    def feature_names(self):
-        names = super(StubGlycopeptideFucosylationModel, self).feature_names()
+    def feature_names(cls):
+        names = super(StubGlycopeptideFucosylationModel, cls).feature_names()
         for i in range(2):
             names.append("stub glycopeptide:is_fucosylated %r" % (i))
         return names
@@ -653,6 +654,9 @@ class StubChargeModel(NeighboringAminoAcidsModelDepth2):
         k_glycosylated_stubs_x_charge = (k_glycosylated_stubs * k_stub_charges)
 
         if self.is_stub_glycopeptide():
+            # TODO: Using the approximation provides a mildly better model fit on mixed sialylated/non-sialylated data
+            # but requires a full re-analysis. Save for the future.
+            # loss_size = approximate_internal_size_of_glycan(self.sequence.glycan_composition) - int(self.glycosylated)
             loss_size = sum(self.sequence.glycan_composition.values()) - int(self.glycosylated)
             if loss_size >= k_glycosylated_stubs:
                 loss_size = k_glycosylated_stubs - 1
@@ -663,8 +667,8 @@ class StubChargeModel(NeighboringAminoAcidsModelDepth2):
         return X, offset
 
     @classmethod
-    def feature_names(self):
-        names = super(StubChargeModel, self).feature_names()
+    def feature_names(cls):
+        names = super(StubChargeModel, cls).feature_names()
         k_glycosylated_stubs = (StubFragment_max_glycosylation_size * 2) + 1
         k_stub_charges = FragmentCharge_max + 1
         for i in range(k_stub_charges):
@@ -724,8 +728,8 @@ class AmideBondCrossproductModel(StubGlycopeptideCompositionModel):
         return np.concatenate((X, self.specialize_fragmentation_site()))
 
     @classmethod
-    def feature_names(self):
-        names = super(AmideBondCrossproductModel, self).feature_names()
+    def feature_names(cls):
+        names = super(AmideBondCrossproductModel, cls).feature_names()
         for i in range(BackboneFragmentSeriesClassification_max + 1):
             for j in range(FragmentTypeClassification_max + 1):
                 for k in range(FragmentTypeClassification_max + 1):

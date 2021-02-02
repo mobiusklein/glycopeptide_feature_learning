@@ -28,6 +28,8 @@ from glypy.utils.enum import Enum
 from glypy.utils.cenum cimport EnumValue, IntEnumValue, EnumMeta
 from glypy.structure.glycan_composition import FrozenMonosaccharideResidue
 
+from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
+
 from glycopeptidepy.structure.fragment import IonSeries
 
 
@@ -568,7 +570,36 @@ def encode_stub_charge(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X
     k = k_glycosylated_stubs_x_charge
 
     if self._is_stub_glycopeptide:
+        # TODO: Using the approximation provides a mildly better model fit on mixed sialylated/non-sialylated data
+        # but requires a full re-analysis. Save for the future.
+        # loss_size = PyInt_AsLong(approximate_internal_size_of_glycan(self.sequence.glycan)) - self.glycosylated
         loss_size = PyInt_AsLong(self.sequence.total_glycosylation_size) - self.glycosylated
+        if loss_size >= k_glycosylated_stubs:
+            loss_size = k_glycosylated_stubs - 1
+        d = k_glycosylated_stubs * (self.charge - 1) + loss_size
+        X[offset + d] = 1
+    offset += k_glycosylated_stubs_x_charge
+    return X, offset
+
+
+@cython.binding(True)
+@cython.boundscheck(False)
+def encode_stub_charge_loss_approximate(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+    cdef:
+        Py_ssize_t k_glycosylated_stubs, k_stub_charges, k_glycosylated_stubs_x_charge
+        Py_ssize_t k
+        long loss_size, d
+
+    k_glycosylated_stubs = (StubFragment_max_glycosylation_size * 2) + 1
+    k_stub_charges = FragmentCharge_max + 1
+    k_glycosylated_stubs_x_charge = (k_glycosylated_stubs * k_stub_charges)
+    k = k_glycosylated_stubs_x_charge
+
+    if self._is_stub_glycopeptide:
+        # TODO: Using the approximation provides a mildly better model fit on mixed sialylated/non-sialylated data
+        # but requires a full re-analysis. Save for the future.
+        loss_size = PyInt_AsLong(approximate_internal_size_of_glycan(self.sequence.glycan)) - self.glycosylated
+        # loss_size = PyInt_AsLong(self.sequence.total_glycosylation_size) - self.glycosylated
         if loss_size >= k_glycosylated_stubs:
             loss_size = k_glycosylated_stubs - 1
         d = k_glycosylated_stubs * (self.charge - 1) + loss_size

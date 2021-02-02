@@ -117,7 +117,7 @@ class AnnotatedScan(ProcessedScan):
         try:
             mass_shift = mass_shifts[mass_shift_name]
             return mass_shift
-        except:
+        except Exception:
             composition = mass_shift_index.get(mass_shift_name)
             if composition is None:
                 import warnings
