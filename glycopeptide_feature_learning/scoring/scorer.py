@@ -236,46 +236,8 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
         intensities = yhat[:-1] * (least_squares_scale_coefficient(yhat[:-1], intens[:-1]) if scaled else 1.0)
         return zip(mz, intensities)
 
-    def _calculate_glycan_coverage(self, core_weight=0.4, coverage_weight=0.6, fragile_fucose=True, **kwargs):
-        if self._glycan_coverage is not None:
-            return self._glycan_coverage
-        series = IonSeries.stub_glycopeptide
-        theoretical_set = list(self.target.stub_fragments(extended=True))
-        core_fragments = set()
-        for frag in theoretical_set:
-            if not frag.is_extended:
-                core_fragments.add(frag.name)
-
-        core_matches = set()
-        extended_matches = set()
-
-        for peak_pair in self.solution_map:
-            if peak_pair.fragment.series != series:
-                continue
-            elif peak_pair.fragment_name in core_fragments:
-                core_matches.add(peak_pair.fragment_name)
-            else:
-                extended_matches.add(peak_pair.fragment_name)
-        glycan_composition = self.target.glycan_composition
-        n = self._get_internal_size(glycan_composition)
-        k = 2.0
-        if not fragile_fucose:
-            side_group_count = self._glycan_side_group_count(
-                glycan_composition)
-            if side_group_count > 0:
-                k = 1.0
-        d = max(n * np.log(n) / k, n)
-        core_coverage = ((len(core_matches) * 1.0) / len(core_fragments)) ** core_weight
-        extended_coverage = min(float(len(core_matches) + len(
-            extended_matches)) / d, 1.0) ** coverage_weight
-        coverage = core_coverage * extended_coverage
-        if np.isnan(coverage):
-            coverage = 0.0
-        self._glycan_coverage = coverage
-        return coverage
-
     def glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
-                     coverage_weight=0.5, fragile_fucose=True, ** kwargs):
+                     coverage_weight=0.5, fragile_fucose=False, ** kwargs):
         if self._glycan_score is None:
             self._glycan_score = self.calculate_glycan_score(
                 error_tolerance, use_reliability, base_reliability, core_weight, coverage_weight,
@@ -339,7 +301,7 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, MultinomialReg
             error_tolerance=error_tolerance, *args, **kwargs)
 
     def calculate_glycan_score(self, use_reliability=True, base_reliability=0.5, core_weight=0.4, coverage_weight=0.6,
-                               fragile_fucose=True, **kwargs):
+                               fragile_fucose=False, **kwargs):
         c, intens, t, yhat = self._get_predicted_intensities()
         if self.model_fit.reliability_model is None or not use_reliability:
             reliability = np.ones_like(yhat)
@@ -525,7 +487,7 @@ class MultinomialRegressionMixtureScorer(_ModelMixtureBase, MultinomialRegressio
             scores.append(score)
         return np.dot(scores, self.mixture_coefficients)
 
-    def calculate_glycan_score(self, use_reliability=True, base_reliability=0.5, fragile_fucose=True, **kwargs):
+    def calculate_glycan_score(self, use_reliability=True, base_reliability=0.5, fragile_fucose=False, **kwargs):
         scores = []
         for model_fit in self._iter_model_fits():
             score = super(
@@ -705,7 +667,7 @@ class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer)
         return peptide_score
 
     def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
-                               coverage_weight=0.5, fragile_fucose=True, **kwargs):
+                               coverage_weight=0.5, fragile_fucose=False, **kwargs):
         c, intens, t, yhat = self._get_predicted_intensities()
         if self.model_fit.reliability_model is None or not use_reliability:
             reliability = np.ones_like(yhat)
@@ -771,8 +733,7 @@ class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer)
 
 
 try:
-    from glycopeptide_feature_learning.scoring._c.scorer import (calculate_peptide_score, _calculate_pearson_residuals, _calculate_glycan_coverage)
-    MultinomialRegressionScorerBase._calculate_glycan_coverage = _calculate_glycan_coverage
+    from glycopeptide_feature_learning.scoring._c.scorer import (calculate_peptide_score, _calculate_pearson_residuals)
     MultinomialRegressionScorerBase._calculate_pearson_residuals = _calculate_pearson_residuals
     SplitScorer.calculate_peptide_score = calculate_peptide_score
 except ImportError as err:
@@ -792,7 +753,7 @@ class MixtureSplitScorer(_ModelMixtureBase, SplitScorer):
         return self.__class__, (self.scan, self.target, self.mass_shift, self.model_fits, self.partition, self.power)
 
     def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5,
-                               core_weight=0.4, coverage_weight=0.5, fragile_fucose=True, **kwargs):
+                               core_weight=0.4, coverage_weight=0.5, fragile_fucose=False, **kwargs):
         scores = []
         for model_fit in self._iter_model_fits():
             score = super(
@@ -831,7 +792,7 @@ class SplitScorerTree(PredicateTree):
 class PartialSplitScorer(SplitScorer):
 
     def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
-                               coverage_weight=0.5, fragile_fucose=True, ** kwargs):
+                               coverage_weight=0.5, fragile_fucose=False, **kwargs):
         c, intens, t, yhat = self._get_predicted_intensities()
         # use_reliability = False
         if self.model_fit.reliability_model is None or not use_reliability:
@@ -840,9 +801,13 @@ class PartialSplitScorer(SplitScorer):
             reliability = self._get_reliabilities(c, base_reliability=base_reliability)
         stubs = []
         intens = intens / t
+        n_signif_frags = 0
         for i in range(len(c)):
-            if c[i].series == 'stub_glycopeptide':
-                stubs.append((c[i], intens[i], yhat[i], reliability[i]))
+            ci = c[i]
+            if ci.series == 'stub_glycopeptide':
+                stubs.append((ci, intens[i], yhat[i], reliability[i]))
+                if ci.fragment.glycosylation_size > 1:
+                    n_signif_frags += 1
         if not stubs:
             return 0
 
@@ -857,18 +822,16 @@ class PartialSplitScorer(SplitScorer):
         else:
             corr = -0.5
         corr = (1.0 + corr) / 2.0
-        corr_score = corr * np.sqrt(len(stubs)) + \
+        corr_score = 0
+        # corr_score = corr * len(stubs) + \
+        corr_score = corr * (n_signif_frags) + \
             unpad(reliability, base_reliability).sum()
-
         oxonium_component = self._signature_ion_score(self.error_tolerance)
         coverage = self._calculate_glycan_coverage(
             core_weight, coverage_weight, fragile_fucose=fragile_fucose)
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
         glycan_prior = self.target.glycan_prior
-        glycan_score = ((np.log10(intens * t) * mass_accuracy #*
-            # 0.5 is a balance. 0.25 is a bit weaker for some, 1.0 is biased
-            # towards low information matches.
-            # (unpad(reliability, base_reliability) + .5)
+        glycan_score = ((np.log10(intens * t) * mass_accuracy
             ).sum() + corr_score) * coverage + oxonium_component + (
                 coverage * glycan_prior)
         return max(glycan_score, 0)
@@ -887,7 +850,7 @@ class MixturePartialSplitScorer(_ModelMixtureBase, PartialSplitScorer):
         return self.__class__, (self.scan, self.target, self.mass_shift, self.model_fits, self.partition, self.power)
 
     def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5,
-                               core_weight=0.4, coverage_weight=0.5, fragile_fucose=True, **kwargs):
+                               core_weight=0.4, coverage_weight=0.5, fragile_fucose=False, **kwargs):
         scores = []
         for model_fit in self._iter_model_fits():
             score = super(

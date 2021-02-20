@@ -269,69 +269,6 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
 
 
 @cython.binding(True)
-@cython.cdivision(True)
-@cython.boundscheck(False)
-def _calculate_glycan_coverage(self, double core_weight=0.4, double coverage_weight=0.6,
-                               bint fragile_fucose=True, **kwargs):
-    cdef:
-        set seen, core_fragments, core_matches, extended_matches
-        IonSeriesBase series
-        list theoretical_set
-        double total, n, k, d, core_coverage, extended_coverage, score
-        FragmentMatchMap solution_map
-        StubFragment frag
-        PeakFragmentPair peak_pair
-        size_t i, n_core_matches, n_extended_matches
-
-    if self._glycan_coverage is not None:
-            return self._glycan_coverage
-    seen = set()
-    series = IonSeries_stub_glycopeptide
-    theoretical_set = list(self.target.stub_fragments(extended=True))
-    core_fragments = set()
-    for i in range(len(theoretical_set)):
-        frag = <StubFragment>theoretical_set[i]
-        if not frag.is_extended:
-            core_fragments.add(frag._name)
-
-    total = 0
-    core_matches = set()
-    extended_matches = set()
-    solution_map = <FragmentMatchMap>self.solution_map
-
-    for obj in solution_map.members:
-        peak_pair = <PeakFragmentPair>obj
-        if (<FragmentBase>peak_pair.fragment).get_series() != series:
-            continue
-        elif peak_pair.fragment_name in core_fragments:
-            core_matches.add(peak_pair.fragment_name)
-        else:
-            extended_matches.add(peak_pair.fragment_name)
-
-    glycan_composition = self.target.glycan_composition
-    n = self._get_internal_size(glycan_composition)
-    k = 2.0
-    if not fragile_fucose:
-        side_group_count = self._glycan_side_group_count(
-            glycan_composition)
-        if side_group_count > 0:
-            k = 1.0
-    d = max(n * log(n) / k, n)
-    n_core_matches = len(core_matches)
-    n_extended_matches = len(extended_matches)
-    core_coverage = ((n_core_matches * 1.0) / len(core_fragments)) ** core_weight
-    extended_coverage = min(float(n_core_matches + n_extended_matches) / d, 1.0) ** coverage_weight
-    coverage = core_coverage * extended_coverage
-    if isnan(coverage):
-        coverage = 0.0
-    self._glycan_coverage = coverage
-    return coverage
-
-
-
-
-
-@cython.binding(True)
 @cython.boundscheck(False)
 @cython.cdivision(True)
 cpdef _calculate_pearson_residuals(self, bint use_reliability=True, double base_reliability=0.5):

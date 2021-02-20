@@ -8,6 +8,7 @@ from ms_deisotope.data_source import ProcessedScan
 from glycopeptidepy.structure.glycan import GlycosylationType
 from glypy.utils import make_struct
 
+from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
 
 from .amino_acid_classification import proton_mobility
 
@@ -47,8 +48,11 @@ _partition_cell_spec = namedtuple("partition_cell_spec", ("peptide_length_range"
 
 class partition_cell_spec(_partition_cell_spec):
 
-    def test(self, gpsm):
-        glycan_size = sum(gpsm.structure.glycan_composition.values())
+    def test(self, gpsm, omit_labile=False):
+        if omit_labile:
+            glycan_size = approximate_internal_size_of_glycan(gpsm.structure.glycan_composition)
+        else:
+            glycan_size = sum(gpsm.structure.glycan_composition.values())
         peptide_size = len(gpsm.structure)
         if peptide_size < self.peptide_length_range[0] or peptide_size > self.peptide_length_range[1]:
             return False
@@ -68,8 +72,12 @@ class partition_cell_spec(_partition_cell_spec):
                    peptide_size > self.peptide_length_range[1])
         return not invalid
 
-    def test_glycan_size(self, scan, structure, *args, **kwargs):
-        glycan_size = sum(structure.glycan_composition.values())
+    def test_glycan_size(self, scan, structure, omit_labile=False, *args, **kwargs):
+        if omit_labile:
+            glycan_size = approximate_internal_size_of_glycan(
+                structure.glycan_composition)
+        else:
+            glycan_size = sum(structure.glycan_composition.values())
         invalid = (glycan_size < self.glycan_size_range[0] or
                    glycan_size > self.glycan_size_range[1])
         return not invalid
@@ -176,7 +184,7 @@ class PartitionMap(OrderedDict):
         return self
 
 
-def partition_observations(gpsms, exclusive=True, partition_specifications=None):
+def partition_observations(gpsms, exclusive=True, partition_specifications=None, omit_labile=False):
     if partition_specifications is None:
         partition_specifications = partition_by
     partition_map = PartitionMap()
@@ -191,7 +199,7 @@ def partition_observations(gpsms, exclusive=True, partition_specifications=None)
             logger.info("Partitioning for %s", spec)
         for i in range(len(gpsms)):
             gpsm = gpsms[i]
-            if not spec.test(gpsm):
+            if not spec.test(gpsm, omit_labile=omit_labile):
                 rest.append(gpsm)
                 continue
             subset.append(gpsm)
