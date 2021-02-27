@@ -97,6 +97,9 @@ class AnnotatedScan(ProcessedScan):
             self._structure = parse_sequence(self.annotations['structure'])
         return self._structure
 
+    # Alias
+    target = structure
+
     def match(self, **kwargs):
         self.matcher = LogIntensityScorer.evaluate(
             self, self.structure, mass_shift=self.mass_shift, **kwargs)

@@ -4,6 +4,7 @@ import glob
 import json
 import logging
 import warnings
+import array
 try:
     import cPickle as pickle
 except ImportError:
@@ -37,7 +38,7 @@ def get_training_data(paths, blacklist_path=None, threshold=50.0):
     for path in paths:
         training_files.extend(glob.glob(path))
     if len(training_files) == 0:
-        raise click.ClickException("No training files found for patterns {}".format(', '.join(paths)))
+        raise click.ClickException("No spectrum match files found for patterns {}".format(', '.join(paths)))
     training_instances = []
     if blacklist_path is not None:
         with open(blacklist_path) as fh:
@@ -48,7 +49,7 @@ def get_training_data(paths, blacklist_path=None, threshold=50.0):
     seen = set()
     n_files = len(training_files)
     progbar = click.progressbar(
-        training_files, length=n_files, show_eta=True, label='Loading Training Data',
+        training_files, length=n_files, show_eta=True, label='Loading GPSM Data',
         item_show_func=lambda x: os.path.basename(x) if x is not None else '')
     with progbar:
         for train_file in progbar:
@@ -85,8 +86,9 @@ def match_spectra(matches, error_tolerance):
     return matches
 
 
-def partition_training_data(training_instances):
-    partition_map = partitions.partition_observations(training_instances)
+def partition_training_data(training_instances, omit_labile=False):
+    partition_map = partitions.partition_observations(
+        training_instances, omit_labile=omit_labile)
     return partition_map
 
 
@@ -229,10 +231,13 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
     fits = [fit]
     if use_mixture:
         mismatches = []
+        corr = array.array('d')
         for case in cell.subset:
             r = fit.calculate_correlation(case)
             if r < 0.5:
                 mismatches.append(case)
+            corr.append(r)
+        click.echo("Median Correlation: %0.3f" % np.nanmedian(corr))
         if mismatches:
             try:
                 click.echo("Fitting Mismatch Model with %d cases" % len(mismatches))
@@ -240,9 +245,12 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
                     mismatch_fit = regression_model.fit_regression(
                         mismatches, reliability_model=fm, base_reliability=0.5, **kwargs)
                     if np.isinf(mismatch_fit.estimate_dispersion()):
+                        click.echo("Infinite dispersion, refitting without per-fragment weights")
                         mismatch_fit = regression_model.fit_regression(
                             mismatches, reliability_model=None, **kwargs)
                 except ValueError:
+                    click.echo(
+                        "%r, refitting without per-fragment weights" % (ex, ))
                     mismatch_fit = regression_model.fit_regression(
                         mismatches, reliability_model=None, **kwargs)
                 mismatch_fit.reliability_model = fm
@@ -263,25 +271,35 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
               help=('Include the intermediary results and statistics for each model fit, '
                     'allowing the result to be used to describe the model parameters but at the cost of '
                     'greatly increasing the size of the model output file'))
+@click.option("-b", "--omit-labile", is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
 @click.option("--debug", is_flag=True, default=False, help='Enable debug logging')
-def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False):
+def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False,
+         omit_labile=False, regression_model=None):
     logger = logging.getLogger()
     if debug:
         logger.setLevel("DEBUG")
     else:
         logger.setLevel("INFO")
     logger.addHandler(logging.StreamHandler(sys.stdout))
+
+    if regression_model is None:
+        if omit_labile:
+            regression_model = multinomial_regression.StubChargeModelApproximate
+        else:
+            regression_model = multinomial_regression.StubChargeModel
+    logger.info("Model Type: %r" % (regression_model, ))
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
     if len(training_instances) == 0:
         raise click.ClickException("No training examples were found.")
     match_spectra(training_instances, error_tolerance)
     click.echo("Partitioning %d instances" % (len(training_instances), ))
-    partition_map = partition_training_data(training_instances)
+    partition_map = partition_training_data(
+        training_instances, omit_labile=omit_labile)
     click.echo("Fitting Peak Relation Features")
     fit_peak_relation_features(partition_map)
     click.echo("Fitting Peak Intensity Regression")
-    model_fits = fit_regression_model(partition_map, trace=debug)
+    model_fits = fit_regression_model(partition_map, regression_model=regression_model, trace=debug)
     click.echo("Writing Models To %s" % (output_path,))
     export = []
     for spec, fit in model_fits:
@@ -292,7 +310,7 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
 
 @click.command("partition-glycopeptide-training-data", short_help="Pre-separate training data along partitions")
 @click.option('-t', '--threshold', type=float, default=0.0)
-@click.argument('paths', metavar='PATH', type=click.Path(exists=True, dir_okay=False), nargs=-1)
+@click.argument('paths', metavar='PATH', nargs=-1)
 @click.argument('outdir', metavar='OUTDIR', type=click.Path(dir_okay=True, file_okay=False), nargs=1)
 def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5):
     click.echo("Loading data from %s" % (', '.join(paths)))
@@ -335,6 +353,65 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
     stream.close()
 
 
+
+@click.command("calculate-correlation")
+@click.argument('paths', metavar='PATH', nargs=-1)
+@click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
+@click.argument("model_path", type=click.Path(exists=True, dir_okay=False))
+@click.option('-t', '--threshold', type=float, default=0.0)
+def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_tolerance=2e-5):
+    training_instances = get_training_data(paths, threshold=threshold)
+    model_tree = None
+
+    with open(model_path, 'rb') as fh:
+        model_tree = pickle.load(fh)
+
+    correlations = array.array('d')
+    glycan_correlations = array.array('d')
+    peptide_correlations = array.array('d')
+    scan_ids = []
+
+    def peptide_correlation(match):
+        c, inten, t, y, rel = match.get_predicted_intensities_series(
+            ['b', 'y'], True)
+        return np.corrcoef(inten, y)[1, 0]
+
+    def glycan_correlation(match):
+        c, inten, t, y, rel = match.get_predicted_intensities_series(
+            ['stub_glycopeptide'], True)
+        return np.corrcoef(inten, y)[1, 0]
+
+    progbar = click.progressbar(
+        enumerate(training_instances), length=len(training_instances), show_eta=True, label='Matching Peaks',
+
+        item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '')
+    with progbar:
+        for i, scan in progbar:
+            match = model_tree.evaluate(scan, scan.structure, error_tolerance=error_tolerance)
+            if progbar.is_hidden and i % 1000 == 0 and i != 0:
+                click.echo("%d Spectra Matched" % (i,))
+
+            correlations.append(match._mixture_apply(match._calculate_correlation_coef))
+            peptide_correlations.append(match._mixture_apply(peptide_correlation))
+            glycan_correlations.append(match._mixture_apply(glycan_correlation))
+            scan_ids.append(scan.id)
+
+    if not progbar.is_hidden:
+        click.echo("%d Spectra Matched" % (i,))
+
+    click.echo("Median Correlation: %03f" % np.nanmedian(correlations))
+    click.echo("Median Glycan Correlation: %03f" % np.nanmedian(glycan_correlations))
+    click.echo("Median Peptide Correlation: %03f" % np.nanmedian(peptide_correlations))
+
+    with open(outpath, 'wb') as fh:
+        pickle.dump({
+            "scan_id": scan_ids,
+            "correlation": correlations,
+            "peptide_correlation": peptide_correlations,
+            "glycan_correlation": glycan_correlations,
+        }, fh)
+
+
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
@@ -347,6 +424,7 @@ cli.add_command(main, "fit-model")
 cli.add_command(partition_glycopeptide_training_data, "partition-samples")
 cli.add_command(strip_model_arrays, "strip-model")
 cli.add_command(compile_model, "compile-model")
+cli.add_command(calculate_correlation, 'calculate-correlation')
 
 
 def info(type, value, tb):

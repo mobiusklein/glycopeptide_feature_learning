@@ -12,7 +12,7 @@ from collections import defaultdict, deque, OrderedDict
 
 from ms_deisotope.data_source import ChargeNotProvided
 
-from glycopeptide_feature_learning.partitions import classify_proton_mobility, partition_cell_spec
+from glycopeptide_feature_learning.partitions import classify_proton_mobility, partition_cell_spec, count_labile_monosaccharides
 from glycopeptide_feature_learning.multinomial_regression import MultinomialRegressionFit
 
 
@@ -254,6 +254,17 @@ class GlycanTypeCountPredicate(PredicateBase):
         return self.root[best_key[0]][best_key[1]]
 
 
+class SialylatedPredicate(MappingPredicate):
+    def value_for(self, scan, structure, *args, **kwargs):
+        return count_labile_monosaccharides(structure.glycan_composition)
+
+    def query(self, point, *args, **kwargs):
+        try:
+            return self.root[point]
+        except KeyError:
+            return self.root[None]
+
+
 def decompressing_reconstructor(cls, data):
     if isinstance(data, (str, bytes)):
         buff = io.BytesIO(data)
@@ -278,9 +289,24 @@ class PredicateTreeBase(DummyScorer):
     _scorer_type = None
     _short_peptide_scorer_type = None
 
-    def __init__(self, root): # pylint: disable=super-init-not-called
+    def __init__(self, root, size=None): # pylint: disable=super-init-not-called
         self.root = root
-        self.size = 5
+        self.size = size
+
+        if self.size is None:
+            self.size = self._guess_size()
+
+    def _guess_size(self):
+        n = 0
+        work = deque([(self.root, 0)])
+        while work:
+            item, current_depth = work.popleft()
+            if current_depth > n:
+                n = current_depth
+            if isinstance(item, dict):
+                for val in item.values():
+                    work.append((val, current_depth + 1))
+        return n
 
     def get_model_for(self, scan, structure, *args, **kwargs):
         """Locate the appropriate model for the query scan and glycopeptide
@@ -299,27 +325,32 @@ class PredicateTreeBase(DummyScorer):
         i = 0
         layer = self.root
         while i < self.size:
+            if not isinstance(layer, dict):
+                return layer
             if i == 0:
                 predicate = PeptideLengthPredicate(layer)
                 layer = predicate(scan, structure, *args, **kwargs)
                 i += 1
-            if i == 1:
+            elif i == 1:
                 predicate = GlycanSizePredicate(layer)
                 layer = predicate(scan, structure, *args, **kwargs)
                 i += 1
-            if i == 2:
+            elif i == 2:
                 predicate = ChargeStatePredicate(layer)
                 layer = predicate(scan, structure, *args, **kwargs)
                 i += 1
-            if i == 3:
+            elif i == 3:
                 predicate = ProtonMobilityPredicate(layer)
                 layer = predicate(scan, structure, *args, **kwargs)
                 i += 1
-            if i == 4:
+            elif i == 4:
                 predicate = GlycanTypeCountPredicate(layer)
                 layer = predicate(scan, structure, *args, **kwargs)
                 i += 1
-                return layer
+            elif i == 5:
+                predicate = SialylatedPredicate(layer)
+                layer = predicate(scan, structure, *args, **kwargs)
+                i += 1
             else:
                 raise ValueError("Could Not Find Leaf %d" % i)
         raise ValueError("Could Not Find Leaf %d" % i)
@@ -353,16 +384,21 @@ class PredicateTreeBase(DummyScorer):
     @classmethod
     def from_json(cls, d):
         arranged_data = defaultdict(list)
+        n = None
         for spec_d, model_d in d:
             model = MultinomialRegressionFit.from_json(model_d)
             spec = partition_cell_spec.from_json(spec_d)
+            if n is None:
+                n = len(spec) - 1
+            else:
+                assert n == (len(spec) - 1)
             arranged_data[spec].append(model)
         for spec, models in arranged_data.items():
             scorer_type = cls._scorer_type_for_spec(spec)
             arranged_data[spec] = cls._bind_model_scorer(scorer_type, models, spec)
         arranged_data = dict(arranged_data)
-        root = cls.build_tree(arranged_data, 0, 5, arranged_data)
-        return cls(root)
+        root = cls.build_tree(arranged_data, 0, n, arranged_data)
+        return cls(root, n)
 
     def to_json(self):
         d_list = []
@@ -411,7 +447,7 @@ class PredicateTreeBase(DummyScorer):
         return compressing_reducer(self)
 
     def __repr__(self):
-        return "%s(%d)" % (self.__class__.__name__, len(self.root),)
+        return "%s(%d)" % (self.__class__.__name__, len(self),)
 
     def __eq__(self, other):
         try:

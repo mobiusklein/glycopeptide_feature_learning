@@ -343,7 +343,7 @@ def build_fragment_intensity_matches(cls, gpsm):
         peak = peak_set.getitem(i)
         total += peak.intensity
 
-    structure = gpsm.structure
+    structure = gpsm.target
     counted = set()
     if gpsm.solution_map is None:
         gpsm.match()
@@ -445,6 +445,8 @@ def encode_neighboring_residues(_FragmentType self, np.ndarray[feature_dtype_t, 
             if cterm is not None:
                 X[offset + cterm.int_value()] = 1
             offset += k_ftypes
+    else:
+        offset += (k_ftypes * self.bond_offset_depth * 2)
     return X, offset
 
 

@@ -8,7 +8,7 @@ from ms_deisotope.data_source import ProcessedScan
 from glycopeptidepy.structure.glycan import GlycosylationType
 from glypy.utils import make_struct
 
-from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
+from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan, FrozenMonosaccharideResidue
 
 from .amino_acid_classification import proton_mobility
 
@@ -38,32 +38,57 @@ def classify_proton_mobility(scan, structure):
         return 'immobile'
 
 
+_NEUAC = FrozenMonosaccharideResidue.from_iupac_lite("NeuAc")
+_NEUGC = FrozenMonosaccharideResidue.from_iupac_lite("NeuGc")
+
+
+def count_labile_monosaccharides(glycan_composition):
+    k = glycan_composition._getitem_fast(_NEUAC)
+    k += glycan_composition._getitem_fast(_NEUGC)
+    return k
+
+
 _partition_cell_spec = namedtuple("partition_cell_spec", ("peptide_length_range",
                                                           "glycan_size_range",
                                                           "charge",
                                                           "proton_mobility",
                                                           "glycan_type",
-                                                          "glycan_count"))
+                                                          "glycan_count",
+                                                        #   "sialylated"
+                                                          ))
 
 
 class partition_cell_spec(_partition_cell_spec):
+    __slots__ = ()
+
+    def __new__(cls, peptide_length_range, glycan_size_range, charge,
+                proton_mobility, glycan_type, glycan_count, sialylated=None):
+        self = super(partition_cell_spec, cls).__new__(
+            cls, peptide_length_range, glycan_size_range, charge,
+            proton_mobility, glycan_type, glycan_count,
+            # sialylated
+            )
+        return self
 
     def test(self, gpsm, omit_labile=False):
+        structure = gpsm.structure
+        if structure.glycosylation_manager.count_glycosylation_type(self.glycan_type) != self.glycan_count:
+            return False
         if omit_labile:
-            glycan_size = approximate_internal_size_of_glycan(gpsm.structure.glycan_composition)
+            glycan_size = approximate_internal_size_of_glycan(structure.glycan_composition)
         else:
-            glycan_size = sum(gpsm.structure.glycan_composition.values())
-        peptide_size = len(gpsm.structure)
+            glycan_size = structure.total_glycosylation_size
+        peptide_size = len(structure)
         if peptide_size < self.peptide_length_range[0] or peptide_size > self.peptide_length_range[1]:
             return False
         if glycan_size < self.glycan_size_range[0] or glycan_size > self.glycan_size_range[1]:
             return False
-        if classify_proton_mobility(gpsm, gpsm.structure) != self.proton_mobility:
+        if classify_proton_mobility(gpsm, structure) != self.proton_mobility:
             return False
         if gpsm.precursor_information.charge != self.charge:
             return False
-        if gpsm.structure.glycosylation_manager.count_glycosylation_type(self.glycan_type) != self.glycan_count:
-            return False
+        # if bool(count_labile_monosaccharides(structure.glycan_composition)) != self.sialylated:
+        #     return False
         return True
 
     def test_peptide_size(self, scan, structure, *args, **kwargs):
@@ -104,6 +129,7 @@ class partition_cell_spec(_partition_cell_spec):
         d['proton_mobility'] = self.proton_mobility
         d['glycan_type'] = str(getattr(self.glycan_type, "name", self.glycan_type))
         d['glycan_count'] = self.glycan_count
+        # d['sialylated'] = self.sialylated
         return d
 
     @classmethod
@@ -120,6 +146,7 @@ precursor_charges = (2, 3, 4, 5, 6)
 proton_mobilities = ('mobile', 'partial', 'immobile')
 glycosylation_type = tuple(GlycosylationType[i] for i in range(1, 4))
 glycosylation_count = (1, 2,)
+sialylated = (False, True)
 
 
 def _make_partition_by():
@@ -129,7 +156,9 @@ def _make_partition_by():
         precursor_charges,
         proton_mobilities,
         glycosylation_type,
-        glycosylation_count)
+        glycosylation_count,
+        # sialylated
+        )
     return [partition_cell_spec(*x) for x in dimensions]
 
 
@@ -159,7 +188,9 @@ def adjacent_specs(spec, charge=1, glycan_count=True):
             if current_charge + i < max_charge:
                 adjacent.append(spec._replace(charge=current_charge + i))
                 charges.append(current_charge + i)
-
+    # for adj in list(adjacent):
+    #     adjacent.append(adj._replace(sialylated=not adj.sialylated))
+    # adjacent.append(spec._replace(sialylated=not spec.sialylated))
     return adjacent
 
 

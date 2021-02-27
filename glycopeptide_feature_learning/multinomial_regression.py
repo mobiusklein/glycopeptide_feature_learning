@@ -68,6 +68,9 @@ BackboneFragment_max_glycosylation_size = 2
 FragmentCharge_max = 4
 # consider up to 10 monosaccharides of glycan still attached to a stub ion
 StubFragment_max_glycosylation_size = 10
+# consider up to 6 labile monosaccharide losses from an intact glycan
+StubFragment_max_labile_monosaccharides = 6
+
 
 _FragmentType = namedtuple(
     "FragmentType", [
@@ -267,6 +270,7 @@ class FragmentType(_FragmentType):
         matched_total = 0
         total = sum(p.intensity for p in gpsm.deconvoluted_peak_set)
         counted = set()
+        target = gpsm.target
         if gpsm.solution_map is None:
             gpsm.match()
         for peak_fragment_pair in gpsm.solution_map:
@@ -283,9 +287,9 @@ class FragmentType(_FragmentType):
                     cls(
                         None, None, FragmentSeriesClassification.stub_glycopeptide,
                         min(fragment.glycosylation_size, StubFragment_max_glycosylation_size),
-                        min(peak.charge, FragmentCharge_max + 1), peak_fragment_pair, gpsm.structure))
+                        min(peak.charge, FragmentCharge_max + 1), peak_fragment_pair, target))
                 continue
-            inst = cls.from_peak_peptide_fragment_pair(peak_fragment_pair, gpsm.structure)
+            inst = cls.from_peak_peptide_fragment_pair(peak_fragment_pair, target)
             fragment_classification.append(inst)
 
         unassigned = total - matched_total
@@ -322,7 +326,7 @@ class FragmentType(_FragmentType):
                 for i, frag_spec in enumerate(c):
                     peak_pair = frag_spec.peak_pair
                     if peak_pair is None:
-                        reliability[i] = 1.0
+                        reliability[i] = base_reliability
                     else:
                         reliability[i] = (remaining_reliability * reliability_score_map[peak_pair]
                                           ) + base_reliability
@@ -330,9 +334,9 @@ class FragmentType(_FragmentType):
             reliabilities.append(reliability)
         try:
             fit = multinomial_fit(breaks, matched, totals, reliabilities=reliabilities, **kwargs)
-        except np.linalg.LinAlgError:
-            logger.debug(
-                "Fitting the model with per-fragment reliability information failed.", exc_info=True)
+        except np.linalg.LinAlgError as err:
+            logger.info(
+                "Fitting the model with per-fragment reliability information failed: %s", err)
             fit = multinomial_fit(breaks, matched, totals, reliabilities=None, **kwargs)
         return MultinomialRegressionFit(model_type=cls, reliability_model=reliability_model, **fit)
 
@@ -551,6 +555,8 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
                 if cterm is not None:
                     X[offset + cterm.value] = 1
                 offset += k_ftypes
+        else:
+            offset += (k_ftypes * self.bond_offset_depth * 2)
         return X, offset
 
     def build_feature_vector(self, X, offset):
@@ -699,6 +705,101 @@ try:
     StubChargeModel.build_feature_vector = StubChargeModel_build_feature_vector
 except ImportError as err:
     print(err)
+
+
+class StubChargeModelApproximate(StubChargeModel):
+    def build_feature_vector(self, X, offset):
+        # X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
+        # X, offset = self.encode_stub_charge(X, offset)
+
+        # Directly invoke feature vector construction because super() costs too much
+        # in a tight loop
+        X, offset = FragmentType.build_feature_vector(self, X, offset)
+        X, offset = ProlineSpecializingModel.specialize_proline(self, X, offset)
+        X, offset = StubGlycopeptideCompositionModel.encode_stub_information(self, X, offset)
+        X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(self, X, offset)
+        X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(self, X, offset)
+        X, offset = StubChargeModelApproximate.encode_stub_charge_approximate(
+            self, X, offset)
+        return X, offset
+
+    def encode_stub_charge_approximate(self, X, offset):
+        k_glycosylated_stubs = (StubFragment_max_glycosylation_size * 2) + 1
+        k_stub_charges = FragmentCharge_max + 1
+        k_glycosylated_stubs_x_charge = (k_glycosylated_stubs * k_stub_charges)
+
+        if self.is_stub_glycopeptide():
+            # TODO: Using the approximation provides a mildly better model fit on mixed sialylated/non-sialylated data
+            # but requires a full re-analysis. Save for the future.
+            loss_size = approximate_internal_size_of_glycan(self.sequence.glycan_composition) - int(self.glycosylated)
+            # loss_size = sum(
+            #     self.sequence.glycan_composition.values()) - int(self.glycosylated)
+            if loss_size >= k_glycosylated_stubs:
+                loss_size = k_glycosylated_stubs - 1
+            # d = k_glycosylated_stubs * (self.charge - 1) + int(self.glycosylated)
+            d = k_glycosylated_stubs * (self.charge - 1) + loss_size
+            X[offset + d] = 1
+        offset += k_glycosylated_stubs_x_charge
+        return X, offset
+
+
+_NEUAC = FrozenMonosaccharideResidue.from_iupac_lite("NeuAc")
+_NEUGC = FrozenMonosaccharideResidue.from_iupac_lite("NeuGc")
+
+
+def count_labile_monosaccharides(glycan_composition):
+    k = glycan_composition._getitem_fast(_NEUAC)
+    k += glycan_composition._getitem_fast(_NEUGC)
+    return k
+
+
+class LabileMonosaccharideAwareModel(StubChargeModel):
+
+    @classmethod
+    def feature_names(cls):
+        names = super(LabileMonosaccharideAwareModel, cls).feature_names()
+        k_labile_monosaccharides = (
+            StubFragment_max_labile_monosaccharides) + 1
+        k_stub_charges = FragmentCharge_max + 1
+        for i in range(k_stub_charges):
+            for j in range(k_labile_monosaccharides):
+                names.append(
+                    "stub glycopeptide:charge %d:labile monosaccharides %d" % (i + 1, j))
+        return names
+
+    def encode_labile_monosaccharides_charge(self, X, offset):
+        k_labile_monosaccharides = (StubFragment_max_labile_monosaccharides) + 1
+        k_stub_charges = FragmentCharge_max + 1
+        k_labile_monosaccharides_x_charge = (k_labile_monosaccharides * k_stub_charges)
+
+        if self.is_stub_glycopeptide():
+            loss_size = count_labile_monosaccharides(
+                self.sequence.glycan_composition)
+            if loss_size >= k_labile_monosaccharides:
+                loss_size = k_labile_monosaccharides - 1
+            d = k_labile_monosaccharides * (self.charge - 1) + loss_size
+            X[offset + d] = 1
+        offset += k_labile_monosaccharides_x_charge
+        return X, offset
+
+    def build_feature_vector(self, X, offset):
+        # X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
+        # X, offset = self.encode_stub_charge(X, offset)
+
+        # Directly invoke feature vector construction because super() costs too much
+        # in a tight loop
+        X, offset = FragmentType.build_feature_vector(self, X, offset)
+        X, offset = ProlineSpecializingModel.specialize_proline(
+            self, X, offset)
+        X, offset = StubGlycopeptideCompositionModel.encode_stub_information(
+            self, X, offset)
+        X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(
+            self, X, offset)
+        X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(
+            self, X, offset)
+        X, offset = StubChargeModel.encode_stub_charge(self, X, offset)
+        X, offset = LabileMonosaccharideAwareModel.encode_labile_monosaccharides_charge(self, X, offset)
+        return X, offset
 
 
 class AmideBondCrossproductModel(StubGlycopeptideCompositionModel):
@@ -904,7 +1005,7 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
         z = phi * beta0
         H = phi * np.diag(S_inv0)
         logger.info(
-            "Iteration %d\n", iter_)
+            "Iteration %d (%0.2e)", iter_, dev)
         # if tracing:
         #     assert not np.any(np.isnan(H))
         for i in range(len(y)):

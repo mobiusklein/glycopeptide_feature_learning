@@ -13,3 +13,5 @@ ref/
 build/*
 *egg*
 Untitled*
+htmlcov
+.coverage
