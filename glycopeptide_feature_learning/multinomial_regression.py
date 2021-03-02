@@ -660,9 +660,6 @@ class StubChargeModel(NeighboringAminoAcidsModelDepth2):
         k_glycosylated_stubs_x_charge = (k_glycosylated_stubs * k_stub_charges)
 
         if self.is_stub_glycopeptide():
-            # TODO: Using the approximation provides a mildly better model fit on mixed sialylated/non-sialylated data
-            # but requires a full re-analysis. Save for the future.
-            # loss_size = approximate_internal_size_of_glycan(self.sequence.glycan_composition) - int(self.glycosylated)
             loss_size = sum(self.sequence.glycan_composition.values()) - int(self.glycosylated)
             if loss_size >= k_glycosylated_stubs:
                 loss_size = k_glycosylated_stubs - 1
@@ -799,6 +796,55 @@ class LabileMonosaccharideAwareModel(StubChargeModel):
             self, X, offset)
         X, offset = StubChargeModel.encode_stub_charge(self, X, offset)
         X, offset = LabileMonosaccharideAwareModel.encode_labile_monosaccharides_charge(self, X, offset)
+        return X, offset
+
+
+class LabileMonosaccharideAwareModelApproximate(StubChargeModelApproximate):
+
+    @classmethod
+    def feature_names(cls):
+        names = super(LabileMonosaccharideAwareModelApproximate,
+                      cls).feature_names()
+        k_labile_monosaccharides = (
+            StubFragment_max_labile_monosaccharides) + 1
+        k_stub_charges = FragmentCharge_max + 1
+        for i in range(k_stub_charges):
+            for j in range(k_labile_monosaccharides):
+                names.append(
+                    "stub glycopeptide:charge %d:labile monosaccharides %d" % (i + 1, j))
+        return names
+
+    def encode_labile_monosaccharides_charge(self, X, offset):
+        k_labile_monosaccharides = (
+            StubFragment_max_labile_monosaccharides) + 1
+        k_stub_charges = FragmentCharge_max + 1
+        k_labile_monosaccharides_x_charge = (
+            k_labile_monosaccharides * k_stub_charges)
+
+        if self.is_stub_glycopeptide():
+            loss_size = count_labile_monosaccharides(
+                self.sequence.glycan_composition)
+            if loss_size >= k_labile_monosaccharides:
+                loss_size = k_labile_monosaccharides - 1
+            d = k_labile_monosaccharides * (self.charge - 1) + loss_size
+            X[offset + d] = 1
+        offset += k_labile_monosaccharides_x_charge
+        return X, offset
+
+    def build_feature_vector(self, X, offset):
+        X, offset = FragmentType.build_feature_vector(self, X, offset)
+        X, offset = ProlineSpecializingModel.specialize_proline(
+            self, X, offset)
+        X, offset = StubGlycopeptideCompositionModel.encode_stub_information(
+            self, X, offset)
+        X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(
+            self, X, offset)
+        X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(
+            self, X, offset)
+        X, offset = StubChargeModelApproximate.encode_stub_charge(
+            self, X, offset)
+        X, offset = LabileMonosaccharideAwareModelApproximate.encode_labile_monosaccharides_charge(
+            self, X, offset)
         return X, offset
 
 

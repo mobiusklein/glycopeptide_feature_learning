@@ -74,10 +74,9 @@ class partition_cell_spec(_partition_cell_spec):
         structure = gpsm.structure
         if structure.glycosylation_manager.count_glycosylation_type(self.glycan_type) != self.glycan_count:
             return False
+        glycan_size = glycan_size = structure.total_glycosylation_size
         if omit_labile:
-            glycan_size = approximate_internal_size_of_glycan(structure.glycan_composition)
-        else:
-            glycan_size = structure.total_glycosylation_size
+            glycan_size -= count_labile_monosaccharides(structure.glycan_composition)
         peptide_size = len(structure)
         if peptide_size < self.peptide_length_range[0] or peptide_size > self.peptide_length_range[1]:
             return False
@@ -144,25 +143,40 @@ peptide_backbone_length_ranges = [(a, a + 5) for a in range(0, 50, 5)]
 glycan_size_ranges = [(a, a + 4) for a in range(1, 20, 4)]
 precursor_charges = (2, 3, 4, 5, 6)
 proton_mobilities = ('mobile', 'partial', 'immobile')
-glycosylation_type = tuple(GlycosylationType[i] for i in range(1, 4))
-glycosylation_count = (1, 2,)
+glycosylation_types = tuple(GlycosylationType[i] for i in range(1, 4))
+glycosylation_counts = (1, 2,)
 sialylated = (False, True)
 
 
-def _make_partition_by():
+# def _make_partition_by():
+#     dimensions = itertools.product(
+#         peptide_backbone_length_ranges,
+#         glycan_size_ranges,
+#         precursor_charges,
+#         proton_mobilities,
+#         glycosylation_types,
+#         glycosylation_counts,
+#         # sialylated
+#         )
+#     return [partition_cell_spec(*x) for x in dimensions]
+
+
+# partition_by = _make_partition_by()
+
+
+def build_partition_rules_from_bins(peptide_backbone_length_ranges=peptide_backbone_length_ranges, glycan_size_ranges=glycan_size_ranges,
+                                    precursor_charges=precursor_charges, proton_mobilities=proton_mobilities, glycosylation_types=glycosylation_types,
+                                    glycosylation_counts=glycosylation_counts):
     dimensions = itertools.product(
         peptide_backbone_length_ranges,
         glycan_size_ranges,
         precursor_charges,
         proton_mobilities,
-        glycosylation_type,
-        glycosylation_count,
-        # sialylated
-        )
+        glycosylation_types,
+        glycosylation_counts,
+    )
     return [partition_cell_spec(*x) for x in dimensions]
 
-
-partition_by = _make_partition_by()
 
 
 class partition_cell(make_struct("partition_cell", ("subset", "fit", "spec"))):
@@ -217,7 +231,7 @@ class PartitionMap(OrderedDict):
 
 def partition_observations(gpsms, exclusive=True, partition_specifications=None, omit_labile=False):
     if partition_specifications is None:
-        partition_specifications = partition_by
+        partition_specifications = build_partition_rules_from_bins()
     partition_map = PartitionMap()
     j = 0
     cnt = 0
@@ -228,15 +242,14 @@ def partition_observations(gpsms, exclusive=True, partition_specifications=None,
         j += 1
         if j % interval == 0:
             logger.info("Partitioning for %s", spec)
-        for i in range(len(gpsms)):
-            gpsm = gpsms[i]
+        for i, gpsm in enumerate(gpsms):
             if not spec.test(gpsm, omit_labile=omit_labile):
                 rest.append(gpsm)
                 continue
             subset.append(gpsm)
             cnt += 1
         n = len(subset)
-        if j % interval == 0:
+        if j % interval == 0 and gpsms:
             logger.info("Partitioned %d observations", cnt)
         if n > 0:
             partition_map[spec] = init_cell(subset, {}, spec)

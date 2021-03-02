@@ -145,8 +145,15 @@ class GlycanSizePredicate(IntervalPredicate):
     """An :class:`IntervalPredicate` whose point value is the
     overall size of a glycan composition aggregate.
     """
+
+    def __init__(self, root, omit_labile=False):
+        super(GlycanSizePredicate, self).__init__(root)
+        self.omit_labile = omit_labile
+
     def value_for(self, scan, structure, *args, **kwargs):
-        glycan_size = sum(structure.glycan_composition.values())
+        glycan_size = structure.total_glycosylation_size
+        if self.omit_labile:
+            glycan_size -= count_labile_monosaccharides(structure.glycan_composition)
         return glycan_size
 
 
@@ -265,11 +272,23 @@ class SialylatedPredicate(MappingPredicate):
             return self.root[None]
 
 
-def decompressing_reconstructor(cls, data):
+predicate_sequence = [
+    PeptideLengthPredicate,
+    GlycanSizePredicate,
+    ChargeStatePredicate,
+    ProtonMobilityPredicate,
+    GlycanTypeCountPredicate,
+    SialylatedPredicate
+]
+
+
+def decompressing_reconstructor(cls, data, kwargs=None):
+    if kwargs is None:
+        kwargs = {}
     if isinstance(data, (str, bytes)):
         buff = io.BytesIO(data)
         data = pickle.load(gzip.GzipFile(fileobj=buff))
-    return cls(data)
+    return cls(data, **kwargs)
 
 
 def compressing_reducer(self):
@@ -279,7 +298,7 @@ def compressing_reducer(self):
     pickle.dump(data, writer, 2)
     writer.flush()
     data = buff.getvalue()
-    return decompressing_reconstructor, (self.__class__, data, )
+    return decompressing_reconstructor, (self.__class__, data, {"size": self.size, "omit_labile": self.omit_labile})
 
 
 class PredicateTreeBase(DummyScorer):
@@ -289,10 +308,10 @@ class PredicateTreeBase(DummyScorer):
     _scorer_type = None
     _short_peptide_scorer_type = None
 
-    def __init__(self, root, size=None): # pylint: disable=super-init-not-called
+    def __init__(self, root, size=None, omit_labile=False): # pylint: disable=super-init-not-called
         self.root = root
         self.size = size
-
+        self.omit_labile = omit_labile
         if self.size is None:
             self.size = self._guess_size()
 
@@ -325,14 +344,13 @@ class PredicateTreeBase(DummyScorer):
         i = 0
         layer = self.root
         while i < self.size:
-            if not isinstance(layer, dict):
-                return layer
             if i == 0:
                 predicate = PeptideLengthPredicate(layer)
                 layer = predicate(scan, structure, *args, **kwargs)
                 i += 1
             elif i == 1:
-                predicate = GlycanSizePredicate(layer)
+                predicate = GlycanSizePredicate(
+                    layer, omit_labile=self.omit_labile)
                 layer = predicate(scan, structure, *args, **kwargs)
                 i += 1
             elif i == 2:
@@ -348,11 +366,17 @@ class PredicateTreeBase(DummyScorer):
                 layer = predicate(scan, structure, *args, **kwargs)
                 i += 1
             elif i == 5:
+                if not isinstance(layer, dict):
+                    return layer
                 predicate = SialylatedPredicate(layer)
                 layer = predicate(scan, structure, *args, **kwargs)
                 i += 1
             else:
+                if not isinstance(layer, dict):
+                    return layer
                 raise ValueError("Could Not Find Leaf %d" % i)
+        if not isinstance(layer, dict):
+            return layer
         raise ValueError("Could Not Find Leaf %d" % i)
 
     def evaluate(self, scan, target, *args, **kwargs):
@@ -364,30 +388,60 @@ class PredicateTreeBase(DummyScorer):
         return model(scan, target, *args, **kwargs)
 
     @classmethod
-    def build_tree(cls, key_tuples, i, n, solution_map):
+    def build_tree(cls, key_tuples, i, n, node_map):
+        '''A recursive function to reconstruct sub-trees from a flattened
+        tree.
+
+        Parameters
+        ----------
+        key_tuples : :class:`Iterable` of :class:`~.partition_cell_spec`
+            The set of model bin specifications
+        i : :class:`int`
+            The index of the field of the specification to order by
+        n : :class:`int`
+            The total number of indices in a specification
+        node_map : :class:`defaultdict` of :class:`list`
+            A mapping between :class:`~.partition_cell_spec` and :class:`~.MultinomialRegressionFit`
+
+        Returns
+        -------
+        :class:`OrderedDict`
+
+        '''
         aggregate = defaultdict(list)
         for key in key_tuples:
             aggregate[key[i]].append(key)
         if i < n:
             result = OrderedDict()
             for k, vs in sorted(aggregate.items(), key=lambda x: x[0]):
-                result[k] = cls.build_tree(vs, i + 1, n, solution_map)
+                result[k] = cls.build_tree(vs, i + 1, n, node_map)
             return result
         else:
             result = OrderedDict()
             for k, vs in sorted(aggregate.items(), key=lambda x: x[0]):
                 if len(vs) > 1:
                     raise ValueError("Multiple specifications at a leaf node")
-                result[k] = solution_map[vs[0]]
+                result[k] = node_map[vs[0]]
             return result
 
     @classmethod
     def from_json(cls, d):
         arranged_data = defaultdict(list)
         n = None
+        # Check whether the payload is just a raw list of (spec, model) pairs or a wrapper
+        # with extra metadata
+        if isinstance(d, dict):
+            meta = d['metadata']
+            d = d['models']
+            omit_labile = meta.get('omit_labile', False)
+        else:
+            meta = dict()
+            omit_labile = False
         for spec_d, model_d in d:
             model = MultinomialRegressionFit.from_json(model_d)
             spec = partition_cell_spec.from_json(spec_d)
+            # Ensure that all model specifications have the same number of dimensions for
+            # the tree reconstruction to be consistent
             if n is None:
                 n = len(spec) - 1
             else:
@@ -398,7 +452,7 @@ class PredicateTreeBase(DummyScorer):
             arranged_data[spec] = cls._bind_model_scorer(scorer_type, models, spec)
         arranged_data = dict(arranged_data)
         root = cls.build_tree(arranged_data, 0, n, arranged_data)
-        return cls(root, n)
+        return cls(root, n, omit_labile)
 
     def to_json(self):
         d_list = []

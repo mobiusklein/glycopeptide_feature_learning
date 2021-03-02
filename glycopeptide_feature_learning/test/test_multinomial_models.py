@@ -7,7 +7,8 @@ from glycopeptide_feature_learning.test.common import datafile
 from glycopeptide_feature_learning.multinomial_regression import (
     FragmentType, ProlineSpecializingModel, StubGlycopeptideCompositionModel,
     StubGlycopeptideFucosylationModel, NeighboringAminoAcidsModel, NeighboringAminoAcidsModelDepth2,
-    CleavageSiteCenterDistanceModel, StubChargeModel)
+    CleavageSiteCenterDistanceModel, StubChargeModel, LabileMonosaccharideAwareModel,
+    LabileMonosaccharideAwareModelApproximate)
 
 from glycopeptide_feature_learning.data_source import read
 
@@ -57,3 +58,11 @@ class CleavageSiteCenterDistanceModelTest(FragmentTypeTest):
 
 class StubChargeModelTest(FragmentTypeTest):
     model_cls = StubChargeModel
+
+
+class LabileMonosaccharideAwareModelTest(FragmentTypeTest):
+    model_cls = LabileMonosaccharideAwareModel
+
+
+class LabileMonosaccharideAwareModelApproximateTest(FragmentTypeTest):
+    model_cls = LabileMonosaccharideAwareModelApproximate

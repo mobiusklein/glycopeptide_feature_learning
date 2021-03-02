@@ -81,8 +81,7 @@ def match_spectra(matches, error_tolerance):
             match.match(error_tolerance=error_tolerance)
             if progbar.is_hidden and i % 1000 == 0 and i != 0:
                 click.echo("%d Spectra Matched" % (i,))
-    if not progbar.is_hidden:
-        click.echo("%d Spectra Matched" % (i,))
+    click.echo("%d Spectra Matched" % (len(matches),))
     return matches
 
 
@@ -267,6 +266,7 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
 @click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option('-o', '--output-path', type=click.Path())
 @click.option('-m', '--error-tolerance', type=float, default=2e-5)
+@click.option('-M', '--model-type', type=click.Choice(sorted(multinomial_regression.FragmentType.type_cache)), default='StubChargeModel')
 @click.option('-F', '--save-fit-statistics', is_flag=True, default=False,
               help=('Include the intermediary results and statistics for each model fit, '
                     'allowing the result to be used to describe the model parameters but at the cost of '
@@ -274,20 +274,23 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
 @click.option("-b", "--omit-labile", is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
 @click.option("--debug", is_flag=True, default=False, help='Enable debug logging')
 def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False,
-         omit_labile=False, regression_model=None):
+         omit_labile=False, model_type=None):
     logger = logging.getLogger()
     if debug:
         logger.setLevel("DEBUG")
     else:
         logger.setLevel("INFO")
     logger.addHandler(logging.StreamHandler(sys.stdout))
-
-    if regression_model is None:
+    if isinstance(model_type, basestring):
+        model_type = multinomial_regression.FragmentType.get_model_by_name(model_type)
+    if model_type is None:
         if omit_labile:
-            regression_model = multinomial_regression.StubChargeModelApproximate
+            model_type = multinomial_regression.StubChargeModelApproximate
         else:
-            regression_model = multinomial_regression.StubChargeModel
-    logger.info("Model Type: %r" % (regression_model, ))
+            model_type = multinomial_regression.StubChargeModel
+    click.echo("Model Type: %r" % (model_type, ))
+    click.echo("Minimum Score: %0.3f" % (threshold, ))
+    click.echo("Mass Error Tolerance: %0.3e" % (error_tolerance, ))
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
     if len(training_instances) == 0:
@@ -299,13 +302,24 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
     click.echo("Fitting Peak Relation Features")
     fit_peak_relation_features(partition_map)
     click.echo("Fitting Peak Intensity Regression")
-    model_fits = fit_regression_model(partition_map, regression_model=regression_model, trace=debug)
+    model_fits = fit_regression_model(
+        partition_map, regression_model=model_type, trace=debug)
     click.echo("Writing Models To %s" % (output_path,))
     export = []
     for spec, fit in model_fits:
         export.append((spec.to_json(), fit.to_json(save_fit_statistics)))
+    wrapper = {
+        "metadata": {
+            "omit_labile": omit_labile,
+            "fit_info": {
+                "error_tolerance": error_tolerance,
+                "spectrum_count": len(training_instances),
+            },
+        },
+        "models": export
+    }
     with open(output_path, 'wt') as fh:
-        json.dump(export, fh, sort_keys=1, indent=2)
+        json.dump(wrapper, fh, sort_keys=1, indent=2)
 
 
 @click.command("partition-glycopeptide-training-data", short_help="Pre-separate training data along partitions")
@@ -359,17 +373,22 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
 @click.argument("model_path", type=click.Path(exists=True, dir_okay=False))
 @click.option('-t', '--threshold', type=float, default=0.0)
-def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_tolerance=2e-5):
+@click.option("-b", "--omit-labile", is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
+def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_tolerance=2e-5, omit_labile=False):
     training_instances = get_training_data(paths, threshold=threshold)
     model_tree = None
 
     with open(model_path, 'rb') as fh:
         model_tree = pickle.load(fh)
 
+    model_tree.omit_labile = omit_labile
+
     correlations = array.array('d')
     glycan_correlations = array.array('d')
     peptide_correlations = array.array('d')
     scan_ids = []
+    data_files = []
+    glycopeptides = []
 
     def peptide_correlation(match):
         c, inten, t, y, rel = match.get_predicted_intensities_series(
@@ -395,6 +414,8 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             peptide_correlations.append(match._mixture_apply(peptide_correlation))
             glycan_correlations.append(match._mixture_apply(glycan_correlation))
             scan_ids.append(scan.id)
+            data_files.append(scan.title)
+            glycopeptides.append(str(scan.target))
 
     if not progbar.is_hidden:
         click.echo("%d Spectra Matched" % (i,))
@@ -405,10 +426,12 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
 
     with open(outpath, 'wb') as fh:
         pickle.dump({
-            "scan_id": scan_ids,
-            "correlation": correlations,
-            "peptide_correlation": peptide_correlations,
-            "glycan_correlation": glycan_correlations,
+            "scan_id": np.array(scan_ids),
+            "correlation": np.array(correlations),
+            "peptide_correlation": np.array(peptide_correlations),
+            "glycan_correlation": np.array(glycan_correlations),
+            "data_file": np.array(data_files),
+            "glycopeptide": np.array(glycopeptides)
         }, fh)
 
 
