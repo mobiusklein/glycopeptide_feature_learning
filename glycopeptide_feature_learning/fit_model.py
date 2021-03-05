@@ -266,12 +266,12 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
 @click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option('-o', '--output-path', type=click.Path())
 @click.option('-m', '--error-tolerance', type=float, default=2e-5)
-@click.option('-M', '--model-type', type=click.Choice(sorted(multinomial_regression.FragmentType.type_cache)), default='StubChargeModel')
+@click.option('-M', '--model-type', type=click.Choice(sorted(multinomial_regression.FragmentType.type_cache)), default='LabileMonosaccharideAwareModel')
 @click.option('-F', '--save-fit-statistics', is_flag=True, default=False,
               help=('Include the intermediary results and statistics for each model fit, '
                     'allowing the result to be used to describe the model parameters but at the cost of '
                     'greatly increasing the size of the model output file'))
-@click.option("-b", "--omit-labile", is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
+@click.option("-b / -nb", "--omit-labile / --include-labile", default=True, is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
 @click.option("--debug", is_flag=True, default=False, help='Enable debug logging')
 def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False,
          omit_labile=False, model_type=None):
@@ -284,13 +284,11 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
     if isinstance(model_type, basestring):
         model_type = multinomial_regression.FragmentType.get_model_by_name(model_type)
     if model_type is None:
-        if omit_labile:
-            model_type = multinomial_regression.StubChargeModelApproximate
-        else:
-            model_type = multinomial_regression.StubChargeModel
+        model_type = multinomial_regression.LabileMonosaccharideAwareModel
     click.echo("Model Type: %r" % (model_type, ))
     click.echo("Minimum Score: %0.3f" % (threshold, ))
     click.echo("Mass Error Tolerance: %0.3e" % (error_tolerance, ))
+    click.echo("Omit Labile Groups: %r" % (omit_labile, ))
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
     if len(training_instances) == 0:
@@ -373,7 +371,7 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
 @click.argument("model_path", type=click.Path(exists=True, dir_okay=False))
 @click.option('-t', '--threshold', type=float, default=0.0)
-@click.option("-b", "--omit-labile", is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
+@click.option("-b / -nb", "--omit-labile / --include-labile", is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
 def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_tolerance=2e-5, omit_labile=False):
     training_instances = get_training_data(paths, threshold=threshold)
     model_tree = None

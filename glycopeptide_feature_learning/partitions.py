@@ -139,7 +139,8 @@ class partition_cell_spec(_partition_cell_spec):
         return cls(**d)
 
 
-peptide_backbone_length_ranges = [(a, a + 5) for a in range(0, 50, 5)]
+k = 5
+peptide_backbone_length_ranges = [(a, a + k) for a in range(0, 50, k)]
 glycan_size_ranges = [(a, a + 4) for a in range(1, 20, 4)]
 precursor_charges = (2, 3, 4, 5, 6)
 proton_mobilities = ('mobile', 'partial', 'immobile')
