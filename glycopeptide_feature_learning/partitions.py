@@ -149,22 +149,6 @@ glycosylation_counts = (1, 2,)
 sialylated = (False, True)
 
 
-# def _make_partition_by():
-#     dimensions = itertools.product(
-#         peptide_backbone_length_ranges,
-#         glycan_size_ranges,
-#         precursor_charges,
-#         proton_mobilities,
-#         glycosylation_types,
-#         glycosylation_counts,
-#         # sialylated
-#         )
-#     return [partition_cell_spec(*x) for x in dimensions]
-
-
-# partition_by = _make_partition_by()
-
-
 def build_partition_rules_from_bins(peptide_backbone_length_ranges=peptide_backbone_length_ranges, glycan_size_ranges=glycan_size_ranges,
                                     precursor_charges=precursor_charges, proton_mobilities=proton_mobilities, glycosylation_types=glycosylation_types,
                                     glycosylation_counts=glycosylation_counts):
@@ -186,7 +170,7 @@ class partition_cell(make_struct("partition_cell", ("subset", "fit", "spec"))):
 
 
 def init_cell(subset=None, fit=None, spec=None):
-    return partition_cell(subset or [], fit, spec)
+    return partition_cell(subset or [], fit or {}, spec)
 
 
 def adjacent_specs(spec, charge=1, glycan_count=True):
@@ -231,32 +215,32 @@ class PartitionMap(OrderedDict):
 
 
 def partition_observations(gpsms, exclusive=True, partition_specifications=None, omit_labile=False):
+    # Consider re-organizing to move PredicateFilter to partitions
+    from glycopeptide_feature_learning.scoring.predicate import PredicateFilter
     if partition_specifications is None:
         partition_specifications = build_partition_rules_from_bins()
     partition_map = PartitionMap()
-    j = 0
-    cnt = 0
-    interval = 250
+    forward_map = PredicateFilter.from_spec_list(
+        partition_specifications, omit_labile=omit_labile)
+    for i, gpsm in enumerate(gpsms):
+        if i % 1000 == 0 and i:
+            logger.info("Partitioned %d GPSMs" % (i, ))
+        pair = forward_map[gpsm, gpsm.target]
+        # Ensure that the GPSM actually belongs to the partition spec and isn't a nearest
+        # neighbor match
+        if pair.spec.test(gpsm, omit_labile=omit_labile):
+            pair.members.append(gpsm)
+        else:
+            logger.info("%s @ %s does not have a matching partition" %
+                        (gpsm.target, gpsm.precursor_information))
+    reverse_map = forward_map.build_reverse_mapping()
     for spec in partition_specifications:
-        rest = []
-        subset = []
-        j += 1
-        if j % interval == 0:
-            logger.info("Partitioning for %s", spec)
-        for i, gpsm in enumerate(gpsms):
-            if not spec.test(gpsm, omit_labile=omit_labile):
-                rest.append(gpsm)
-                continue
-            subset.append(gpsm)
-            cnt += 1
+        subset = reverse_map[spec]
         n = len(subset)
-        if j % interval == 0 and gpsms:
-            logger.info("Partitioned %d observations", cnt)
         if n > 0:
             partition_map[spec] = init_cell(subset, {}, spec)
-        if exclusive:
-            gpsms = rest
     return partition_map
+
 
 
 def make_shuffler(seed=None):
