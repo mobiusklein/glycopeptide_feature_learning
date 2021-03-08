@@ -98,7 +98,9 @@ class AnnotatedScan(ProcessedScan):
         return self._structure
 
     # Alias
-    target = structure
+    @property
+    def target(self):
+        return self.structure
 
     def match(self, **kwargs):
         self.matcher = LogIntensityScorer.evaluate(
@@ -165,7 +167,7 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
         intensity_array = scan["intensity array"]
         charge_array = scan['charge array']
         peak_set = build_deconvoluted_peak_set_from_arrays(mz_array, intensity_array, charge_array)
-        intensity_rank(peak_set)
+        # intensity_rank(peak_set)
         return peak_set
 
     def _activation(self, scan):
