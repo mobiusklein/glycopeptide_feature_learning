@@ -32,6 +32,8 @@ from glycopeptide_feature_learning.scoring.scorer import NaivePartialSplitScorer
 import glypy
 from glycopeptidepy.structure.fragment import IonSeries
 
+from glycan_profiling.cli.validators import RelativeMassErrorParam
+
 
 def get_training_data(paths, blacklist_path=None, threshold=50.0):
     training_files = []
@@ -265,7 +267,7 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
 @click.option('-t', '--threshold', type=float, default=50.0)
 @click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option('-o', '--output-path', type=click.Path())
-@click.option('-m', '--error-tolerance', type=float, default=2e-5)
+@click.option('-m', '--error-tolerance', type=RelativeMassErrorParam(), default=2e-5)
 @click.option('-M', '--model-type', type=click.Choice(sorted(multinomial_regression.FragmentType.type_cache)), default='LabileMonosaccharideAwareModel')
 @click.option('-F', '--save-fit-statistics', is_flag=True, default=False,
               help=('Include the intermediary results and statistics for each model fit, '
@@ -322,15 +324,17 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
 
 @click.command("partition-glycopeptide-training-data", short_help="Pre-separate training data along partitions")
 @click.option('-t', '--threshold', type=float, default=0.0)
+@click.option("-b / -nb", "--omit-labile / --include-labile", default=True, is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
 @click.argument('paths', metavar='PATH', nargs=-1)
 @click.argument('outdir', metavar='OUTDIR', type=click.Path(dir_okay=True, file_okay=False), nargs=1)
-def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5):
+def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, omit_labile=True, output_path=None,
+                                         blacklist_path=None, error_tolerance=2e-5):
     click.echo("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
     if len(training_instances) == 0:
         raise click.Abort("No training examples were found.")
     click.echo("Partitioning %d instances" % (len(training_instances), ))
-    partition_map = partition_training_data(training_instances)
+    partition_map = partition_training_data(training_instances, omit_labile=omit_labile)
     save_partitions(partition_map, outdir)
 
 
@@ -344,7 +348,7 @@ def strip_model_arrays(inpath, outpath):
         json.dump(d, fh)
 
 
-@click.command("compile-model", short_help="Compile a model into a Python-loadable file.")
+@click.command("compile-model", short_help="Compile a model into a Python-loadable file")
 @click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
 @click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full", "naive-partial-peptide"]), default='partial-peptide')
@@ -366,20 +370,17 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
 
 
 
-@click.command("calculate-correlation")
+@click.command("calculate-correlation", short_help="Correlate intensity prediction for annotated spectra")
 @click.argument('paths', metavar='PATH', nargs=-1)
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
 @click.argument("model_path", type=click.Path(exists=True, dir_okay=False))
 @click.option('-t', '--threshold', type=float, default=0.0)
-@click.option("-b / -nb", "--omit-labile / --include-labile", is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
-def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_tolerance=2e-5, omit_labile=False):
-    training_instances = get_training_data(paths, threshold=threshold)
+def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_tolerance=2e-5):
+    test_instances = get_training_data(paths, threshold=threshold)
     model_tree = None
 
     with open(model_path, 'rb') as fh:
         model_tree = pickle.load(fh)
-
-    model_tree.omit_labile = omit_labile
 
     correlations = array.array('d')
     glycan_correlations = array.array('d')
@@ -399,9 +400,11 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
         return np.corrcoef(inten, y)[1, 0]
 
     progbar = click.progressbar(
-        enumerate(training_instances), length=len(training_instances), show_eta=True, label='Matching Peaks',
+        enumerate(test_instances), length=len(test_instances), show_eta=True, label='Matching Peaks',
 
         item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '')
+
+    assert len(test_instances) > 0
     with progbar:
         for i, scan in progbar:
             match = model_tree.evaluate(scan, scan.structure, error_tolerance=error_tolerance)
@@ -415,8 +418,7 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             data_files.append(scan.title)
             glycopeptides.append(str(scan.target))
 
-    if not progbar.is_hidden:
-        click.echo("%d Spectra Matched" % (i,))
+    click.echo("%d Spectra Matched" % (i,))
 
     click.echo("Median Correlation: %03f" % np.nanmedian(correlations))
     click.echo("Median Glycan Correlation: %03f" % np.nanmedian(glycan_correlations))
