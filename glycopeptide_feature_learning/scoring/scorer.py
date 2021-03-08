@@ -230,6 +230,19 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
         c = (r + 1) / 2.
         return c
 
+    def total_correlation(self):
+        return self._calculate_correlation_coef()
+
+    def peptide_correlation(self):
+        c, inten, t, y, rel = self.get_predicted_intensities_series(
+            ['b', 'y'], True)
+        return np.corrcoef(inten, y)[1, 0]
+
+    def glycan_correlation(self):
+        c, inten, t, y, rel = self.get_predicted_intensities_series(
+            ['stub_glycopeptide'], True)
+        return np.corrcoef(inten, y)[1, 0]
+
     def _get_predicted_peaks(self, scaled=True):
         c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
         mz = [ci.peak.mz for ci in c if ci.peak_pair]
@@ -784,6 +797,19 @@ class MixtureSplitScorer(_ModelMixtureBase, SplitScorer):
         self._clear_cache()
         return score
 
+    def peptide_correlation(self):
+        fn = super(MixtureSplitScorer, self).peptide_correlation
+        return self._mixture_apply(fn)
+
+    def glycan_correlation(self):
+        fn = super(MixtureSplitScorer, self).glycan_correlation(self)
+        return self._mixture_apply(fn)
+
+    def total_correlation(self):
+        fn = super(MixtureSplitScorer, self).total_correlation(self)
+        return self._mixture_apply(fn)
+
+
 class SplitScorerTree(PredicateTree):
     _scorer_type = MixtureSplitScorer
     _short_peptide_scorer_type = MixtureSplitScorer
@@ -886,6 +912,18 @@ class MixturePartialSplitScorer(_ModelMixtureBase, PartialSplitScorer):
         data['mixture_coefficients'] = self.mixture_coefficients
         data['partition'] = self.partition
         return data
+
+    def peptide_correlation(self):
+        fn = super(MixturePartialSplitScorer, self).peptide_correlation
+        return self._mixture_apply(fn)
+
+    def glycan_correlation(self):
+        fn = super(MixturePartialSplitScorer, self).glycan_correlation(self)
+        return self._mixture_apply(fn)
+
+    def total_correlation(self):
+        fn = super(MixturePartialSplitScorer, self).total_correlation(self)
+        return self._mixture_apply(fn)
 
 
 class PartialSplitScorerTree(PredicateTree):
