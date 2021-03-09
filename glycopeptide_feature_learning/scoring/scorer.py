@@ -802,11 +802,11 @@ class MixtureSplitScorer(_ModelMixtureBase, SplitScorer):
         return self._mixture_apply(fn)
 
     def glycan_correlation(self):
-        fn = super(MixtureSplitScorer, self).glycan_correlation(self)
+        fn = super(MixtureSplitScorer, self).glycan_correlation
         return self._mixture_apply(fn)
 
     def total_correlation(self):
-        fn = super(MixtureSplitScorer, self).total_correlation(self)
+        fn = super(MixtureSplitScorer, self).total_correlation
         return self._mixture_apply(fn)
 
 
@@ -918,11 +918,11 @@ class MixturePartialSplitScorer(_ModelMixtureBase, PartialSplitScorer):
         return self._mixture_apply(fn)
 
     def glycan_correlation(self):
-        fn = super(MixturePartialSplitScorer, self).glycan_correlation(self)
+        fn = super(MixturePartialSplitScorer, self).glycan_correlation
         return self._mixture_apply(fn)
 
     def total_correlation(self):
-        fn = super(MixturePartialSplitScorer, self).total_correlation(self)
+        fn = super(MixturePartialSplitScorer, self).total_correlation
         return self._mixture_apply(fn)
 
 
