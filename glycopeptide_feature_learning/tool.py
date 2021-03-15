@@ -211,11 +211,11 @@ def task_fn(args):
     return _fit_model_inner(spec, cell, regression_model)
 
 
-def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
+def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliability=True, **kwargs):
     fm = peak_relations.FragmentationModelCollection(cell.fit)
     try:
         fit = regression_model.fit_regression(
-            cell.subset, reliability_model=fm, base_reliability=0.5, **kwargs)
+            cell.subset, reliability_model=fm if use_reliability else None, base_reliability=0.5, **kwargs)
         if np.isinf(fit.estimate_dispersion()):
             click.echo("Infinite dispersion, refitting without per-fragment weights")
             fit = regression_model.fit_regression(
@@ -234,7 +234,8 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
         mismatches = []
         corr = array.array('d')
         for case in cell.subset:
-            r = fit.calculate_correlation(case)
+            r = fit.calculate_correlation(
+                case, use_reliability=use_reliability)
             if r < 0.5:
                 mismatches.append(case)
             corr.append(r)
@@ -244,7 +245,7 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, **kwargs):
                 click.echo("Fitting Mismatch Model with %d cases" % len(mismatches))
                 try:
                     mismatch_fit = regression_model.fit_regression(
-                        mismatches, reliability_model=fm, base_reliability=0.5, **kwargs)
+                        mismatches, reliability_model=fm if use_reliability else None, base_reliability=0.5, **kwargs)
                     if np.isinf(mismatch_fit.estimate_dispersion()):
                         click.echo("Infinite dispersion, refitting without per-fragment weights")
                         mismatch_fit = regression_model.fit_regression(
