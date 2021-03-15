@@ -112,9 +112,7 @@ setup(name='glycopeptide_feature_learning',
       },
       entry_points={
           'console_scripts': [
-              "fit-glycopeptide-regression-model = glycopeptide_feature_learning.fit_model:main",
-              "partition-glycopeptide-training-data = glycopeptide_feature_learning.fit_model:partition_glycopeptide_training_data",
-              "glycopeptide-feature-learning = glycopeptide_feature_learning.fit_model:cli"
+              "glycopeptide-feature-learning = glycopeptide_feature_learning.tool:cli"
           ],
       },
       cmdclass=cmdclass)
