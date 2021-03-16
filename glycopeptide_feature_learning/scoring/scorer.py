@@ -849,8 +849,8 @@ class PartialSplitScorer(SplitScorer):
             corr = -0.5
         corr = (1.0 + corr) / 2.0
         corr_score = 0
-        # corr_score = corr * (n_signif_frags) + \
-        corr_score = corr * len(stubs) + \
+        # corr_score = corr * len(stubs) + \
+        corr_score = corr * (n_signif_frags) + \
             reliability.sum()
         oxonium_component = self._signature_ion_score(self.error_tolerance)
         coverage = self._calculate_glycan_coverage(
