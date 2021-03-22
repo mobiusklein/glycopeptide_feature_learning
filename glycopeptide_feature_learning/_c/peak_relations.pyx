@@ -146,7 +146,7 @@ cdef class FeatureBase(object):
 
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
                               FragmentMatchMap solution_map, structure=None):
-        return to_peak in solution_map.by_peak
+        return solution_map.by_peak.has_key(to_peak)
 
     def specialize(self, from_charge, to_charge, intensity_ratio):
         raise NotImplementedError()
@@ -325,10 +325,10 @@ cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak f
         list matched_fragments, flanking_amino_acids
         size_t i, n
         FragmentBase frag
-    is_peak_expected = to_peak in solution_map.by_peak
+    is_peak_expected = solution_map.by_peak.has_key(to_peak)
     if not is_peak_expected:
         return False
-    matched_fragments = solution_map.by_peak[from_peak]
+    matched_fragments = solution_map.by_peak.getitem(from_peak)
     validated_aa = False
     n = PyList_GET_SIZE(matched_fragments)
     for i in range(n):
@@ -380,7 +380,7 @@ cdef class FeatureFunctionEstimatorBase(object):
         for i_peaks in range(n_peaks):
             peak = peaks.getitem(i_peaks)
 
-            fragments = solution_map.by_peak[peak]
+            fragments = solution_map.by_peak.getitem(peak)
             n_fragments = PyList_GET_SIZE(fragments)
             is_on_series = False
             for i_fragments in range(n_fragments):
