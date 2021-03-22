@@ -21,24 +21,6 @@ from .matching import SpectrumMatchAnnotator
 mass_shifts = MassShiftCollection([Unmodified, Ammonium, Sodium, Potassium])
 
 
-def _parse_charge(z, list_only=False, **kwargs):
-    '''Pyteomics _parse_charge is very general-purpose, and
-    can't be sped up, so we monkey-patch it here.'''
-    try:
-        if not list_only:
-            return int(z.replace('+', ''))
-        else:
-            return map(_parse_charge, z.split(" "))
-    except Exception:
-        if '-' in z:
-            return int(z.replace("-", '')) * -1
-        else:
-            raise
-
-
-pymgf.aux._parse_charge = _parse_charge
-
-
 class RankedPeak(DeconvolutedPeak):
     def __init__(self, neutral_mass, intensity, charge, signal_to_noise, index,
                  rank=-1):
@@ -234,7 +216,7 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
 
 
 def read(path):
-    return AnnotatedMGFDeserializer(opener(path))
+    return AnnotatedMGFDeserializer(opener(path, 'rb'))
 
 
 try:
