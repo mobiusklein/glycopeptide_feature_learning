@@ -90,7 +90,6 @@ def fit_fragmentation_model(gpsms, common_features, backbone_features, stub_feat
         for feature, filt in backbone_features.items():
             fits = fm.fit_feature(gpsms, feature)
             fm.features.extend(fits)
-        print fm
         models.add(fm)
     for series in [IonSeries.stub_glycopeptide]:
         fm = FragmentationModel(series)
