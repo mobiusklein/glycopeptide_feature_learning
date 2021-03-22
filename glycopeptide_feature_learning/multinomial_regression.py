@@ -31,6 +31,10 @@ array_dtype = np.dtype("<d")
 PEARSON_BIAS = 3.3
 
 
+def iterenum(enum):
+    return filter(lambda x: x[1].value is not None, enum)
+
+
 class FragmentSeriesClassification(Enum):
     b = 0
     y = 1
@@ -40,7 +44,8 @@ class FragmentSeriesClassification(Enum):
 
 # the number of ion series to consider is one less than the total number of series
 # because unassigned is a special case which no matched peaks will receive
-FragmentSeriesClassification_max = max(FragmentSeriesClassification, key=lambda x: x[1].value)[1].value - 1
+FragmentSeriesClassification_max = max(iterenum(FragmentSeriesClassification),
+                                       key=lambda x: x[1].value)[1].value - 1
 
 # the number of backbone ion series to consider is two less because the stub_glycopeptide
 # series is not a backbone fragmentation series
@@ -60,7 +65,8 @@ except ImportError:
     pass
 
 
-FragmentTypeClassification_max = max(FragmentTypeClassification, key=lambda x: x[1].value)[1].value
+FragmentTypeClassification_max = max(iterenum(FragmentTypeClassification),
+                                     key=lambda x: x[1].value)[1].value
 
 # consider fragments with up to 2 monosaccharides attached to a backbone fragment
 BackboneFragment_max_glycosylation_size = 2
@@ -219,16 +225,15 @@ class FragmentType(_FragmentType):
     @classmethod
     def feature_names(cls):
         names = []
-        for label, tp in sorted(FragmentTypeClassification, key=lambda x: x[1].value):
+        for label, tp in sorted(iterenum(FragmentTypeClassification), key=lambda x: x[1].value):
             if tp.value is None:
                 continue
             names.append("n-term %s" % label)
-        for label, tp in sorted(FragmentTypeClassification, key=lambda x: x[1].value):
+        for label, tp in sorted(iterenum(FragmentTypeClassification), key=lambda x: x[1].value):
             if tp.value is None:
                 continue
             names.append("c-term %s" % label)
-
-        for label, tp in sorted(FragmentSeriesClassification, key=lambda x: x[1].value):
+        for label, tp in sorted(iterenum(FragmentSeriesClassification), key=lambda x: x[1].value):
             if tp.value is None or label == "unassigned":
                 continue
             names.append("series %s" % label)
@@ -236,7 +241,7 @@ class FragmentType(_FragmentType):
         for i in range(FragmentCharge_max + 1):
             i += 1
             names.append("charge %d" % i)
-        for label, tp in sorted(FragmentSeriesClassification, key=lambda x: x[1].value):
+        for label, tp in sorted(iterenum(FragmentSeriesClassification), key=lambda x: x[1].value):
             for i in range(FragmentCharge_max + 1):
                 if tp.value is None or label == 'unassigned':
                     continue
@@ -264,7 +269,7 @@ class FragmentType(_FragmentType):
         return inst
 
     @classmethod
-    def build_fragment_intensity_matches(cls, gpsm):
+    def build_fragment_intensity_matches(cls, gpsm, include_unassigned_sum=True):
         fragment_classification = []
         intensities = []
         matched_total = 0
@@ -293,9 +298,10 @@ class FragmentType(_FragmentType):
             fragment_classification.append(inst)
 
         unassigned = total - matched_total
-        ft = cls(None, None, FragmentSeriesClassification.unassigned, 0, 0, None, None)
-        fragment_classification.append(ft)
-        intensities.append(unassigned)
+        if include_unassigned_sum:
+            ft = cls(None, None, FragmentSeriesClassification.unassigned, 0, 0, None, None)
+            fragment_classification.append(ft)
+            intensities.append(unassigned)
         return fragment_classification, np.array(intensities), total
 
     @classmethod
@@ -306,13 +312,14 @@ class FragmentType(_FragmentType):
         return np.vstack(X)
 
     @classmethod
-    def fit_regression(cls, gpsms, reliability_model=None, base_reliability=0., **kwargs):
+    def fit_regression(cls, gpsms, reliability_model=None, base_reliability=0., include_unassigned_sum=True, ** kwargs):
         breaks = []
         matched = []
         totals = []
         reliabilities = []
         for gpsm in gpsms:
-            c, y, t = cls.build_fragment_intensity_matches(gpsm)
+            c, y, t = cls.build_fragment_intensity_matches(
+                gpsm, include_unassigned_sum=include_unassigned_sum)
             x = cls.encode_classification(c)
             breaks.append(x)
             matched.append(y)
@@ -432,7 +439,7 @@ class ProlineSpecializingModel(FragmentType):
         names = super(ProlineSpecializingModel, cls).feature_names()
         for i in range(FragmentCharge_max + 1):
             names.append("charge %d:c-term pro" % (i + 1))
-        for label, tp in sorted(FragmentSeriesClassification, key=lambda x: x[1].value):
+        for label, tp in sorted(iterenum(FragmentSeriesClassification), key=lambda x: x[1].value):
             if tp.value is None or label in ("unassigned", "stub_glycopeptide"):
                 continue
             names.append("series:c-term pro %s" % label)
@@ -474,7 +481,7 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
         names = super(StubGlycopeptideCompositionModel, cls).feature_names()
         for i in range(StubFragment_max_glycosylation_size + 1):
             names.append("stub glycopeptide:is_glycosylated %r" % (i))
-        for label, tp in sorted(FragmentTypeClassification, key=lambda x: x[1].value):
+        for label, tp in sorted(iterenum(FragmentTypeClassification), key=lambda x: x[1].value):
             if tp.value is None:
                 continue
             names.append("stub glycopeptide:composition %s" % (label,))
@@ -568,12 +575,12 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
     def feature_names(cls):
         names = super(NeighboringAminoAcidsModel, cls).feature_names()
         for i in range(1, cls.bond_offset_depth + 1):
-            for label, tp in sorted(FragmentTypeClassification, key=lambda x: x[1].value):
+            for label, tp in sorted(iterenum(FragmentTypeClassification), key=lambda x: x[1].value):
                 if tp.value is None:
                     continue
                 names.append("n-term - %d %s" % (i, label))
         for i in range(1, cls.bond_offset_depth + 1):
-            for label, tp in sorted(FragmentTypeClassification, key=lambda x: x[1].value):
+            for label, tp in sorted(iterenum(FragmentTypeClassification), key=lambda x: x[1].value):
                 if tp.value is None:
                     continue
                 names.append("c-term + %d %s" % (i, label))
@@ -633,7 +640,7 @@ class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth2):
     @classmethod
     def feature_names(cls):
         names = super(CleavageSiteCenterDistanceModel, cls).feature_names()
-        for label, tp in sorted(FragmentSeriesClassification, key=lambda x: x[1].value):
+        for label, tp in sorted(iterenum(FragmentSeriesClassification), key=lambda x: x[1].value):
             if tp.value is None or label in ("unassigned", "stub_glycopeptide"):
                 continue
             for i in range(cls.max_cleavage_site_distance_from_center + 1):
@@ -1038,7 +1045,7 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
     tracing = control['trace']
 
     dev = deviance(y, mu, n, reliabilities)
-    if logger.isEnabledFor("DEBUG"):
+    if logger.isEnabledFor(logging.DEBUG):
         logger.debug(
             "Initial Parameters:\ny =\n%s\nmu =\n%s\neta =\n%s\nreliability =\n%s\ndev = %s\n",
             '\n'.join(map(_array2string, y)),
@@ -1077,7 +1084,7 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
         C = np.linalg.cholesky(H).T
         # Solve for updated coefficients. Use back substitution algorithm.
         beta = solve_triangular(C, solve_triangular(C, z, trans="T"))
-        if logger.isEnabledFor("DEBUG"):
+        if logger.isEnabledFor(logging.DEBUG):
             logger.debug(
                 "H =\n%s\nC =\n%s\nbeta =\n%s\n",
                 _array2string(H),

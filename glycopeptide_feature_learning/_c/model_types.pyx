@@ -51,14 +51,16 @@ class FragmentSeriesClassification(object):
 
 # the number of ion series to consider is one less than the total number of series
 # because unassigned is a special case which no matched peaks will receive
-cdef int FragmentSeriesClassification_max = max(FragmentSeriesClassification, key=lambda x: x[1].value)[1].value - 1
+cdef int FragmentSeriesClassification_max = max(filter(lambda x: x[1].value is not None, FragmentSeriesClassification),
+                                                key=lambda x: x[1].value)[1].value - 1
 
 # the number of backbone ion series to consider is two less because the stub_glycopeptide
 # series is not a backbone fragmentation series
 cdef int BackboneFragmentSeriesClassification_max = FragmentSeriesClassification_max - 1
 
 
-cdef int AminoAcidClassification_max = max(AminoAcidClassification, key=lambda x: x[1].value)[1].value
+cdef int AminoAcidClassification_max = max(filter(lambda x: x[1].value is not None, AminoAcidClassification),
+                                           key=lambda x: x[1].value)[1].value
 
 
 class FragmentTypeClassification(AminoAcidClassification):
@@ -67,7 +69,8 @@ class FragmentTypeClassification(AminoAcidClassification):
 cdef EnumValue FragmentTypeClassification_pro = FragmentTypeClassification.pro
 
 
-cdef int FragmentTypeClassification_max = max(FragmentTypeClassification, key=lambda x: x[1].value)[1].value
+cdef int FragmentTypeClassification_max = max(filter(lambda x: x[1].value is not None, FragmentTypeClassification),
+                                              key=lambda x: x[1].value)[1].value
 
 # consider fragments with up to 2 monosaccharides attached to a backbone fragment
 cdef int BackboneFragment_max_glycosylation_size = 2
@@ -317,7 +320,7 @@ cpdef from_peak_peptide_fragment_pair(cls, PeakFragmentPair peak_fragment_pair, 
     return inst
 
 @cython.binding(True)
-def build_fragment_intensity_matches(cls, gpsm):
+def build_fragment_intensity_matches(cls, gpsm, include_unassigned_sum=True):
 
     cdef:
         list fragment_classification, intensities_acc
@@ -370,15 +373,23 @@ def build_fragment_intensity_matches(cls, gpsm):
             continue
         inst = from_peak_peptide_fragment_pair(cls, peak_fragment_pair, structure)
         fragment_classification.append(inst)
-    n = PyList_GET_SIZE(intensities_acc) + 1
-    intensities = np.PyArray_ZEROS(1, &n, np.NPY_DOUBLE, 0)
-    for i in range(n - 1):
-        peak = <DeconvolutedPeak>PyList_GET_ITEM(intensities_acc, i)
-        intensities[i] = peak.intensity
-    unassigned = total - matched_total
-    intensities[n - 1] = (unassigned)
-    ft = cls(None, None, FragmentSeriesClassification_unassigned, 0, 0, None, None)
-    fragment_classification.append(ft)
+    if include_unassigned_sum:
+        n = PyList_GET_SIZE(intensities_acc) + 1
+        intensities = np.PyArray_ZEROS(1, &n, np.NPY_DOUBLE, 0)
+        for i in range(n - 1):
+            peak = <DeconvolutedPeak>PyList_GET_ITEM(intensities_acc, i)
+            intensities[i] = peak.intensity
+        unassigned = total - matched_total
+        intensities[n - 1] = (unassigned)
+        ft = cls(None, None, FragmentSeriesClassification_unassigned, 0, 0, None, None)
+        fragment_classification.append(ft)
+    else:
+        n = PyList_GET_SIZE(intensities_acc)
+        intensities = np.PyArray_ZEROS(1, &n, np.NPY_DOUBLE, 0)
+        for i in range(n):
+            peak = <DeconvolutedPeak>PyList_GET_ITEM(intensities_acc, i)
+            intensities[i] = peak.intensity
+
     return fragment_classification, intensities, total
 
 

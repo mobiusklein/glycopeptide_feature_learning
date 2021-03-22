@@ -192,13 +192,14 @@ def fit_peak_relation_features(partition_map):
     return group_to_fit
 
 
-def fit_regression_model(partition_map, regression_model=None, use_mixture=True, **kwargs):
+def fit_regression_model(partition_map, regression_model=None, use_mixture=True, include_unassigned_sum=True, **kwargs):
     if regression_model is None:
         regression_model = multinomial_regression.StubChargeModel
     model_fits = []
     for spec, cell in partition_map.items():
         click.echo("Fitting peak intensity model for %s with %d observations" % (spec, len(cell.subset)))
-        _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture, **kwargs)
+        _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture,
+                                   include_unassigned_sum=include_unassigned_sum, **kwargs)
         if fits:
             click.echo("Total Deviance: %f" % fits[0].deviance)
         for fit in fits:
@@ -211,20 +212,21 @@ def task_fn(args):
     return _fit_model_inner(spec, cell, regression_model)
 
 
-def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliability=True, **kwargs):
+def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliability=True, include_unassigned_sum=True, **kwargs):
     fm = peak_relations.FragmentationModelCollection(cell.fit)
     try:
         fit = regression_model.fit_regression(
-            cell.subset, reliability_model=fm if use_reliability else None, base_reliability=0.5, **kwargs)
+            cell.subset, reliability_model=fm if use_reliability else None,
+            base_reliability=0.5, include_unassigned_sum=include_unassigned_sum, **kwargs)
         if np.isinf(fit.estimate_dispersion()):
             click.echo("Infinite dispersion, refitting without per-fragment weights")
             fit = regression_model.fit_regression(
-                cell.subset, reliability_model=None, **kwargs)
+                cell.subset, reliability_model=None, include_unassigned_sum=include_unassigned_sum, **kwargs)
     except ValueError as ex:
         click.echo("%r, refitting without per-fragment weights" % (ex, ))
         try:
             fit = regression_model.fit_regression(
-                cell.subset, reliability_model=None)
+                cell.subset, reliability_model=None, include_unassigned_sum=include_unassigned_sum, **kwargs)
         except Exception as err:
             click.echo("Failed to fit model with error: %r" % (err, ))
             return (spec, [])
@@ -245,16 +247,19 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliabi
                 click.echo("Fitting Mismatch Model with %d cases" % len(mismatches))
                 try:
                     mismatch_fit = regression_model.fit_regression(
-                        mismatches, reliability_model=fm if use_reliability else None, base_reliability=0.5, **kwargs)
+                        mismatches, reliability_model=fm if use_reliability else None, base_reliability=0.5,
+                        include_unassigned_sum=include_unassigned_sum, **kwargs)
                     if np.isinf(mismatch_fit.estimate_dispersion()):
                         click.echo("Infinite dispersion, refitting without per-fragment weights")
                         mismatch_fit = regression_model.fit_regression(
-                            mismatches, reliability_model=None, **kwargs)
+                            mismatches, reliability_model=None,
+                            include_unassigned_sum=include_unassigned_sum, **kwargs)
                 except ValueError:
                     click.echo(
                         "%r, refitting without per-fragment weights" % (ex, ))
                     mismatch_fit = regression_model.fit_regression(
-                        mismatches, reliability_model=None, **kwargs)
+                        mismatches, reliability_model=None,
+                        include_unassigned_sum=include_unassigned_sum, **kwargs)
                 mismatch_fit.reliability_model = fm
                 fits.append(mismatch_fit)
             except Exception as err:
@@ -283,7 +288,6 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
         logger.setLevel("DEBUG")
     else:
         logger.setLevel("INFO")
-    logger.addHandler(logging.StreamHandler(sys.stdout))
     if isinstance(model_type, basestring):
         model_type = multinomial_regression.FragmentType.get_model_by_name(model_type)
     if model_type is None:
