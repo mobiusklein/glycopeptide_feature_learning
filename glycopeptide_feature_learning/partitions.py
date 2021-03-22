@@ -206,6 +206,12 @@ class PartitionMap(OrderedDict):
             matches.extend(cell.subset)
         return matches
 
+    def adjacent_cell(self, cell, charge=True, glycan_count=True):
+        spec = cell.spec
+        fit = cell.fit
+        subsets = self.adjacent(spec, charge=charge, glycan_count=glycan_count)
+        return partition_cell(subsets, fit, spec)
+
     def sort(self):
         items = sorted(self.items(), key=lambda x: x[0])
         self.clear()
