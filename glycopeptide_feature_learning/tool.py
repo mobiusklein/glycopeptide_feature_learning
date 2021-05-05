@@ -80,7 +80,7 @@ def match_spectra(matches, error_tolerance):
         item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '')
     with progbar:
         for i, match in progbar:
-            match.match(error_tolerance=error_tolerance)
+            match.match(error_tolerance=error_tolerance, extended_glycan_search=True)
             if progbar.is_hidden and i % 1000 == 0 and i != 0:
                 click.echo("%d Spectra Matched" % (i,))
     click.echo("%d Spectra Matched" % (len(matches),))
@@ -412,7 +412,8 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
     assert len(test_instances) > 0
     with progbar:
         for i, scan in progbar:
-            match = model_tree.evaluate(scan, scan.structure, error_tolerance=error_tolerance)
+            match = model_tree.evaluate(scan, scan.structure, error_tolerance=error_tolerance,
+                                        extended_glycan_search=True)
             if progbar.is_hidden and i % 1000 == 0 and i != 0:
                 click.echo("%d Spectra Matched" % (i,))
 

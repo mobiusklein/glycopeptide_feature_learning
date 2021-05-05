@@ -798,16 +798,13 @@ class MixtureSplitScorer(_ModelMixtureBase, SplitScorer):
         return score
 
     def peptide_correlation(self):
-        fn = super(MixtureSplitScorer, self).peptide_correlation
-        return self._mixture_apply(lambda x: fn())
+        return self._mixture_apply(lambda x: super(MixtureSplitScorer, x).peptide_correlation())
 
     def glycan_correlation(self):
-        fn = super(MixtureSplitScorer, self).glycan_correlation
-        return self._mixture_apply(lambda x: fn())
+        return self._mixture_apply(lambda x: super(MixtureSplitScorer, x).glycan_correlation())
 
     def total_correlation(self):
-        fn = super(MixtureSplitScorer, self).total_correlation
-        return self._mixture_apply(lambda x: fn())
+        return self._mixture_apply(lambda x: super(MixtureSplitScorer, x).total_correlation())
 
 
 class SplitScorerTree(PredicateTree):
@@ -914,16 +911,13 @@ class MixturePartialSplitScorer(_ModelMixtureBase, PartialSplitScorer):
         return data
 
     def peptide_correlation(self):
-        fn = super(MixturePartialSplitScorer, None).peptide_correlation
-        return self._mixture_apply(lambda x: fn())
+        return self._mixture_apply(lambda x: super(MixturePartialSplitScorer, x).peptide_correlation())
 
     def glycan_correlation(self):
-        fn = super(MixturePartialSplitScorer, None).glycan_correlation
-        return self._mixture_apply(lambda x: fn())
+        return self._mixture_apply(lambda x: super(MixturePartialSplitScorer, x).glycan_correlation())
 
     def total_correlation(self):
-        fn = super(MixturePartialSplitScorer, None).total_correlation
-        return self._mixture_apply(lambda x: fn())
+        return self._mixture_apply(lambda x: super(MixturePartialSplitScorer, x).total_correlation())
 
 
 class PartialSplitScorerTree(PredicateTree):

@@ -523,17 +523,30 @@ def encode_stub_information(_FragmentType self, np.ndarray[feature_dtype_t, ndim
 
 
 cdef object _FUC = FrozenMonosaccharideResidue.from_iupac_lite("Fuc")
-
+cdef int StubFragment_max_fucose = 6
 @cython.boundscheck(False)
 @cython.binding(True)
 def encode_stub_fucosylation(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
     cdef:
-        int k, i
-    k = 2
-    if self._is_stub_glycopeptide:
-        i = PyInt_AsLong(self.peak_pair.fragment.glycosylation._getitem_fast(_FUC)) > 0
-        X[offset + i] = 1
-    offset += k
+        # int k, i
+        int k_fucose, k_stub_charges, k_fucose_x_charge, loss_size, d
+    # k = 2
+    # if self._is_stub_glycopeptide:
+    #     i = PyInt_AsLong(self.peak_pair.fragment.glycosylation._getitem_fast(_FUC)) > 0
+    #     X[offset + i] = 1
+    # offset += k
+    k_fucose = (StubFragment_max_fucose) + 1
+    k_stub_charges = FragmentCharge_max + 1
+    k_fucose_x_charge = (k_fucose * k_stub_charges)
+
+    if self.is_stub_glycopeptide():
+        loss_size = self.peak_pair.fragment.glycosylation._getitem_fast(_FUC)
+        if loss_size >= k_fucose:
+            loss_size = k_fucose - 1
+        d = k_fucose * (self.charge - 1) + loss_size
+        X[offset + d] = 1
+    offset += k_fucose_x_charge
+    return X, offset
     return X, offset
 
 

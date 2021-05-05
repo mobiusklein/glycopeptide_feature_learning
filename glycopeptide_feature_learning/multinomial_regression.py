@@ -496,16 +496,29 @@ except ImportError as err:
 
 
 _FUC = FrozenMonosaccharideResidue.from_iupac_lite("Fuc")
-
+StubFragment_max_fucose = 6
 
 class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
     def encode_stub_fucosylation(self, X, offset):
-        k = 2
+        # k = 2
+        # if self.is_stub_glycopeptide():
+        #     i = int(self.peak_pair.fragment.glycosylation._getitem_fast(_FUC) > 0)
+        #     X[offset + i] = 1
+        # offset += k
+        # return X, offset
+        k_fucose = (StubFragment_max_fucose) + 1
+        k_stub_charges = FragmentCharge_max + 1
+        k_fucose_x_charge = (k_fucose * k_stub_charges)
+
         if self.is_stub_glycopeptide():
-            i = int(self.peak_pair.fragment.glycosylation._getitem_fast(_FUC) > 0)
-            X[offset + i] = 1
-        offset += k
+            loss_size = self.peak_pair.fragment.glycosylation._getitem_fast(_FUC)
+            if loss_size >= k_fucose:
+                loss_size = k_fucose - 1
+            d = k_fucose * (self.charge - 1) + loss_size
+            X[offset + d] = 1
+        offset += k_fucose_x_charge
         return X, offset
+
 
     def build_feature_vector(self, X, offset):
         X, offset = super(StubGlycopeptideFucosylationModel, self).build_feature_vector(X, offset)
@@ -515,8 +528,16 @@ class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
     @classmethod
     def feature_names(cls):
         names = super(StubGlycopeptideFucosylationModel, cls).feature_names()
-        for i in range(2):
-            names.append("stub glycopeptide:is_fucosylated %r" % (i))
+        # for i in range(2):
+        #     names.append("stub glycopeptide:is_fucosylated %r" % (i))
+        k_fucose = (
+            StubFragment_max_fucose) + 1
+        k_stub_charges = FragmentCharge_max + 1
+        for i in range(k_stub_charges):
+            for j in range(k_fucose):
+                names.append(
+                    "stub glycopeptide:charge %d:fucose %d" % (i + 1, j))
+        return names
         return names
 
 
