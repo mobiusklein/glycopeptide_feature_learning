@@ -78,12 +78,12 @@ StubFragment_max_glycosylation_size = 10
 StubFragment_max_labile_monosaccharides = 6
 
 
-_FragmentType = namedtuple(
+_FragmentTypeBase = namedtuple(
     "FragmentType", [
         "nterm", "cterm", "series", "glycosylated", "charge", "peak_pair", "sequence"])
 
 
-class _FragmentType(_FragmentType):
+class _FragmentType(_FragmentTypeBase):
     _is_backbone = None
     _is_assigned = None
     _is_stub_glycopeptide = None
@@ -1475,7 +1475,10 @@ class MultinomialRegressionFit(object):
 def save_array(a):
     buf = io.BytesIO()
     np.save(buf, a, False)
-    return base64.standard_b64encode(buf.getvalue())
+    data = base64.standard_b64encode(buf.getvalue())
+    if six.PY3:
+        data = data.encode('ascii')
+    return data
 
 
 def save_array_list(a_list):
