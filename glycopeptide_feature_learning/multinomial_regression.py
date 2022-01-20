@@ -1450,6 +1450,8 @@ class MultinomialRegressionFit(object):
         return fit
 
     def __eq__(self, other):
+        if not isinstance(other, MultinomialRegressionFit):
+            return False
         if not np.allclose(self.coef, other.coef):
             return False
         if self.reliability_model != other.reliability_model:
@@ -1460,6 +1462,9 @@ class MultinomialRegressionFit(object):
 
     def __ne__(self, other):
         return not (self == other)
+
+    def __hash__(self):
+        return hash(self.model_type)
 
     def __repr__(self):
         template = '{self.__class__.__name__}(<{self.model_type} with {self.coef.size} parameters>)'
@@ -1477,7 +1482,7 @@ def save_array(a):
     np.save(buf, a, False)
     data = base64.standard_b64encode(buf.getvalue())
     if six.PY3:
-        data = data.encode('ascii')
+        data = data.decode('ascii')
     return data
 
 
