@@ -15,6 +15,8 @@ try:
 except ImportError:
     from collections.abc import Iterable
 
+from six import string_types as basestring
+
 import click
 
 import numpy as np
