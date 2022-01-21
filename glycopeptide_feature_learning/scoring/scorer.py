@@ -348,7 +348,7 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, MultinomialReg
 
         if np.isnan(stub_component):
             stub_component = 0
-        oxonium_component = self._signature_ion_score(self.error_tolerance)
+        oxonium_component = self._signature_ion_score()
         coverage = self._calculate_glycan_coverage(
             core_weight, coverage_weight, fragile_fucose=fragile_fucose)
         glycan_score = (np.log10(intens * t).dot(reliability + 1) + corr_score + stub_component
@@ -706,7 +706,7 @@ class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer)
         stub_component = -np.log10(PearsonResidualCDF(delta / denom) + 1e-6)
         if np.all(np.isnan(stub_component)):
             stub_component = 0
-        oxonium_component = self._signature_ion_score(self.error_tolerance)
+        oxonium_component = self._signature_ion_score()
         coverage = self._calculate_glycan_coverage(
             core_weight, coverage_weight, fragile_fucose=fragile_fucose)
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
@@ -849,7 +849,7 @@ class PartialSplitScorer(SplitScorer):
         # corr_score = corr * len(stubs) + \
         corr_score = corr * (n_signif_frags) + \
             reliability.sum()
-        oxonium_component = self._signature_ion_score(self.error_tolerance)
+        oxonium_component = self._signature_ion_score()
         coverage = self._calculate_glycan_coverage(
             core_weight, coverage_weight, fragile_fucose=fragile_fucose)
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]

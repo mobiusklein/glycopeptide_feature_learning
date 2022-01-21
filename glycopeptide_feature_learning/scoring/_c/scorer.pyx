@@ -259,7 +259,7 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
         temp *= unpad(reliability_[i], base_reliability) + 0.5
         glycan_score += temp
 
-    oxonium_component = self._signature_ion_score(error_tolerance)
+    oxonium_component = self._signature_ion_score()
     coverage = self._calculate_glycan_coverage(core_weight, coverage_weight)
     glycan_score = glycan_score * coverage + oxonium_component
 
