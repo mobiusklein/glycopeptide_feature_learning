@@ -7,7 +7,7 @@ cimport numpy as np
 from libc.math cimport fabs
 
 from cpython.object cimport PyObject
-from cpython.dict cimport PyDict_GetItem, PyDict_SetItem
+from cpython.dict cimport PyDict_GetItem, PyDict_SetItem, PyDict_Next
 from cpython.tuple cimport PyTuple_GET_ITEM, PyTuple_GET_SIZE
 from cpython.sequence cimport PySequence_List
 from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM, PyList_Append
@@ -491,6 +491,8 @@ cdef class FragmentationModelBase(object):
             PeakRelation relation, best_relation
             FittedFeatureBase feature
             PyObject* ptemp
+            PyObject* pvalue
+            Py_ssize_t pos
             dict grouped_features
 
             size_t i, j, n, m
@@ -512,12 +514,10 @@ cdef class FragmentationModelBase(object):
             else:
                 acc = <list>ptemp
             PyList_Append(acc, relation)
-        # Consider rewriting as a plain iteration over dictionary to avoid allocating
-        # a list?
-        groups = <list>(grouped_features.values())
-        n = PyList_GET_SIZE(groups)
-        for i in range(n):
-            relations = <list>PyList_GET_ITEM(groups, i)
+
+        pos = 0
+        while PyDict_Next(grouped_features, &pos, &ptemp, &pvalue):
+            relations = <list>pvalue
             m = PyList_GET_SIZE(relations)
             max_probability = 0
             best_relation = None
