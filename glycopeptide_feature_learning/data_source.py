@@ -110,7 +110,7 @@ class AnnotatedScan(ProcessedScan):
             if composition is None:
                 expr = symbolic_expression.parse_expression(mass_shift_name)
                 ctx = symbolic_expression.SymbolContext(
-                    {k: MassShift(k, v) for k, v in mass_shift_name.items()})
+                    {k: MassShift(k, v) for k, v in mass_shift_index.items()})
                 if ctx.partially_defined(expr):
                     mass_shift = ctx[expr]
                 else:
