@@ -5,6 +5,7 @@ from ms_deisotope.data_source import ProcessedScan, ActivationInformation
 from ms_deisotope.output.mgf import ProcessedMGFDeserializer, pymgf
 
 from glycan_profiling.structure import FragmentCachingGlycopeptide, DecoyFragmentCachingGlycopeptide
+from glycan_profiling import symbolic_expression
 from glycan_profiling.tandem.glycopeptide.scoring import LogIntensityScorer
 from glycan_profiling.chromatogram_tree.mass_shift import (
     MassShift, mass_shift_index, MassShiftCollection, Unmodified,
@@ -107,10 +108,18 @@ class AnnotatedScan(ProcessedScan):
         except Exception:
             composition = mass_shift_index.get(mass_shift_name)
             if composition is None:
-                import warnings
-                warnings.warn("Unknown mass shift %r" % (mass_shift_name, ))
-                composition = mass_shift_index['Unmodified'].copy()
-            mass_shift = MassShift(mass_shift_name, composition)
+                expr = symbolic_expression.parse_expression(mass_shift_name)
+                ctx = symbolic_expression.SymbolContext(
+                    {k: MassShift(k, v) for k, v in mass_shift_name.items()})
+                if ctx.partially_defined(expr):
+                    mass_shift = ctx[expr]
+                else:
+                    import warnings
+                    warnings.warn("Unknown mass shift %r" % (mass_shift_name, ))
+                    composition = mass_shift_index['Unmodified'].copy()
+                    mass_shift = MassShift(mass_shift_name, composition)
+            else:
+                mass_shift = MassShift(mass_shift_name, composition)
             mass_shifts.append(mass_shift)
             return mass_shift
 
