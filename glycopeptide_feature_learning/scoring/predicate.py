@@ -166,7 +166,7 @@ class MappingPredicate(PredicateBase):
     def query(self, point):
         try:
             return self.root[point]
-        except KeyError:
+        except (KeyError, TypeError):
             return None
 
     def _distance(self, x, y):
