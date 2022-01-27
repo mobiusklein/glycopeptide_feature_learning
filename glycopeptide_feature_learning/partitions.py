@@ -4,6 +4,7 @@ from collections import namedtuple, defaultdict, OrderedDict
 
 import numpy as np
 from ms_deisotope.data_source import ProcessedScan
+from ms_deisotope.data_source import ChargeNotProvided
 
 from glycopeptidepy.structure.glycan import GlycosylationType
 from glypy.utils import make_struct
@@ -30,7 +31,9 @@ def classify_proton_mobility(scan, structure):
         except AttributeError:
             pass
     charge = scan.precursor_information.charge
-    if k < charge:
+    if charge == ChargeNotProvided:
+        return "mobile"
+    elif k < charge:
         return 'mobile'
     elif k == charge:
         return 'partial'
