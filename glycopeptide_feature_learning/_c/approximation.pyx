@@ -101,6 +101,7 @@ cdef class StepFunction(object):
     cpdef position_before(self, double xval):
         return binary_search(self.x, xval)
 
+    @cython.nonecheck(False)
     cdef double interpolate_scalar(self, double xval) except -1:
         cdef:
             size_t index

@@ -101,12 +101,10 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
         list c, backbones
         tuple coverage_result
         np.ndarray[np.float64_t, ndim=1] intens, yhat, reliability
-        np.ndarray[np.float64_t, ndim=1] n_term_ions, c_term_ions
+        np.ndarray[np.float64_t, ndim=1, mode='c'] n_term_ions, c_term_ions
         double t, coverage_score, normalizer
-        double corr_score, corr, peptide_score
+        double corr_score, corr, peptide_score, pearson_peptide_score
         double temp, delta_i, denom_i
-        double* peptide_score_vec
-        double* reliability_
         double* intens_
         double* yhat_
         size_t i, n, size, n_isnan
@@ -140,43 +138,42 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
     if n == 0:
         return 0
 
+    n_isnan = 0
     knd = n
-    c = []
+    peptide_score = 0.0
+
     intens_ = <double*>PyMem_Malloc(sizeof(double) * n)
     yhat_ = <double*>PyMem_Malloc(sizeof(double) * n)
-    reliability_ = <double*>PyMem_Malloc(sizeof(double) * n)
-
     for i in range(n):
         pos = <BackbonePosition>PyList_GET_ITEM(backbones, i)
-        c.append(pos.match)
         intens_[i] = pos.intensity
         yhat_[i] = pos.predicted
-        reliability_[i] = pos.reliability
+        delta_i = (intens_[i] - yhat_[i]) ** 2
+        if intens_[i] > yhat_[i]:
+            delta_i /= 2
+        denom_i = yhat_[i] * (1 - yhat_[i]) * pos.reliability
+        pearson_peptide_score = -log10(PearsonResidualCDF.interpolate_scalar(delta_i / denom_i) + 1e-6)
+        if isnan(pearson_peptide_score):
+            pearson_peptide_score = 0.0
+
+        temp = log10(intens_[i] * t)
+        temp *= 1 - abs(pos.match.peak_pair.mass_accuracy() / error_tolerance) ** 4
+        temp *= unpad(pos.reliability, base_reliability) + 0.75
+        # the 0.17 term ensures that the maximum value of the -log10 transform of the cdf is
+        # mapped to approximately 1.0 (1.02). The maximum value is guaranteed to 6.0 because
+        # the minimum value returned from the CDF is 0 + 1e-6 padding, which maps to 6.
+        temp *= (0.17 * pearson_peptide_score)
+        peptide_score += temp
 
     # peptide reliability is usually less powerful, so it does not benefit
     # us to use the normalized correlation coefficient here
     corr = correlation(intens_, yhat_, n)
     if isnan(corr):
         corr = -0.5
-    # peptide fragment correlation is weaker than the overall correlation.
+
+    # peptide fragment correlation is weaker than the glycan correlation.
     corr = (1.0 + corr) / 2.0
     corr_score = corr * 2.0 * log10(n)
-
-    # peptide_score_vec = np.PyArray_ZEROS(1, &knd, np.NPY_FLOAT64, 0)
-    peptide_score_vec = <double*>PyMem_Malloc(sizeof(double) * n)
-
-    n_isnan = 0
-    for i in range(n):
-        delta_i = (intens_[i] - yhat_[i]) ** 2
-        if intens_[i] > yhat_[i]:
-            delta_i /= 2
-        denom_i = yhat_[i] * (1 - yhat_[i]) * reliability_[i]
-        peptide_score_vec[i] = -log10(PearsonResidualCDF.interpolate_scalar(delta_i / denom_i) + 1e-6)
-        n_isnan += isnan(peptide_score_vec[i])
-
-    if n_isnan == n:
-        for i in range(n):
-            peptide_score_vec[i] = 0.0
 
     target = <_PeptideSequenceCore>self.target
     size = target.get_size()
@@ -184,27 +181,14 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
 
     # peptide backbone coverage without separate term for glycosylation site parsimony
     coverage_result = self._compute_coverage_vectors()
-    n_term_ions = <np.ndarray[np.float64_t, ndim=1]>PyTuple_GetItem(coverage_result, 0)
-    c_term_ions = <np.ndarray[np.float64_t, ndim=1]>PyTuple_GetItem(coverage_result, 1)
+    n_term_ions = <np.ndarray[np.float64_t, ndim=1, mode='c']>PyTuple_GetItem(coverage_result, 0)
+    c_term_ions = <np.ndarray[np.float64_t, ndim=1, mode='c']>PyTuple_GetItem(coverage_result, 1)
 
     coverage_score = 0.0
     for i in range(size):
         coverage_score += n_term_ions[i] + c_term_ions[size - i - 1]
     coverage_score /= normalizer
 
-    peptide_score = 0.0
-    for i in range(n):
-        ci = <_FragmentType>PyList_GET_ITEM(c, i)
-        temp = log10(intens_[i] * t)
-        temp *= 1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4
-        temp *= unpad(reliability_[i], base_reliability) + 0.75
-        # the 0.17 term ensures that the maximum value of the -log10 transform of the cdf is
-        # mapped to approximately 1.0 (1.02). The maximum value is guaranteed to 6.0 because
-        # the minimum value returned from the CDF is 0 + 1e-6 padding, which maps to 6.
-        temp *= (0.17 * peptide_score_vec[i])
-        peptide_score += temp
-    PyMem_Free(peptide_score_vec)
-    PyMem_Free(reliability_)
     PyMem_Free(intens_)
     PyMem_Free(yhat_)
     peptide_score += corr_score
