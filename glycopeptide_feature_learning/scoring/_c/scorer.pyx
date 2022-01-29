@@ -113,6 +113,8 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
         _FragmentType ci
         np.npy_intp knd
         BackbonePosition pos
+        FragmentBase frag
+        IonSeriesBase series
         _PeptideSequenceCore target
 
     c, intens, t, yhat = self._get_predicted_intensities()
@@ -120,24 +122,26 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
         reliability = np.ones_like(yhat)
     else:
         reliability = self._get_reliabilities(c, base_reliability=base_reliability)
-    series_set = ('b', 'y')
     backbones = []
     n = PyList_GET_SIZE(c)
     for i in range(n):
         ci = <_FragmentType>PyList_GET_ITEM(c, i)
-        if ci.series in series_set:
-            backbones.append(
-                BackbonePosition._create(
-                    ci, intens[i] / t, yhat[i], reliability[i]))
+        if ci.is_assigned():
+            frag = ci.get_fragment()
+            series = frag.get_series()
+            if (series.int_code == IonSeries_b.int_code or
+                 series.int_code == IonSeries_y.int_code or
+                 series.int_code == IonSeries_c.int_code or
+                 series.int_code == IonSeries_z.int_code):
+                backbones.append(
+                    BackbonePosition._create(
+                        ci, intens[i] / t, yhat[i], reliability[i]))
     n = PyList_GET_SIZE(backbones)
     if n == 0:
         return 0
 
     knd = n
     c = []
-    # intens = np.PyArray_ZEROS(1, &knd, np.NPY_FLOAT64, 0)
-    # yhat = np.PyArray_ZEROS(1, &knd, np.NPY_FLOAT64, 0)
-    # reliability = np.PyArray_ZEROS(1, &knd, np.NPY_FLOAT64, 0)
     intens_ = <double*>PyMem_Malloc(sizeof(double) * n)
     yhat_ = <double*>PyMem_Malloc(sizeof(double) * n)
     reliability_ = <double*>PyMem_Malloc(sizeof(double) * n)
@@ -236,47 +240,50 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
     n_signif_frags = 0
     for i in range(n):
         ci = <_FragmentType>PyList_GET_ITEM(c, i)
-        frag = ci.get_fragment()
-        if frag.get_series().int_code == IonSeries_stub_glycopeptide.int_code:
-            if (<StubFragment>frag).get_glycosylation_size() > 1:
-                n_signif_frags += 1
-            stubs.append(
-                BackbonePosition._create(
-                    ci, intens[i] / t, yhat[i], reliability[i]))
+        if ci.is_assigned():
+            frag = ci.get_fragment()
+
+            if frag.get_series().int_code == IonSeries_stub_glycopeptide.int_code:
+                if (<StubFragment>frag).get_glycosylation_size() > 1:
+                    n_signif_frags += 1
+                stubs.append(
+                    BackbonePosition._create(
+                        ci, intens[i] / t, yhat[i], reliability[i]))
     n = PyList_GET_SIZE(stubs)
     if n == 0:
         return 0
-
+    glycan_score = 0.0
     intens_ = <double*>PyMem_Malloc(sizeof(double) * n)
-    # reliability_ = <double*>PyMem_Malloc(sizeof(double) * n)
     yhat_ = <double*>PyMem_Malloc(sizeof(double) * n)
-    c = []
+    # c = []
     reliability_sum = 0.0
     for i in range(n):
         pos = <BackbonePosition>PyList_GET_ITEM(stubs, i)
-        c.append(pos.match)
+        # c.append(pos.match)
         intens_[i] = pos.intensity
-        # reliability_[i] = pos.reliability
         yhat_[i] = pos.predicted
         reliability_sum += pos.reliability
+
+        temp = log10(intens_[i] * t)
+        temp *= 1 - abs(pos.match.peak_pair.mass_accuracy() / error_tolerance) ** 4
+        glycan_score += temp
 
     if n > 1:
         corr = correlation(intens_, yhat_, n)
         if isnan(corr):
             corr = -0.5
-        else:
-            corr = -0.5
+
+    else:
+        corr = -0.5
     corr = (1 + corr) / 2
     corr_score = corr * (n_signif_frags) + reliability_sum
-
-    glycan_score = 0.0
-    for i in range(n):
-        ci = <_FragmentType>PyList_GET_ITEM(c, i)
-        temp = log10(intens_[i] * t)
-        temp *= 1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4
-        # Put a bit more weight on the reliability since no correlation is used.
-        # temp *= unpad(reliability_[i], base_reliability) + 0.5
-        glycan_score += temp
+    # for i in range(n):
+    #     ci = <_FragmentType>PyList_GET_ITEM(c, i)
+    #     temp = log10(intens_[i] * t)
+    #     temp *= 1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4
+    #     # Put a bit more weight on the reliability since no correlation is used.
+    #     # temp *= unpad(reliability_[i], base_reliability) + 0.5
+    #     glycan_score += temp
 
     glycan_prior = 0.0
     oxonium_component = self._signature_ion_score()
@@ -286,7 +293,6 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
     glycan_score = (glycan_score + corr_score + glycan_prior) * coverage + oxonium_component
 
     PyMem_Free(intens_)
-    # PyMem_Free(reliability_)
     PyMem_Free(yhat_)
     return max(glycan_score, 0)
 
