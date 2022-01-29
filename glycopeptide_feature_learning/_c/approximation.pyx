@@ -44,7 +44,7 @@ cdef size_t binary_search(double[::1] x, double val) nogil:
 
 cdef class StepFunction(object):
     """
-    A basic step function.
+    A basic step function adapted from statsmodels
 
     Values at the ends are handled in the simplest way possible:
     everything to the left of x[0] is set to ival; everything
@@ -62,27 +62,6 @@ cdef class StepFunction(object):
     side : {'left', 'right'}, optional
         Default is 'left'. Defines the shape of the intervals constituting the
         steps. 'right' correspond to [a, b) intervals and 'left' to (a, b].
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from statsmodels.distributions.empirical_distribution import StepFunction
-    >>>
-    >>> x = np.arange(20)
-    >>> y = np.arange(20)
-    >>> f = StepFunction(x, y)
-    >>>
-    >>> print(f(3.2))
-    3.0
-    >>> print(f([[3.2,4.5],[24,-3.1]]))
-    [[  3.   4.]
-     [ 19.   0.]]
-    >>> f2 = StepFunction(x, y, side='right')
-    >>>
-    >>> print(f(3.0))
-    2.0
-    >>> print(f2(3.0))
-    3.0
     """
     def __init__(self, x, y, ival=0., sorted=False, side='left'):
 
@@ -125,7 +104,7 @@ cdef class StepFunction(object):
     cdef double interpolate_scalar(self, double xval) except -1:
         cdef:
             size_t index
-        index = position_before(self.x, xval) - 1
+        index = binary_search(self.x, xval) - 1
         return self.y[index]
 
     def __call__(self, xval):
