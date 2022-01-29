@@ -9,13 +9,36 @@ from matplotlib import pyplot as plt
 
 
 @cython.boundscheck(False)
-cdef size_t position_before(double[:] x, double val) nogil:
+cdef size_t position_before(double[::1] x, double val) nogil:
     cdef:
         size_t i, n
     n = x.shape[0]
     for i in range(n):
         if x[i] > val:
             return i
+    return n
+
+
+@cython.boundscheck(False)
+cdef size_t binary_search(double[::1] x, double val) nogil:
+    cdef:
+        size_t lo, hi, mid, n
+        double y
+
+    n = x.shape[0]
+    lo = 0
+    hi = n
+    while hi != lo:
+        mid = (hi + lo) // 2
+        y = x[mid]
+        if y == val:
+            return min(mid + 1, n)
+        elif hi == (lo + 1):
+            return min(mid + 1, n)
+        elif y < val:
+            lo = mid
+        else:
+            hi = mid
     return n
 
 
@@ -97,7 +120,7 @@ cdef class StepFunction(object):
             return self.interpolate_scalar(xval)
 
     cpdef position_before(self, double xval):
-        return position_before(self.x, xval)
+        return binary_search(self.x, xval)
 
     cdef double interpolate_scalar(self, double xval) except -1:
         cdef:

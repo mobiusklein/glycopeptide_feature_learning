@@ -49,8 +49,8 @@ cdef class StepFunction(object):
     """
 
     cdef:
-        public double[:] x
-        public double[:] y
+        public double[::1] x
+        public double[::1] y
         public np.ndarray _npx
         public np.ndarray _npy
         public size_t n
