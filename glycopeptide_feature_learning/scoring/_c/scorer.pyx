@@ -216,24 +216,30 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
     cdef:
         list c, stubs
         np.ndarray[np.float64_t, ndim=1] intens, yhat, reliability
-        size_t i, n
+        size_t i, n, n_signif_frags
         _FragmentType ci
+        FragmentBase frag
         double* reliability_
         double* intens_
-        double oxonium_component, coverage
+        double* yhat_
+        double oxonium_component, coverage, glycan_prior
         double glycan_score, temp, t
+        double corr, corr_score, reliability_sum
 
     c, intens, t, yhat = self._get_predicted_intensities()
     if self.model_fit.reliability_model is None or not use_reliability:
         reliability = np.ones_like(yhat)
     else:
         reliability = self._get_reliabilities(c, base_reliability=base_reliability)
-    intens = intens / t
     stubs = []
     n = PyList_GET_SIZE(c)
+    n_signif_frags = 0
     for i in range(n):
         ci = <_FragmentType>PyList_GET_ITEM(c, i)
-        if ci.series == IonSeries_stub_glycopeptide:
+        frag = ci.get_fragment()
+        if frag.get_series().int_code == IonSeries_stub_glycopeptide.int_code:
+            if (<StubFragment>frag).get_glycosylation_size() > 1:
+                n_signif_frags += 1
             stubs.append(
                 BackbonePosition._create(
                     ci, intens[i] / t, yhat[i], reliability[i]))
@@ -242,13 +248,26 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
         return 0
 
     intens_ = <double*>PyMem_Malloc(sizeof(double) * n)
-    reliability_ = <double*>PyMem_Malloc(sizeof(double) * n)
+    # reliability_ = <double*>PyMem_Malloc(sizeof(double) * n)
+    yhat_ = <double*>PyMem_Malloc(sizeof(double) * n)
     c = []
+    reliability_sum = 0.0
     for i in range(n):
         pos = <BackbonePosition>PyList_GET_ITEM(stubs, i)
         c.append(pos.match)
         intens_[i] = pos.intensity
-        reliability_[i] = pos.reliability
+        # reliability_[i] = pos.reliability
+        yhat_[i] = pos.predicted
+        reliability_sum += pos.reliability
+
+    if n > 1:
+        corr = correlation(intens_, yhat_, n)
+        if isnan(corr):
+            corr = -0.5
+        else:
+            corr = -0.5
+    corr = (1 + corr) / 2
+    corr_score = corr * (n_signif_frags) + reliability_sum
 
     glycan_score = 0.0
     for i in range(n):
@@ -256,15 +275,19 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
         temp = log10(intens_[i] * t)
         temp *= 1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4
         # Put a bit more weight on the reliability since no correlation is used.
-        temp *= unpad(reliability_[i], base_reliability) + 0.5
+        # temp *= unpad(reliability_[i], base_reliability) + 0.5
         glycan_score += temp
 
+    glycan_prior = 0.0
     oxonium_component = self._signature_ion_score()
     coverage = self._calculate_glycan_coverage(core_weight, coverage_weight)
-    glycan_score = glycan_score * coverage + oxonium_component
+    if coverage > 0:
+        glycan_prior = self.target.glycan_prior
+    glycan_score = (glycan_score + corr_score + glycan_prior) * coverage + oxonium_component
 
     PyMem_Free(intens_)
-    PyMem_Free(reliability_)
+    # PyMem_Free(reliability_)
+    PyMem_Free(yhat_)
     return max(glycan_score, 0)
 
 
@@ -293,8 +316,8 @@ cpdef _calculate_pearson_residuals(self, bint use_reliability=True, double base_
     """
     cdef:
         list c
-        np.ndarray[np.float64_t, ndim=1] intens, yhat, reliability
-        np.ndarray[np.float64_t, ndim=1] pearson_residuals
+        np.ndarray[np.float64_t, ndim=1, mode='c'] intens, yhat, reliability
+        np.ndarray[np.float64_t, ndim=1, mode='c'] pearson_residuals
         double t
         double intens_i_norm, delta_i, denom_i
         size_t i, n

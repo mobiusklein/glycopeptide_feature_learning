@@ -845,8 +845,6 @@ class PartialSplitScorer(SplitScorer):
         else:
             corr = -0.5
         corr = (1.0 + corr) / 2.0
-        corr_score = 0
-        # corr_score = corr * len(stubs) + \
         corr_score = corr * (n_signif_frags) + \
             reliability.sum()
         oxonium_component = self._signature_ion_score()
