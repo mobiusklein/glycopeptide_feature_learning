@@ -858,6 +858,13 @@ class PartialSplitScorer(SplitScorer):
         return max(glycan_score, 0)
 
 
+try:
+    from glycopeptide_feature_learning.scoring._c.scorer import calculate_partial_glycan_score as _calculate_partial_glycan_score
+    PartialSplitScorer.calculate_glycan_score = _calculate_partial_glycan_score
+except ImportError:
+    pass
+
+
 class MixturePartialSplitScorer(_ModelMixtureBase, PartialSplitScorer):
     def __init__(self, scan, sequence, mass_shift=None, model_fits=None, partition=None, power=4):
         super(MixturePartialSplitScorer, self).__init__(
