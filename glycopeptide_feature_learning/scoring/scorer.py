@@ -815,7 +815,7 @@ class SplitScorerTree(PredicateTree):
 class PartialSplitScorer(SplitScorer):
 
     def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
-                               coverage_weight=0.5, fragile_fucose=False, **kwargs):
+                               coverage_weight=0.5, fragile_fucose=False, extended_glycan_search=True, **kwargs):
         c, intens, t, yhat = self._get_predicted_intensities()
         # use_reliability = False
         if self.model_fit.reliability_model is None or not use_reliability:
@@ -849,7 +849,9 @@ class PartialSplitScorer(SplitScorer):
             reliability.sum()
         oxonium_component = self._signature_ion_score()
         coverage = self._calculate_glycan_coverage(
-            core_weight, coverage_weight, fragile_fucose=fragile_fucose)
+            core_weight, coverage_weight,
+            fragile_fucose=fragile_fucose,
+            extended_glycan_search=extended_glycan_search)
         mass_accuracy = [1 - abs(ci.peak_pair.mass_accuracy() / error_tolerance) ** 4 for ci in c]
         glycan_prior = self.target.glycan_prior
         glycan_score = ((np.log10(intens * t) * mass_accuracy
