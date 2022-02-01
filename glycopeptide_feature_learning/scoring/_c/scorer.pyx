@@ -176,7 +176,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
     corr_score = corr * 2.0 * log10(n)
 
     target = <_PeptideSequenceCore>self.target
-    coverage_score = self._calcualte_peptide_coverage()
+    coverage_score = self._calculate_peptide_coverage()
 
     PyMem_Free(intens_)
     PyMem_Free(yhat_)
@@ -202,6 +202,7 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
         double oxonium_component, coverage, glycan_prior
         double glycan_score, temp, t
         double corr, corr_score, reliability_sum
+        double peptide_coverage
 
     c, intens, t, yhat = self._get_predicted_intensities()
     if self.model_fit.reliability_model is None or not use_reliability:
@@ -246,8 +247,12 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
 
     else:
         corr = -0.5
+
+    peptide_coverage = self._calculate_peptide_coverage()
     corr = (1 + corr) / 2
     corr_score = corr * (n_signif_frags) + reliability_sum
+
+    corr_score *= min(peptide_coverage + 0.5, 1.0)
 
     glycan_prior = 0.0
     oxonium_component = self._signature_ion_score()
