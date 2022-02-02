@@ -252,7 +252,7 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
     corr = (1 + corr) / 2
     corr_score = corr * (n_signif_frags) + reliability_sum
 
-    corr_score *= min(peptide_coverage + 0.5, 1.0)
+    corr_score *= min(peptide_coverage + 0.75, 1.0)
 
     glycan_prior = 0.0
     oxonium_component = self._signature_ion_score()
