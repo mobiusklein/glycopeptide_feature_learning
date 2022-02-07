@@ -66,6 +66,41 @@ cdef scalar_or_array unpad(scalar_or_array x, double pad=0.5):
     return (x - pad) / (1 - pad)
 
 
+# A variety of sigmoidal functions to choose from
+
+cdef double shifted_normalized_sigmoid_erf(double x) nogil:
+    return (erf(x * 6 - 1.5) + 1) / 2
+
+
+cpdef long pascal_triangle(long a, long b):
+    result = 1.0
+    for i in range(b):
+        result *= (a - i) / (i + 1)
+    return result
+
+
+cpdef scalar_or_array generalized_smoothstep(long N, scalar_or_array x):
+    if scalar_or_array is double:
+        if x > 1.0:
+            x = 1.0
+        elif x < 0.0:
+            x = 0.0
+    else:
+        x = np.clip(x, 0, 1)
+    result = 0
+    for n in range(N + 1):
+        result += pascal_triangle(-N - 1, n) * pascal_triangle(2 * N + 1, N - n) * x ** (N + n + 1)
+    return result
+
+
+cdef double shifted_normalized_sigmoid_erf(double x, double shift=0.0) nogil:
+    return (erf(x * 6 - shift) + 1) / 2
+
+
+cdef double normalized_sigmoid(double x) nogil:
+    return ((1 / (1 + exp(-x))) - 0.5) * 2
+
+
 @cython.boundscheck(False)
 @cython.cdivision(True)
 cdef double correlation(double* x, double* y, size_t n) nogil:
@@ -252,7 +287,8 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
     corr = (1 + corr) / 2
     corr_score = corr * (n_signif_frags) + reliability_sum
 
-    corr_score *= min(peptide_coverage + 0.75, 1.0)
+    # corr_score *= min(peptide_coverage + 0.75, 1.0)
+    corr_score *= normalized_sigmoid(max(peptide_coverage - 0.03, 0.0) * 42)
 
     glycan_prior = 0.0
     oxonium_component = self._signature_ion_score()
