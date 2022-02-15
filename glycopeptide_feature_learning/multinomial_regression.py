@@ -72,8 +72,8 @@ FragmentTypeClassification_max = max(iterenum(FragmentTypeClassification),
 BackboneFragment_max_glycosylation_size = 2
 # consider fragments of up to charge 4+
 FragmentCharge_max = 4
-# consider up to 10 monosaccharides of glycan still attached to a stub ion
-StubFragment_max_glycosylation_size = 10
+# consider up to 14 monosaccharides of glycan still attached to a stub ion
+StubFragment_max_glycosylation_size = 14
 # consider up to 6 labile monosaccharide losses from an intact glycan
 StubFragment_max_labile_monosaccharides = 6
 
@@ -537,7 +537,6 @@ class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
             for j in range(k_fucose):
                 names.append(
                     "stub glycopeptide:charge %d:fucose %d" % (i + 1, j))
-        return names
         return names
 
 

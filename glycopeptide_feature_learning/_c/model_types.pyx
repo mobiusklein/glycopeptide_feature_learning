@@ -76,8 +76,8 @@ cdef int FragmentTypeClassification_max = max(filter(lambda x: x[1].value is not
 cdef int BackboneFragment_max_glycosylation_size = 2
 # consider fragments of up to charge 4+
 cdef int FragmentCharge_max = 4
-# consider up to 10 monosaccharides of glycan still attached to a stub ion
-cdef int StubFragment_max_glycosylation_size = 10
+# consider up to 14 monosaccharides of glycan still attached to a stub ion
+cdef int StubFragment_max_glycosylation_size = 14
 
 cdef:
     EnumValue FragmentSeriesClassification_unassigned = FragmentSeriesClassification.unassigned
