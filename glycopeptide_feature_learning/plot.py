@@ -16,6 +16,8 @@ def normalize_scan(scan, factor=None):
         factor = bp.intensity / 100
     for peak in scan:
         peak.intensity /= factor
+    # Clear any peak match caches e.g. oxonium ions
+    scan.annotations.pop("peak_label_map", None)
     return scan
 
 
@@ -89,7 +91,7 @@ def mirror_predicted_spectrum(model, scan, target, *args, **kwargs):
     _normalize_ylabels(art.ax)
     art.ax.spines['left'].set_visible(False)
     art.ax.spines['bottom'].set_visible(False)
-    art.ax.vlines(100, -100, 100, lw=0.5)
+    art.ax.vlines(100, -100, 100, lw=0.5, color='black')
     art.ax.set_xlim(100, 2050)
     # Whitespace SENSITIVE to achieve the fake axes
     art.ax.set_ylabel('Relative Intensity                   ')
