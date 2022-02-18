@@ -4,7 +4,7 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport PyTuple_GetItem, PyTuple_Size, PyList_GET_ITEM, PyList_GET_SIZE
 from cpython.int cimport PyInt_AsLong
 from libc.stdlib cimport malloc, calloc, free
-from libc.math cimport log10, log, sqrt, exp
+from libc.math cimport log10, log, sqrt, exp, erf
 
 import numpy as np
 cimport numpy as np
@@ -67,9 +67,6 @@ cdef scalar_or_array unpad(scalar_or_array x, double pad=0.5):
 
 
 # A variety of sigmoidal functions to choose from
-
-cdef double shifted_normalized_sigmoid_erf(double x) nogil:
-    return (erf(x * 6 - 1.5) + 1) / 2
 
 
 cpdef long pascal_triangle(long a, long b):

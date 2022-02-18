@@ -5,10 +5,7 @@ import json
 import logging
 import warnings
 import array
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
 
 try:
     from collections import Iterable

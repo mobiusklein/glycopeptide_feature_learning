@@ -552,13 +552,14 @@ def encode_stub_fucosylation(_FragmentType self, np.ndarray[feature_dtype_t, ndi
 
 
 @cython.binding(True)
+@cython.cdivision(True)
 cpdef int get_cleavage_site_distance_from_center(_FragmentType self):
     cdef:
         int index, center
         size_t seq_size
     index = get_cterm_index_from_fragment(<PeptideFragment>self.get_fragment(), self.sequence)
     seq_size = self.sequence.get_size()
-    center = (seq_size / 2)
+    center = (seq_size // 2)
     return abs(center - index)
 
 
