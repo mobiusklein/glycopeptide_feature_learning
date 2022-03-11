@@ -333,8 +333,8 @@ class FragmentType(_FragmentType):
                         mask.append(False)
                 c = tmp_c
                 mask = np.array(mask)
-                y = y[mask]
                 t -= y[~mask].sum()
+                y = y[mask]
             x = cls.encode_classification(c)
             breaks.append(x)
             matched.append(y)
