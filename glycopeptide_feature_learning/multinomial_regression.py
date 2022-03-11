@@ -312,7 +312,8 @@ class FragmentType(_FragmentType):
         return np.vstack(X)
 
     @classmethod
-    def fit_regression(cls, gpsms, reliability_model=None, base_reliability=0., include_unassigned_sum=True, ** kwargs):
+    def fit_regression(cls, gpsms, reliability_model=None, base_reliability=0.,
+                       include_unassigned_sum=True, restrict_ion_series=None, **kwargs):
         breaks = []
         matched = []
         totals = []
@@ -320,6 +321,19 @@ class FragmentType(_FragmentType):
         for gpsm in gpsms:
             c, y, t = cls.build_fragment_intensity_matches(
                 gpsm, include_unassigned_sum=include_unassigned_sum)
+            if restrict_ion_series:
+                tmp_c = []
+                mask = []
+                ci: FragmentType
+                for ci in c:
+                    if ci.peak_pair and ci.peak_pair.fragment.series in restrict_ion_series:
+                        tmp_c.append(ci)
+                        mask.append(True)
+                    else:
+                        mask.append(False)
+                c = tmp_c
+                y = y[mask]
+                t -= y[~mask].sum()
             x = cls.encode_classification(c)
             breaks.append(x)
             matched.append(y)
