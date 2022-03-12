@@ -326,7 +326,7 @@ class FragmentType(_FragmentType):
                 mask = []
                 ci: FragmentType
                 for ci in c:
-                    if ci.peak_pair and ci.peak_pair.fragment.series in restrict_ion_series:
+                    if ci.peak_pair and ci.peak_pair.fragment.series in restrict_ion_series or ci.peak_pair is None:
                         tmp_c.append(ci)
                         mask.append(True)
                     else:
