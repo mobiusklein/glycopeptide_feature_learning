@@ -65,7 +65,7 @@ def mirror_predicted_spectrum(model, scan, target, *args, **kwargs):
     scan = normalize_scan(scan)
     case = model.evaluate(scan, target, **kwargs)
 
-    c, ey, _, y = case.model_fit._get_predicted_intensities(case)
+    c, _ey, _, y = case._get_predicted_peaks()
     c = c[:-1]
     y = y[:-1].copy()
     y /= y.max()

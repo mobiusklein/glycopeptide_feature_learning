@@ -382,7 +382,6 @@ class ModelSelectorBase(object):
     selector_registry: Dict[str, type] = {}
 
     def __init_subclass__(cls, **kwargs):
-        print(cls, kwargs)
         if cls.__name__ not in cls.selector_registry:
             cls.selector_registry[cls.__name__] = cls
         super().__init_subclass__(**kwargs)
