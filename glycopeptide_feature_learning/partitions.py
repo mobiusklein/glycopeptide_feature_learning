@@ -1,8 +1,12 @@
 import itertools
 import logging
+import array
+
 from collections import namedtuple, defaultdict, OrderedDict
+from typing import Dict
 
 import numpy as np
+
 from ms_deisotope.data_source import ProcessedScan
 from ms_deisotope.data_source import ChargeNotProvided
 
@@ -10,6 +14,9 @@ from glycopeptidepy.structure.glycan import GlycosylationType
 from glypy.utils import make_struct
 
 from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan, FrozenMonosaccharideResidue
+from glycan_profiling.tandem.glycopeptide.dynamic_generation.mixture import KMeans
+
+from glycopeptide_feature_learning.multinomial_regression import MultinomialRegressionFit
 
 from .amino_acid_classification import proton_mobility
 
@@ -347,3 +354,139 @@ def crossvalidation_sets(gpsms, kfolds=3, shuffler=None, stratified=True):
             except (IndexError, ValueError):
                 continue
     return splits
+
+
+def _get_size_abundance_charge_vectors_peptide_Y(inst):
+    sizes = array.array('d')
+    abundances = array.array('d')
+    charges = array.array('d')
+    for pfp in inst.solution_map:
+        if pfp.fragment.series == 'stub_glycopeptide':
+            sizes.append(pfp.fragment.glycosylation_size)
+            charges.append(pfp.peak.charge)
+            abundances.append(pfp.peak.intensity)
+    return sizes, abundances, charges
+
+
+def classify_ascending_abundance_peptide_Y(inst):
+    sizes, abundances, _charges = _get_size_abundance_charge_vectors_peptide_Y(
+        inst)
+    i_max = np.argmax(abundances)
+    # abundance_max = abundances[i_max]
+    return sizes[i_max] / inst.target.total_glycosylation_size
+
+
+class ModelSelectorBase(object):
+    model_fits: Dict[int, MultinomialRegressionFit]
+
+    selector_registry: Dict[str, type] = {}
+
+    def __init_subclass__(cls, **kwargs):
+        print(cls, kwargs)
+        if cls.__name__ not in cls.selector_registry:
+            cls.selector_registry[cls.__name__] = cls
+        super().__init_subclass__(**kwargs)
+
+    def to_json(self, include_fit_source: bool=True) -> dict:
+        return {
+            "model_fits": {
+                k: fit.to_json(include_fit_source) for k, fit in self.model_fits.items()
+            },
+            "selector_type": self.__class__.__name__
+        }
+
+    @classmethod
+    def from_json(cls, state) -> 'ModelSelectorBase':
+        tp = cls.selector_registry[state['selector_type']]
+        inst = tp._from_json(state)
+        return inst
+
+    @classmethod
+    def _from_json(cls, state):
+        raise NotImplementedError()
+
+    def __init__(self, model_fits: Dict[int, MultinomialRegressionFit]):
+        self.model_fits = model_fits
+
+    def get_model(self, spectrum_match) -> MultinomialRegressionFit:
+        key = self.classify(spectrum_match)
+        return self.model_fits[key]
+
+    def classify(self, spectrum_match) -> int:
+        raise NotImplementedError()
+
+
+class KMeansModelSelector(ModelSelectorBase):
+    kmeans_fit: KMeans
+
+    def __init__(self, model_fits: Dict[int, MultinomialRegressionFit], kmeans_fit: KMeans):
+        super().__init__(model_fits)
+        self.kmeans_fit = kmeans_fit
+
+    def classify(self, spectrum_match) -> int:
+        value = classify_ascending_abundance_peptide_Y(spectrum_match)
+        return self.kmeans_fit.predict(value)[0]
+
+    def to_json(self, include_fit_source: bool = True) -> dict:
+        state = super().to_json(include_fit_source=include_fit_source)
+        state['kmeans_fit'] = self.kmeans_fit.to_json()
+        return state
+
+    @classmethod
+    def _from_json(cls, state: dict):
+        model_fits = {
+            int(i): MultinomialRegressionFit.from_json(fit)
+            for i, fit in state['model_fits'].items()
+        }
+        kmeans_fit = KMeans.from_json(state['kmeans_fit'])
+        return cls(model_fits, kmeans_fit)
+
+
+class NullModelSelector(ModelSelectorBase):
+    model_fit: MultinomialRegressionFit
+
+    def __init__(self, model_fit: MultinomialRegressionFit):
+        self.model_fit = model_fit
+
+    def get_model(self, spectrum_match) -> MultinomialRegressionFit:
+        return self.model_fit
+
+    def to_json(self, include_fit_source: bool = True) -> dict:
+        return {
+            "model_fit": self.model_fit.to_json(include_fit_source=include_fit_source),
+            "selector_type": self.__class__.__name__
+        }
+
+    @classmethod
+    def _from_json(cls, state: dict):
+        fit = state[state['model_fit']]
+        MultinomialRegressionFit.from_json(fit)
+        return cls(fit)
+
+
+class SplitModelFit(object):
+    peptide_models: ModelSelectorBase
+    glycan_models: ModelSelectorBase
+
+    def __init__(self, peptide_models: ModelSelectorBase, glycan_models: ModelSelectorBase):
+        self.peptide_models = peptide_models
+        self.glycan_models = glycan_models
+
+    def get_peptide_model(self, spectrum_match) -> MultinomialRegressionFit:
+        return self.peptide_models.get_model(spectrum_match)
+
+    def get_glycan_model(self, spectrum_match) -> MultinomialRegressionFit:
+        return self.glycan_models.get_model(spectrum_match)
+
+    def to_json(self, include_fit_source: bool=True) -> dict:
+        state = {
+            "peptide_models": self.peptide_models.to_json(include_fit_source),
+            "glycan_models": self.glycan_models.to_json(include_fit_source)
+        }
+        return state
+
+    @classmethod
+    def from_json(cls, state: dict) -> 'SplitModelFit':
+        peptide_models = ModelSelectorBase.from_json(state['peptide_models'])
+        glycan_models = ModelSelectorBase.from_json(state['glycan_models'])
+        return cls(peptide_models, glycan_models)

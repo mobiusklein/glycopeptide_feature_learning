@@ -1,5 +1,7 @@
 *.pyc
 *.pyd
+*.so
+*.nfs*
 glycopeptide_feature_learning/_c/*.c
 glycopeptide_feature_learning/_c/*.html
 glycopeptide_feature_learning/scoring/_c/*.c

@@ -94,8 +94,12 @@ cdef double shifted_normalized_sigmoid_erf(double x, double shift=0.0) nogil:
     return (erf(x * 6 - shift) + 1) / 2
 
 
-cdef double normalized_sigmoid(double x) nogil:
-    return ((1 / (1 + exp(-x))) - 0.5) * 2
+cdef scalar_or_array normalized_sigmoid(scalar_or_array x):
+    if scalar_or_array is double:
+        return ((1 / (1 + exp(-x))) - 0.5) * 2
+    else:
+        return ((1 / (1 + np.exp(-x))) - 0.5) * 2
+
 
 
 @cython.boundscheck(False)
@@ -285,7 +289,9 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
     corr_score = corr * (n_signif_frags) + reliability_sum
 
     # corr_score *= min(peptide_coverage + 0.75, 1.0)
-    corr_score *= normalized_sigmoid(max(peptide_coverage - 0.03, 0.0) * 42)
+    # corr_score *= normalized_sigmoid(max(peptide_coverage - 0.03, 0.0) * 42)
+    # corr_score *= shifted_normalized_sigmoid_erf(peptide_coverage)
+    corr_score *= min(exp(peptide_coverage * 3) - 1, 1)
 
     glycan_prior = 0.0
     oxonium_component = self._signature_ion_score()

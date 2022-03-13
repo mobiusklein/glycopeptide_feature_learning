@@ -11,6 +11,7 @@ from glycan_profiling.tandem.glycopeptide.scoring.precursor_mass_accuracy import
 
 from glycopeptide_feature_learning.multinomial_regression import (
     PearsonResidualCDF, least_squares_scale_coefficient)
+from glycopeptide_feature_learning.partitions import SplitModelFit
 
 from glycopeptide_feature_learning.utils import distcorr
 
@@ -243,11 +244,14 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
             ['stub_glycopeptide'], True)
         return np.corrcoef(inten, y)[1, 0]
 
-    def _get_predicted_peaks(self, scaled=True):
+    def _get_predicted_points(self, scaled=True):
         c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
         mz = [ci.peak.mz for ci in c if ci.peak_pair]
         intensities = yhat[:-1] * (least_squares_scale_coefficient(yhat[:-1], intens[:-1]) if scaled else 1.0)
         return zip(mz, intensities)
+
+    def _get_predicted_peaks(self, *args, **kwargs):
+        return self._get_predicted_intensities(*args, **kwargs)
 
     def glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
                      coverage_weight=0.5, fragile_fucose=False, ** kwargs):
@@ -434,12 +438,7 @@ class ShortPeptideMultinomialRegressionScorer(MultinomialRegressionScorer):
     stub_weight = 0.65
 
 
-class _ModelMixtureBase(object):
-    def _iter_model_fits(self):
-        for model_fit in self.model_fits:
-            self.model_fit = model_fit
-            yield model_fit
-        self.model_fit = self.model_fits[0]
+class _MultiModelCache(object):
 
     def _cache_model_transform(self, model_fit, transform):
         self._feature_cache[model_fit] = CachedModelPrediction(*transform)
@@ -457,6 +456,14 @@ class _ModelMixtureBase(object):
     def _init_cache(self):
         self._feature_cache = dict()
         self._cached_reliabilities = None
+
+
+class _ModelMixtureBase(_MultiModelCache):
+    def _iter_model_fits(self):
+        for model_fit in self.model_fits:
+            self.model_fit = model_fit
+            yield model_fit
+        self.model_fit = self.model_fits[0]
 
     def _calculate_mixture_coefficients(self):
         if len(self.model_fits) == 1:
@@ -940,3 +947,140 @@ class NaiveMixturePartialSplitScorer(MixturePartialSplitScorer):
 class NaivePartialSplitScorerTree(PredicateTree):
     _scorer_type = NaiveMixturePartialSplitScorer
     _short_peptide_scorer_type = NaiveMixturePartialSplitScorer
+
+
+class PartitionedPartialSplitScorer(_MultiModelCache, PartialSplitScorer):
+    model_selectors: SplitModelFit
+
+    def __init__(self, scan, sequence, mass_shift=None, model_selectors=None, partition=None):
+        super().__init__(scan, sequence, mass_shift)
+        self.structure = self.target
+        self.model_fit = None
+        self.model_selectors = model_selectors
+        self.partition = partition
+        self.error_tolerance = None
+        self._init_cache()
+
+    def calculate_peptide_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5,
+                                coverage_weight=1.0, *args, **kwargs):
+        peptide_model = self.model_selectors.get_peptide_model(self)
+        self.model_fit = peptide_model
+        value = super().calculate_peptide_score(
+            error_tolerance, use_reliability,
+            base_reliability,
+            coverage_weight,
+            *args, **kwargs)
+        self.model_fit = None
+        return value
+
+    def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
+                               coverage_weight=0.5, fragile_fucose=False, **kwargs):
+        glycan_model = self.model_selectors.get_glycan_model(self)
+        self.model_fit = glycan_model
+        value = super().calculate_glycan_score(
+            error_tolerance,
+            use_reliability,
+            base_reliability,
+            core_weight,
+            coverage_weight,
+            fragile_fucose,
+            **kwargs)
+        self.model_fit = None
+        return value
+
+    def peptide_correlation(self):
+        peptide_model = self.model_selectors.get_peptide_model(self)
+        self.model_fit = peptide_model
+        value = super().peptide_correlation()
+        self.model_fit = None
+        return value
+
+    def glycan_correlation(self):
+        glycan_model = self.model_selectors.get_glycan_model(self)
+        self.model_fit = glycan_model
+        value = super().glycan_correlation()
+        self.model_fit = None
+        return value
+
+    def _get_predicted_peaks(self, use_reliability=False, base_reliability=0.5):
+        all_intens = []
+        all_yhat = []
+        all_c = []
+        all_reliability = []
+
+        self.model_fit = self.model_selectors.get_peptide_model(self)
+        c, intens, t, yhat = self._get_predicted_intensities()
+
+        if use_reliability:
+            reliability = reliability = self._get_reliabilities(c, base_reliability=base_reliability)
+        else:
+            reliability = None
+
+        for i, ci in enumerate(c):
+            if ci.is_backbone():
+                all_c.append(ci)
+                all_intens.append(intens[i])
+                all_yhat.append(yhat[i])
+                if use_reliability:
+                    all_reliability.append(reliability[i])
+
+        self.model_fit = self.model_selectors.get_glycan_model(self)
+        c, intens, t, yhat = self._get_predicted_intensities()
+        if use_reliability:
+            reliability = reliability = self._get_reliabilities(c, base_reliability=base_reliability)
+        else:
+            reliability = None
+
+        for i, ci in enumerate(c):
+            if ci.is_stub_glycopeptide():
+                all_c.append(ci)
+                all_intens.append(intens[i])
+                all_yhat.append(yhat[i])
+                if use_reliability:
+                    all_reliability.append(reliability[i])
+
+        self.model_fit = None
+        all_intens = np.array(all_intens)
+        all_yhat = np.array(all_yhat)
+
+        if use_reliability:
+            return all_c, all_intens, t, all_yhat, np.array(all_reliability)
+        else:
+            return all_c, all_intens, t, all_yhat
+
+    def _get_intensity_observed_expected(self, use_reliability=False, base_reliability=0.5):
+        """Get the vector of matched experimental intensities and their predicted intensities.
+
+        If the reliability model is used, the peak intensities are recalibrated according
+        to a multinomial variance model with the reliabilities as weights.
+
+        Parameters
+        ----------
+        use_reliability : bool, optional
+            Whether or not to use the fragment reliabilities to adjust the weight of
+            each matched peak
+        base_reliability : float, optional
+            The lowest reliability a peak may have, compressing the range of contributions
+            from the model based on the experimental evidence
+
+        Returns
+        -------
+        np.ndarray:
+            Matched experimental peak intensities
+        np.ndarray:
+            Predicted peak intensities
+        """
+        out = self._get_predicted_peaks(
+            use_reliability=use_reliability,
+            base_reliability=base_reliability
+        )
+
+        if use_reliability:
+            c, all_intens, t, all_yhat, reliability = out
+            reliability = self._get_reliabilities(
+                c, base_reliability=base_reliability)[:-1]
+            p = t * p / np.sqrt(t * reliability * p * (1 - p))
+            yhat = t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat))
+        else:
+            c, all_intens, t, all_yhat = out
+        return all_intens, all_yhat
