@@ -1,4 +1,6 @@
+from locale import normalize
 import logging
+from typing import Dict, List, Optional, Set, Union
 import six
 import base64
 import io
@@ -11,11 +13,14 @@ from scipy.linalg import solve_triangular, cho_solve
 
 from glypy.utils import Enum
 from glypy.structure.glycan_composition import FrozenMonosaccharideResidue
+
 from glycopeptidepy.structure.fragment import IonSeries
 
-from glycan_profiling.structure.fragment_match_map import PeakFragmentPair
-from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
 from ms_deisotope import DeconvolutedPeak
+
+from glycan_profiling.structure.fragment_match_map import PeakFragmentPair, FragmentMatchMap
+from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
+from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase
 
 from .amino_acid_classification import (
     AminoAcidClassification, classify_amide_bond_frank, classify_residue_frank)
@@ -302,22 +307,30 @@ class FragmentType(_FragmentType):
             ft = cls(None, None, FragmentSeriesClassification.unassigned, 0, 0, None, None)
             fragment_classification.append(ft)
             intensities.append(unassigned)
+
+        normalized = intensities.sum()
+        if normalized / total > 1.0:
+            total *= (normalized / total)
         return fragment_classification, np.array(intensities), total
 
     @classmethod
-    def encode_classification(cls, classification):
+    def encode_classification(cls, classification: List['FragmentType']):
         X = []
         for _, row in enumerate(classification):
             X.append(row.as_feature_vector())
         return np.vstack(X)
 
     @classmethod
-    def fit_regression(cls, gpsms, reliability_model=None, base_reliability=0.,
-                       include_unassigned_sum=True, restrict_ion_series=None, **kwargs):
-        breaks = []
-        matched = []
-        totals = []
-        reliabilities = []
+    def fit_regression(cls, gpsms: List[GlycopeptideSpectrumMatcherBase],
+                       reliability_model: Optional[FragmentationModelCollection] = None,
+                       base_reliability: float=0.,
+                       include_unassigned_sum: bool=True,
+                       restrict_ion_series: Optional[Set[Union[str, IonSeries]]]=None,
+                       **kwargs) -> 'MultinomialRegressionFit':
+        breaks: List[np.ndarray] = []
+        matched: List[np.ndarray] = []
+        totals: List[float] = []
+        reliabilities: List[np.ndarray] = []
         for gpsm in gpsms:
             c, y, t = cls.build_fragment_intensity_matches(
                 gpsm, include_unassigned_sum=include_unassigned_sum)
@@ -344,9 +357,9 @@ class FragmentType(_FragmentType):
             else:
                 reliability = np.zeros_like(y)
                 remaining_reliability = 1 - base_reliability
-                reliability_score_map = reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
+                reliability_score_map: Dict[PeakFragmentPair] = reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
                 for i, frag_spec in enumerate(c):
-                    peak_pair = frag_spec.peak_pair
+                    peak_pair: Optional[PeakFragmentPair] = frag_spec.peak_pair
                     if peak_pair is None:
                         reliability[i] = base_reliability
                     else:

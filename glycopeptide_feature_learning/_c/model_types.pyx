@@ -326,7 +326,7 @@ def build_fragment_intensity_matches(cls, gpsm, include_unassigned_sum=True):
         list fragment_classification, intensities_acc
         np.ndarray[double, ndim=1] intensities
         set counted
-        double matched_total, total, unassigned
+        double matched_total, total, unassigned, normalized
         FragmentMatchMap solution_map
         PeakFragmentPair peak_fragment_pair
         DeconvolutedPeak peak
@@ -373,14 +373,18 @@ def build_fragment_intensity_matches(cls, gpsm, include_unassigned_sum=True):
             continue
         inst = from_peak_peptide_fragment_pair(cls, peak_fragment_pair, structure)
         fragment_classification.append(inst)
+
+    normalized = 0.0
     if include_unassigned_sum:
         n = PyList_GET_SIZE(intensities_acc) + 1
         intensities = np.PyArray_ZEROS(1, &n, np.NPY_DOUBLE, 0)
         for i in range(n - 1):
             peak = <DeconvolutedPeak>PyList_GET_ITEM(intensities_acc, i)
             intensities[i] = peak.intensity
+            normalized += peak.intensity
         unassigned = total - matched_total
         intensities[n - 1] = (unassigned)
+        normalized += unassigned
         ft = cls(None, None, FragmentSeriesClassification_unassigned, 0, 0, None, None)
         fragment_classification.append(ft)
     else:
@@ -389,6 +393,10 @@ def build_fragment_intensity_matches(cls, gpsm, include_unassigned_sum=True):
         for i in range(n):
             peak = <DeconvolutedPeak>PyList_GET_ITEM(intensities_acc, i)
             intensities[i] = peak.intensity
+            normalized += peak.intensity
+
+    if normalized / total > 1.0:
+        total *= (normalized / total)
 
     return fragment_classification, intensities, total
 

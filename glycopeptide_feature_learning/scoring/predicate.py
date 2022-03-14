@@ -2,6 +2,7 @@ import math
 import json
 import gzip
 import io
+from typing import Dict, List, Union
 
 try:
     import cPickle as pickle
@@ -530,8 +531,8 @@ class PredicateTreeBase(PredicateFilterBase, DummyScorer):
             return result
 
     @classmethod
-    def from_json(cls, d):
-        arranged_data = defaultdict(list)
+    def from_json(cls, d: Union[List, Dict]):
+        arranged_data: Dict[partition_cell_spec, List[MultinomialRegressionFit]] = defaultdict(list)
         n = None
         # Check whether the payload is just a raw list of (spec, model) pairs or a wrapper
         # with extra metadata

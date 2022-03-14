@@ -1,3 +1,4 @@
+from collections import defaultdict
 import os
 import sys
 import glob
@@ -32,6 +33,9 @@ import glypy
 from glycopeptidepy.structure.fragment import IonSeries
 
 from glycan_profiling.cli.validators import RelativeMassErrorParam
+
+
+DEFAULT_MODEL_TYPE = multinomial_regression.LabileMonosaccharideAwareModel
 
 
 def get_training_data(paths, blacklist_path=None, threshold=50.0):
@@ -193,7 +197,7 @@ def fit_peak_relation_features(partition_map):
 
 def fit_regression_model(partition_map, regression_model=None, use_mixture=True, include_unassigned_sum=True, **kwargs):
     if regression_model is None:
-        regression_model = multinomial_regression.StubChargeModel
+        regression_model = DEFAULT_MODEL_TYPE
     model_fits = []
     for spec, cell in partition_map.items():
         click.echo("Fitting peak intensity model for %s with %d observations" % (spec, len(cell.subset)))
@@ -266,6 +270,105 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliabi
     return (spec, fits)
 
 
+def _fit_model_inner_partitioned(spec, cell, regression_model, use_reliability=True,
+                         include_unassigned_sum=True, **kwargs):
+    fm = peak_relations.FragmentationModelCollection(cell.fit)
+    try:
+        peptide_fit = regression_model.fit_regression(
+            cell.subset,
+            reliability_model=fm if use_reliability else None,
+            base_reliability=0.5,
+            include_unassigned_sum=include_unassigned_sum,
+            restrict_ion_series=('b', 'y', ),
+            **kwargs)
+
+        if np.isinf(peptide_fit.estimate_dispersion()):
+            click.echo("Infinite dispersion, refitting without per-fragment weights")
+            peptide_fit = regression_model.fit_regression(
+                cell.subset,
+                reliability_model=None,
+                include_unassigned_sum=include_unassigned_sum,
+                restrict_ion_series=('b', 'y', ),
+                **kwargs)
+
+    except ValueError as ex:
+        click.echo("%r, refitting without per-fragment weights" % (ex, ))
+        try:
+            if not use_reliability:
+                raise ValueError()
+            peptide_fit = regression_model.fit_regression(
+                cell.subset,
+                reliability_model=None,
+                include_unassigned_sum=include_unassigned_sum,
+                restrict_ion_series=('b', 'y', ),
+                **kwargs)
+
+        except Exception as err:
+            click.echo("Failed to fit model with error: %r" % (err, ))
+            peptide_fit = None
+
+    if fm.models and peptide_fit:
+        peptide_fit.reliability_model = fm
+
+    ascending_scores = np.array([
+        partitions.classify_ascending_abundance_peptide_Y(match)
+        for match in cell.subset])
+
+    kmeans = partitions.KMeans.fit(ascending_scores, 2)
+    cluster_labels = kmeans.predict(ascending_scores)
+
+    clustered_groups = defaultdict(list)
+    for i, match in enumerate(cell.subset):
+        clustered_groups[cluster_labels[i]].append(match)
+
+    glycan_fits = {}
+    for cluster_key, subset in clustered_groups.items():
+        try:
+            glycan_fit = regression_model.fit_regression(
+                cell.subset,
+                reliability_model=fm if use_reliability else None,
+                base_reliability=0.5,
+                include_unassigned_sum=include_unassigned_sum,
+                restrict_ion_series=("stub_glycopeptide", ),
+                **kwargs)
+
+            if np.isinf(glycan_fit.estimate_dispersion()):
+                click.echo("... Infinite dispersion, refitting without per-fragment weights")
+                glycan_fit = regression_model.fit_regression(
+                    cell.subset,
+                    reliability_model=None,
+                    include_unassigned_sum=include_unassigned_sum,
+                    restrict_ion_series=("stub_glycopeptide", ),
+                    **kwargs)
+
+        except ValueError as ex:
+            click.echo("... %r, refitting without per-fragment weights" % (ex, ))
+            try:
+                if not use_reliability:
+                    raise ValueError()
+                glycan_fit = regression_model.fit_regression(
+                    cell.subset,
+                    reliability_model=None,
+                    include_unassigned_sum=include_unassigned_sum,
+                    restrict_ion_series=("stub_glycopeptide", ),
+                    **kwargs)
+
+            except Exception as err:
+                click.echo("... Failed to fit model with error: %r" % (err, ))
+                glycan_fit = None
+
+        if fm.models and glycan_fit:
+            glycan_fit.reliability_model = fm
+        glycan_fits[cluster_key] = glycan_fit
+
+    glycan_fits = partitions.KMeansModelSelector(glycan_fits, kmeans)
+    fits = partitions.SplitModelFit(
+        partitions.NullModelSelector(peptide_fit),
+        glycan_fits
+    )
+    return (spec, fits)
+
+
 @click.command('fit-glycopeptide-regression-model', short_help="Fit glycopeptide fragmentation model")
 @click.argument('paths', metavar='PATH', #type=click.Path(exists=True, dir_okay=False),
                 nargs=-1)
@@ -290,7 +393,7 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
     if isinstance(model_type, basestring):
         model_type = multinomial_regression.FragmentType.get_model_by_name(model_type)
     if model_type is None:
-        model_type = multinomial_regression.LabileMonosaccharideAwareModel
+        model_type = DEFAULT_MODEL_TYPE
     click.echo("Model Type: %r" % (model_type, ))
     click.echo("Minimum Score: %0.3f" % (threshold, ))
     click.echo("Mass Error Tolerance: %0.3e" % (error_tolerance, ))

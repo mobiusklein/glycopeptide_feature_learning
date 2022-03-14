@@ -3,7 +3,7 @@ import logging
 import array
 
 from collections import namedtuple, defaultdict, OrderedDict
-from typing import Dict
+from typing import Dict, Tuple
 
 import numpy as np
 
@@ -12,6 +12,7 @@ from ms_deisotope.data_source import ChargeNotProvided
 
 from glycopeptidepy.structure.glycan import GlycosylationType
 from glypy.utils import make_struct
+from glypy.utils.enum import EnumValue
 
 from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan, FrozenMonosaccharideResidue
 from glycan_profiling.tandem.glycopeptide.dynamic_generation.mixture import KMeans
@@ -70,6 +71,13 @@ _partition_cell_spec = namedtuple("partition_cell_spec", ("peptide_length_range"
 
 class partition_cell_spec(_partition_cell_spec):
     __slots__ = ()
+
+    peptide_length_range: Tuple[int, int]
+    glycan_size_range: Tuple[int, int]
+    charge: int
+    proton_mobility: str
+    glycan_type: EnumValue
+    glycan_count: int
 
     def __new__(cls, peptide_length_range, glycan_size_range, charge,
                 proton_mobility, glycan_type, glycan_count, sialylated=None):
