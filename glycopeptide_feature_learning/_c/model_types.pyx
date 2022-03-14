@@ -555,8 +555,6 @@ def encode_stub_fucosylation(_FragmentType self, np.ndarray[feature_dtype_t, ndi
         X[offset + d] = 1
     offset += k_fucose_x_charge
     return X, offset
-    return X, offset
-
 
 
 @cython.binding(True)

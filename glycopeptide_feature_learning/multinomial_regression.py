@@ -982,6 +982,8 @@ def deviance(y, mu, wt, reliabilities, unobserved_reliability=1.0):
     # here to reflect the weight leftover from the unmatched signal (total signal - matched signal)
     # which used to be based upon the total signal in the spectrum.
     dc = np.where(wt == ys, 0, wt * (1 - ys) * np.log((1 - ys) / (1 - ms + 1e-6)))
+    # is NaN when ys[i] == 1
+    dc[np.isnan(dc)] = 0.0
     return np.sum([
         # this inner sum is the squared residuals
         a.sum() + (2 * dc[i]) for i, a in enumerate(deviance_residuals(y, mu, wt, reliabilities))])
