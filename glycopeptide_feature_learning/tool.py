@@ -39,7 +39,7 @@ from glycan_profiling.cli.validators import RelativeMassErrorParam
 DEFAULT_MODEL_TYPE = multinomial_regression.LabileMonosaccharideAwareModel
 
 
-def get_training_data(paths, blacklist_path=None, threshold=50.0):
+def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: float=50.0) -> List[data_source.AnnotatedScan]:
     training_files = []
     for path in paths:
         training_files.extend(glob.glob(path))
@@ -290,7 +290,7 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliabi
                 click.echo("Failed to fit mismatch model with error: %r" % (err, ))
 
     if fits:
-        click.echo(f"Total Deviance {fits[0].deviance}")
+        click.echo(f"Total Deviance {fits[0].deviance:0.3g}")
     return (spec, fits)
 
 
@@ -338,7 +338,7 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
         peptide_fit.reliability_model = fm
 
     if peptide_fit:
-        click.echo(f"Peptide Deviance {peptide_fit.deviance}")
+        click.echo(f"Peptide Deviance {peptide_fit.deviance:0.3g}")
 
     ascending_scores = np.array([
         partitions.classify_ascending_abundance_peptide_Y(match)
@@ -392,8 +392,8 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
             glycan_fit.reliability_model = fm
 
         if glycan_fit:
-            click.echo(f"... Glycan Deviance {glycan_fit.deviance}")
-        glycan_fits[cluster_key] = glycan_fit
+            click.echo(f"... Glycan Deviance {glycan_fit.deviance:0.3g}")
+        glycan_fits[int(cluster_key)] = glycan_fit
 
     glycan_fits = partitions.KMeansModelSelector(glycan_fits, kmeans)
     fits = partitions.SplitModelFit(
@@ -456,7 +456,8 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
         partition_map,
         regression_model=model_type,
         fit_partitioned=fit_partitioned,
-        trace=debug)
+        trace=debug,
+        use_reliability=False)
 
     click.echo("Writing Models To %s" % (output_path,))
     export = []
