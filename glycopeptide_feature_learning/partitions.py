@@ -3,12 +3,14 @@ import logging
 import array
 
 from collections import namedtuple, defaultdict, OrderedDict
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
 from ms_deisotope.data_source import ProcessedScan
 from ms_deisotope.data_source import ChargeNotProvided
+
+import glycopeptidepy
 
 from glycopeptidepy.structure.glycan import GlycosylationType
 from glypy.utils import make_struct
@@ -28,7 +30,7 @@ logger.addHandler(logging.NullHandler())
 
 
 
-def classify_proton_mobility(scan, structure):
+def classify_proton_mobility(scan: ProcessedScan, structure: glycopeptidepy.PeptideSequence) -> str:
     try:
         k = structure.proton_mobility
     except AttributeError:
@@ -169,7 +171,7 @@ sialylated = (False, True)
 
 def build_partition_rules_from_bins(peptide_backbone_length_ranges=peptide_backbone_length_ranges, glycan_size_ranges=glycan_size_ranges,
                                     precursor_charges=precursor_charges, proton_mobilities=proton_mobilities, glycosylation_types=glycosylation_types,
-                                    glycosylation_counts=glycosylation_counts):
+                                    glycosylation_counts=glycosylation_counts) -> List[partition_cell_spec]:
     dimensions = itertools.product(
         peptide_backbone_length_ranges,
         glycan_size_ranges,
@@ -466,8 +468,8 @@ class NullModelSelector(ModelSelectorBase):
 
     @classmethod
     def _from_json(cls, state: dict):
-        fit = state[state['model_fit']]
-        MultinomialRegressionFit.from_json(fit)
+        fit = state['model_fit']
+        fit = MultinomialRegressionFit.from_json(fit)
         return cls(fit)
 
 

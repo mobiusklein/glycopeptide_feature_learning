@@ -1,4 +1,6 @@
+from collections import defaultdict
 import math
+from typing import Dict, List, Union
 
 import numpy as np
 
@@ -10,8 +12,8 @@ from glycan_profiling.tandem.glycopeptide.scoring.simple_score import SignatureA
 from glycan_profiling.tandem.glycopeptide.scoring.precursor_mass_accuracy import MassAccuracyMixin
 
 from glycopeptide_feature_learning.multinomial_regression import (
-    PearsonResidualCDF, least_squares_scale_coefficient)
-from glycopeptide_feature_learning.partitions import SplitModelFit
+    MultinomialRegressionFit, PearsonResidualCDF, least_squares_scale_coefficient)
+from glycopeptide_feature_learning.partitions import SplitModelFit, partition_cell_spec
 
 from glycopeptide_feature_learning.utils import distcorr
 
@@ -1084,3 +1086,43 @@ class PartitionedPartialSplitScorer(_MultiModelCache, PartialSplitScorer):
         else:
             c, all_intens, t, all_yhat = out
         return all_intens, all_yhat
+
+
+class PartitionedPredicateTree(PredicateTreeBase):
+    _scorer_type = PartitionedPartialSplitScorer
+    _short_peptide_scorer_type = PartitionedPartialSplitScorer
+
+
+    @classmethod
+    def from_json(cls, d: Union[List, Dict]):
+        arranged_data: Dict[partition_cell_spec, List[MultinomialRegressionFit]] = defaultdict(list)
+        n = None
+        # Check whether the payload is just a raw list of (spec, model) pairs or a wrapper
+        # with extra metadata
+        if isinstance(d, dict):
+            meta = d['metadata']
+            d = d['models']
+            omit_labile = meta.get('omit_labile', False)
+        else:
+            meta = dict()
+            omit_labile = False
+        for spec_d, model_d in d:
+            model = SplitModelFit.from_json(model_d)
+            spec = partition_cell_spec.from_json(spec_d)
+            # Ensure that all model specifications have the same number of dimensions for
+            # the tree reconstruction to be consistent
+            if n is None:
+                n = len(spec) - 1
+            else:
+                assert n == (len(spec) - 1)
+            arranged_data[spec].append(model)
+        for spec, models in arranged_data.items():
+            scorer_type = cls._scorer_type_for_spec(spec)
+            arranged_data[spec] = cls._bind_model_scorer(scorer_type, models, spec)
+        arranged_data = dict(arranged_data)
+        root = cls.build_tree(arranged_data, 0, n, arranged_data)
+        return cls(root, n, omit_labile)
+
+    @classmethod
+    def _bind_model_scorer(cls, scorer_type, models, partition=None):
+        return ModelBindingScorer(scorer_type, model_selectors=models[0], partition=partition)

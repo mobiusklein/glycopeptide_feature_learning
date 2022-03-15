@@ -83,7 +83,8 @@ def mirror_predicted_spectrum(model, scan, target, *args, **kwargs):
                     color=default_ion_series_to_color[series[i]])
 
     art.ax.text(150, -80, r'$\rho=%0.2f$' %
-                case._mixture_apply(case._calculate_correlation_coef))
+                case.total_correlation()
+                )
     art.ax.figure.set_figwidth(10)
 
     art.ax.set_ylim(-105, kwargs.get("upper_bound", 195))

@@ -4,6 +4,7 @@ import sys
 import glob
 import json
 import logging
+from typing import Dict, List, Optional, Tuple, Type, Union
 import warnings
 import array
 import pickle
@@ -90,9 +91,18 @@ def match_spectra(matches, error_tolerance):
     return matches
 
 
-def partition_training_data(training_instances, omit_labile=False):
+def partition_training_data(training_instances: List[data_source.AnnotatedScan], omit_labile=False,
+                            fit_partitioned=False) -> partitions.PartitionMap:
+    if fit_partitioned:
+        partition_rules = partitions.build_partition_rules_from_bins(glycan_size_ranges=[(1, 25)])
+    else:
+        partition_rules = partitions.build_partition_rules_from_bins()
+
     partition_map = partitions.partition_observations(
-        training_instances, omit_labile=omit_labile)
+        training_instances,
+        exclusive=True,
+        partition_specifications=partition_rules,
+        omit_labile=omit_labile)
     return partition_map
 
 
@@ -153,7 +163,7 @@ def get_peak_relation_features():
     return features, stub_features, link_features
 
 
-def fit_peak_relation_features(partition_map):
+def fit_peak_relation_features(partition_map: partitions.PartitionMap) -> Dict[partitions.partition_cell_spec, peak_relations.FragmentationModelCollection]:
     features, stub_features, link_features = get_peak_relation_features()
     group_to_fit = {}
     cell_sequence = [
@@ -195,18 +205,29 @@ def fit_peak_relation_features(partition_map):
     return group_to_fit
 
 
-def fit_regression_model(partition_map, regression_model=None, use_mixture=True, include_unassigned_sum=True, **kwargs):
+def fit_regression_model(partition_map: partitions.PartitionMap, regression_model:Optional[Type[multinomial_regression.FragmentType]]=None,
+                         use_mixture: bool=True, include_unassigned_sum: bool = True,
+                         fit_partioned: bool = False, **kwargs) -> List[Tuple[partitions.partition_cell_spec,
+                                                                              Union[partitions.SplitModelFit,
+                                                                                    multinomial_regression.MultinomialRegressionFit]]]:
     if regression_model is None:
         regression_model = DEFAULT_MODEL_TYPE
     model_fits = []
+
+    inner_func = _fit_model_inner
+    if fit_partioned:
+        inner_func = _fit_model_inner_partitioned
+
     for spec, cell in partition_map.items():
         click.echo("Fitting peak intensity model for %s with %d observations" % (spec, len(cell.subset)))
-        _, fits = _fit_model_inner(spec, cell, regression_model, use_mixture=use_mixture,
-                                   include_unassigned_sum=include_unassigned_sum, **kwargs)
-        if fits:
-            click.echo("Total Deviance: %f" % fits[0].deviance)
-        for fit in fits:
-            model_fits.append((spec, fit))
+        _, fits = inner_func(spec, cell, regression_model, use_mixture=use_mixture,
+                             include_unassigned_sum=include_unassigned_sum, **kwargs)
+
+        if fit_partioned:
+            model_fits.append((spec, fits))
+        else:
+            for fit in fits:
+                model_fits.append((spec, fit))
     return model_fits
 
 
@@ -267,11 +288,16 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliabi
                 fits.append(mismatch_fit)
             except Exception as err:
                 click.echo("Failed to fit mismatch model with error: %r" % (err, ))
+
+    if fits:
+        click.echo(f"Total Deviance {fits[0].deviance}")
     return (spec, fits)
 
 
-def _fit_model_inner_partitioned(spec, cell, regression_model, use_reliability=True,
-                         include_unassigned_sum=True, **kwargs):
+def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: partitions.partition_cell,
+                                 regression_model: Type[multinomial_regression.FragmentType],
+                                 use_mixture: bool=True, use_reliability: bool=True,
+                                 include_unassigned_sum: bool=True, **kwargs) -> partitions.SplitModelFit:
     fm = peak_relations.FragmentationModelCollection(cell.fit)
     try:
         peptide_fit = regression_model.fit_regression(
@@ -292,10 +318,11 @@ def _fit_model_inner_partitioned(spec, cell, regression_model, use_reliability=T
                 **kwargs)
 
     except ValueError as ex:
-        click.echo("%r, refitting without per-fragment weights" % (ex, ))
         try:
             if not use_reliability:
                 raise ValueError()
+
+            click.echo("%r, refitting without per-fragment weights" % (ex, ))
             peptide_fit = regression_model.fit_regression(
                 cell.subset,
                 reliability_model=None,
@@ -309,6 +336,9 @@ def _fit_model_inner_partitioned(spec, cell, regression_model, use_reliability=T
 
     if fm.models and peptide_fit:
         peptide_fit.reliability_model = fm
+
+    if peptide_fit:
+        click.echo(f"Peptide Deviance {peptide_fit.deviance}")
 
     ascending_scores = np.array([
         partitions.classify_ascending_abundance_peptide_Y(match)
@@ -325,7 +355,7 @@ def _fit_model_inner_partitioned(spec, cell, regression_model, use_reliability=T
     for cluster_key, subset in clustered_groups.items():
         try:
             glycan_fit = regression_model.fit_regression(
-                cell.subset,
+                subset,
                 reliability_model=fm if use_reliability else None,
                 base_reliability=0.5,
                 include_unassigned_sum=include_unassigned_sum,
@@ -335,19 +365,20 @@ def _fit_model_inner_partitioned(spec, cell, regression_model, use_reliability=T
             if np.isinf(glycan_fit.estimate_dispersion()):
                 click.echo("... Infinite dispersion, refitting without per-fragment weights")
                 glycan_fit = regression_model.fit_regression(
-                    cell.subset,
+                    subset,
                     reliability_model=None,
                     include_unassigned_sum=include_unassigned_sum,
                     restrict_ion_series=("stub_glycopeptide", ),
                     **kwargs)
 
         except ValueError as ex:
-            click.echo("... %r, refitting without per-fragment weights" % (ex, ))
             try:
                 if not use_reliability:
                     raise ValueError()
+
+                click.echo("... %r, refitting without per-fragment weights" % (ex, ))
                 glycan_fit = regression_model.fit_regression(
-                    cell.subset,
+                    subset,
                     reliability_model=None,
                     include_unassigned_sum=include_unassigned_sum,
                     restrict_ion_series=("stub_glycopeptide", ),
@@ -359,6 +390,9 @@ def _fit_model_inner_partitioned(spec, cell, regression_model, use_reliability=T
 
         if fm.models and glycan_fit:
             glycan_fit.reliability_model = fm
+
+        if glycan_fit:
+            click.echo(f"... Glycan Deviance {glycan_fit.deviance}")
         glycan_fits[cluster_key] = glycan_fit
 
     glycan_fits = partitions.KMeansModelSelector(glycan_fits, kmeans)
@@ -383,8 +417,10 @@ def _fit_model_inner_partitioned(spec, cell, regression_model, use_reliability=T
                     'greatly increasing the size of the model output file'))
 @click.option("-b / -nb", "--omit-labile / --include-labile", default=True, is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
 @click.option("--debug", is_flag=True, default=False, help='Enable debug logging')
+@click.option("-P", "--fit-partitioned", is_flag=True, default=False,
+              help='Whether to split training the peptide and glycan portions of the model')
 def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False,
-         omit_labile=False, model_type=None):
+         omit_labile=False, model_type=None, fit_partitioned=False):
     logger = logging.getLogger()
     if debug:
         logger.setLevel("DEBUG")
@@ -399,18 +435,29 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
     click.echo("Mass Error Tolerance: %0.3e" % (error_tolerance, ))
     click.echo("Omit Labile Groups: %r" % (omit_labile, ))
     click.echo("Loading data from %s" % (', '.join(paths)))
+
     training_instances = get_training_data(paths, blacklist_path, threshold)
     if len(training_instances) == 0:
         raise click.ClickException("No training examples were found.")
-    match_spectra(training_instances, error_tolerance)
+
+    match_spectra(training_instances, error_tolerance=error_tolerance)
+
     click.echo("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(
-        training_instances, omit_labile=omit_labile)
+        training_instances,
+        omit_labile=omit_labile,
+        fit_partitioned=fit_partitioned)
+
     click.echo("Fitting Peak Relation Features")
     fit_peak_relation_features(partition_map)
+
     click.echo("Fitting Peak Intensity Regression")
     model_fits = fit_regression_model(
-        partition_map, regression_model=model_type, trace=debug)
+        partition_map,
+        regression_model=model_type,
+        fit_partitioned=fit_partitioned,
+        trace=debug)
+
     click.echo("Writing Models To %s" % (output_path,))
     export = []
     for spec, fit in model_fits:
@@ -418,6 +465,7 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
     wrapper = {
         "metadata": {
             "omit_labile": omit_labile,
+            "fit_partitioned": fit_partitioned,
             "fit_info": {
                 "error_tolerance": error_tolerance,
                 "spectrum_count": len(training_instances),
