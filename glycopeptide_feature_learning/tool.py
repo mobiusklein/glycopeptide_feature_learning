@@ -207,7 +207,7 @@ def fit_peak_relation_features(partition_map: partitions.PartitionMap) -> Dict[p
 
 def fit_regression_model(partition_map: partitions.PartitionMap, regression_model:Optional[Type[multinomial_regression.FragmentType]]=None,
                          use_mixture: bool=True, include_unassigned_sum: bool = True,
-                         fit_partioned: bool = False, **kwargs) -> List[Tuple[partitions.partition_cell_spec,
+                         fit_partitioned: bool = False, **kwargs) -> List[Tuple[partitions.partition_cell_spec,
                                                                               Union[partitions.SplitModelFit,
                                                                                     multinomial_regression.MultinomialRegressionFit]]]:
     if regression_model is None:
@@ -215,7 +215,7 @@ def fit_regression_model(partition_map: partitions.PartitionMap, regression_mode
     model_fits = []
 
     inner_func = _fit_model_inner
-    if fit_partioned:
+    if fit_partitioned:
         inner_func = _fit_model_inner_partitioned
 
     for spec, cell in partition_map.items():
@@ -223,7 +223,7 @@ def fit_regression_model(partition_map: partitions.PartitionMap, regression_mode
         _, fits = inner_func(spec, cell, regression_model, use_mixture=use_mixture,
                              include_unassigned_sum=include_unassigned_sum, **kwargs)
 
-        if fit_partioned:
+        if fit_partitioned:
             model_fits.append((spec, fits))
         else:
             for fit in fits:
