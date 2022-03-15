@@ -404,6 +404,9 @@ class ModelSelectorBase(object):
             "selector_type": self.__class__.__name__
         }
 
+    def __iter__(self):
+        yield from self.model_fits.values()
+
     @classmethod
     def from_json(cls, state) -> 'ModelSelectorBase':
         tp = cls.selector_registry[state['selector_type']]
@@ -472,6 +475,9 @@ class NullModelSelector(ModelSelectorBase):
         fit = MultinomialRegressionFit.from_json(fit)
         return cls(fit)
 
+    def __iter__(self):
+        yield self.model_fit
+
 
 class SplitModelFit(object):
     peptide_models: ModelSelectorBase
@@ -499,3 +505,7 @@ class SplitModelFit(object):
         peptide_models = ModelSelectorBase.from_json(state['peptide_models'])
         glycan_models = ModelSelectorBase.from_json(state['glycan_models'])
         return cls(peptide_models, glycan_models)
+
+    def __iter__(self):
+        yield from self.peptide_models
+        yield from self.glycan_models

@@ -11,4 +11,4 @@ from glycopeptide_feature_learning.scoring.predicate import (
 from glycopeptide_feature_learning.scoring.scorer import (
     PredicateTree, PartitionTree, MultinomialRegressionScorer,
     ShortPeptideMultinomialRegressionScorer, PartialSplitScorer,
-    PartialSplitScorerTree, SplitScorer, SplitScorerTree)
+    PartialSplitScorerTree, SplitScorer, SplitScorerTree, PartitionedPredicateTree)

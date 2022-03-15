@@ -59,6 +59,13 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
             return None
 
     @property
+    def model_selectors(self):
+        try:
+            return self.kwargs['model_selectors']
+        except KeyError:
+            return None
+
+    @property
     def partition_label(self):
         try:
             return self.kwargs['partition']
@@ -78,6 +85,10 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
             for model_fit in model_fits[1:]:
                 if model_fit.reliability_model == last.reliability_model:
                     model_fit.reliability_model = last.reliability_model
+        model_selectors = self.model_selectors
+        if model_selectors is not None:
+            for model_fit in model_selectors:
+                model_fit.compact()
 
     def __lt__(self, other):
         return self.partition_label < other.partition_label

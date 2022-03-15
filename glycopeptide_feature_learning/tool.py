@@ -26,7 +26,7 @@ from glycopeptide_feature_learning import (
     multinomial_regression)
 
 from glycopeptide_feature_learning.scoring import (
-    PartialSplitScorerTree, SplitScorerTree)
+    PartialSplitScorerTree, SplitScorerTree, PartitionedPredicateTree)
 
 from glycopeptide_feature_learning.scoring.scorer import NaivePartialSplitScorerTree
 
@@ -34,6 +34,11 @@ import glypy
 from glycopeptidepy.structure.fragment import IonSeries
 
 from glycan_profiling.cli.validators import RelativeMassErrorParam
+
+
+logger = logging.getLogger(
+    "glycopeptide_feature_learning.tool")
+logger.addHandler(logging.NullHandler())
 
 
 DEFAULT_MODEL_TYPE = multinomial_regression.LabileMonosaccharideAwareModel
@@ -61,7 +66,7 @@ def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: 
         for train_file in progbar:
             reader = data_source.AnnotatedMGFDeserializer(open(train_file, 'rb'))
             if progbar.is_hidden:
-                click.echo("Reading %s" % (os.path.basename(train_file),))
+                logger.info("Reading %s" % (os.path.basename(train_file),))
             for instance in reader:
                 if instance.annotations['ms2_score'] < threshold:
                     continue
@@ -86,8 +91,8 @@ def match_spectra(matches, error_tolerance):
         for i, match in progbar:
             match.match(error_tolerance=error_tolerance, extended_glycan_search=True)
             if progbar.is_hidden and i % 1000 == 0 and i != 0:
-                click.echo("%d Spectra Matched" % (i,))
-    click.echo("%d Spectra Matched" % (len(matches),))
+                logger.info("%d Spectra Matched" % (i,))
+    logger.info("%d Spectra Matched" % (len(matches),))
     return matches
 
 
@@ -180,7 +185,8 @@ def fit_peak_relation_features(partition_map: partitions.PartitionMap) -> Dict[p
                 cell.fit = group_to_fit[key]
                 continue
             if progressbar.is_hidden:
-                click.echo("Fitting Peak Relationships for %s with %d observations" % (spec, len(subset)))
+                logger.info("Fitting Peak Relationships for %s with %d observations" % (
+                    spec, len(subset)))
             # NOTE: The feature filters are not used, but are not necessary with the current
             # feature fitting algorithm. Future implementations using more feature classifications
             # might require them.
@@ -219,7 +225,8 @@ def fit_regression_model(partition_map: partitions.PartitionMap, regression_mode
         inner_func = _fit_model_inner_partitioned
 
     for spec, cell in partition_map.items():
-        click.echo("Fitting peak intensity model for %s with %d observations" % (spec, len(cell.subset)))
+        logger.info("Fitting peak intensity model for %s with %d observations" % (
+            spec, len(cell.subset)))
         _, fits = inner_func(spec, cell, regression_model, use_mixture=use_mixture,
                              include_unassigned_sum=include_unassigned_sum, **kwargs)
 
@@ -243,16 +250,16 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliabi
             cell.subset, reliability_model=fm if use_reliability else None,
             base_reliability=0.5, include_unassigned_sum=include_unassigned_sum, **kwargs)
         if np.isinf(fit.estimate_dispersion()):
-            click.echo("Infinite dispersion, refitting without per-fragment weights")
+            logger.info("Infinite dispersion, refitting without per-fragment weights")
             fit = regression_model.fit_regression(
                 cell.subset, reliability_model=None, include_unassigned_sum=include_unassigned_sum, **kwargs)
     except ValueError as ex:
-        click.echo("%r, refitting without per-fragment weights" % (ex, ))
+        logger.info("%r, refitting without per-fragment weights" % (ex, ))
         try:
             fit = regression_model.fit_regression(
                 cell.subset, reliability_model=None, include_unassigned_sum=include_unassigned_sum, **kwargs)
         except Exception as err:
-            click.echo("Failed to fit model with error: %r" % (err, ))
+            logger.info("Failed to fit model with error: %r" % (err, ))
             return (spec, [])
     fit.reliability_model = fm
     fits = [fit]
@@ -265,21 +272,21 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliabi
             if r < 0.5:
                 mismatches.append(case)
             corr.append(r)
-        click.echo("Median Correlation: %0.3f" % np.nanmedian(corr))
+        logger.info("Median Correlation: %0.3f" % np.nanmedian(corr))
         if mismatches:
             try:
-                click.echo("Fitting Mismatch Model with %d cases" % len(mismatches))
+                logger.info("Fitting Mismatch Model with %d cases" % len(mismatches))
                 try:
                     mismatch_fit = regression_model.fit_regression(
                         mismatches, reliability_model=fm if use_reliability else None, base_reliability=0.5,
                         include_unassigned_sum=include_unassigned_sum, **kwargs)
                     if np.isinf(mismatch_fit.estimate_dispersion()):
-                        click.echo("Infinite dispersion, refitting without per-fragment weights")
+                        logger.info("Infinite dispersion, refitting without per-fragment weights")
                         mismatch_fit = regression_model.fit_regression(
                             mismatches, reliability_model=None,
                             include_unassigned_sum=include_unassigned_sum, **kwargs)
                 except ValueError:
-                    click.echo(
+                    logger.info(
                         "%r, refitting without per-fragment weights" % (ex, ))
                     mismatch_fit = regression_model.fit_regression(
                         mismatches, reliability_model=None,
@@ -287,10 +294,10 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliabi
                 mismatch_fit.reliability_model = fm
                 fits.append(mismatch_fit)
             except Exception as err:
-                click.echo("Failed to fit mismatch model with error: %r" % (err, ))
+                logger.info("Failed to fit mismatch model with error: %r" % (err, ))
 
     if fits:
-        click.echo(f"Total Deviance {fits[0].deviance:0.3g}")
+        logger.info(f"Total Deviance {fits[0].deviance:0.3g}")
     return (spec, fits)
 
 
@@ -309,7 +316,7 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
             **kwargs)
 
         if np.isinf(peptide_fit.estimate_dispersion()):
-            click.echo("Infinite dispersion, refitting without per-fragment weights")
+            logger.info("Infinite dispersion, refitting without per-fragment weights")
             peptide_fit = regression_model.fit_regression(
                 cell.subset,
                 reliability_model=None,
@@ -322,7 +329,7 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
             if not use_reliability:
                 raise ValueError()
 
-            click.echo("%r, refitting without per-fragment weights" % (ex, ))
+            logger.info("%r, refitting without per-fragment weights" % (ex, ))
             peptide_fit = regression_model.fit_regression(
                 cell.subset,
                 reliability_model=None,
@@ -331,14 +338,14 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
                 **kwargs)
 
         except Exception as err:
-            click.echo("Failed to fit model with error: %r" % (err, ))
+            logger.info("Failed to fit model with error: %r" % (err, ))
             peptide_fit = None
 
     if fm.models and peptide_fit:
         peptide_fit.reliability_model = fm
 
     if peptide_fit:
-        click.echo(f"Peptide Deviance {peptide_fit.deviance:0.3g}")
+        logger.info(f"Peptide Deviance {peptide_fit.deviance:0.3g}")
 
     ascending_scores = np.array([
         partitions.classify_ascending_abundance_peptide_Y(match)
@@ -363,7 +370,7 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
                 **kwargs)
 
             if np.isinf(glycan_fit.estimate_dispersion()):
-                click.echo("... Infinite dispersion, refitting without per-fragment weights")
+                logger.info("... Infinite dispersion, refitting without per-fragment weights")
                 glycan_fit = regression_model.fit_regression(
                     subset,
                     reliability_model=None,
@@ -376,7 +383,7 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
                 if not use_reliability:
                     raise ValueError()
 
-                click.echo("... %r, refitting without per-fragment weights" % (ex, ))
+                logger.info("... %r, refitting without per-fragment weights" % (ex, ))
                 glycan_fit = regression_model.fit_regression(
                     subset,
                     reliability_model=None,
@@ -385,14 +392,14 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
                     **kwargs)
 
             except Exception as err:
-                click.echo("... Failed to fit model with error: %r" % (err, ))
+                logger.info("... Failed to fit model with error: %r" % (err, ))
                 glycan_fit = None
 
         if fm.models and glycan_fit:
             glycan_fit.reliability_model = fm
 
         if glycan_fit:
-            click.echo(f"... Glycan Deviance {glycan_fit.deviance:0.3g}")
+            logger.info(f"... Glycan Deviance {glycan_fit.deviance:0.3g}")
         glycan_fits[int(cluster_key)] = glycan_fit
 
     glycan_fits = partitions.KMeansModelSelector(glycan_fits, kmeans)
@@ -430,11 +437,11 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
         model_type = multinomial_regression.FragmentType.get_model_by_name(model_type)
     if model_type is None:
         model_type = DEFAULT_MODEL_TYPE
-    click.echo("Model Type: %r" % (model_type, ))
-    click.echo("Minimum Score: %0.3f" % (threshold, ))
-    click.echo("Mass Error Tolerance: %0.3e" % (error_tolerance, ))
-    click.echo("Omit Labile Groups: %r" % (omit_labile, ))
-    click.echo("Loading data from %s" % (', '.join(paths)))
+    logger.info("Model Type: %r" % (model_type, ))
+    logger.info("Minimum Score: %0.3f" % (threshold, ))
+    logger.info("Mass Error Tolerance: %0.3e" % (error_tolerance, ))
+    logger.info("Omit Labile Groups: %r" % (omit_labile, ))
+    logger.info("Loading data from %s" % (', '.join(paths)))
 
     training_instances = get_training_data(paths, blacklist_path, threshold)
     if len(training_instances) == 0:
@@ -442,16 +449,16 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
 
     match_spectra(training_instances, error_tolerance=error_tolerance)
 
-    click.echo("Partitioning %d instances" % (len(training_instances), ))
+    logger.info("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(
         training_instances,
         omit_labile=omit_labile,
         fit_partitioned=fit_partitioned)
 
-    click.echo("Fitting Peak Relation Features")
+    logger.info("Fitting Peak Relation Features")
     fit_peak_relation_features(partition_map)
 
-    click.echo("Fitting Peak Intensity Regression")
+    logger.info("Fitting Peak Intensity Regression")
     model_fits = fit_regression_model(
         partition_map,
         regression_model=model_type,
@@ -459,7 +466,7 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
         trace=debug,
         use_reliability=False)
 
-    click.echo("Writing Models To %s" % (output_path,))
+    logger.info("Writing Models To %s" % (output_path,))
     export = []
     for spec, fit in model_fits:
         export.append((spec.to_json(), fit.to_json(save_fit_statistics)))
@@ -507,12 +514,16 @@ def strip_model_arrays(inpath, outpath):
 @click.command("compile-model", short_help="Compile a model into a Python-loadable file")
 @click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
-@click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full", "naive-partial-peptide"]), default='partial-peptide')
+@click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full", "naive-partial-peptide", "partitioned-glycan"]), default='partial-peptide')
 def compile_model(inpath, outpath, model_type="partial-peptide"):
+    logger = logging.getLogger()
+    logger.setLevel("INFO")
+
     model_cls = {
         "partial-peptide": PartialSplitScorerTree,
         "full": SplitScorerTree,
-        "naive-partial-peptide": NaivePartialSplitScorerTree
+        "naive-partial-peptide": NaivePartialSplitScorerTree,
+        "partitioned-glycan": PartitionedPredicateTree,
     }[model_type]
     click.echo("Loading Model", err=True)
     model_tree = model_cls.from_file(inpath)
@@ -532,6 +543,9 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
 @click.argument("model_path", type=click.Path(exists=True, dir_okay=False))
 @click.option('-t', '--threshold', type=float, default=0.0)
 def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_tolerance=2e-5):
+    logger = logging.getLogger()
+    logger.setLevel("INFO")
+
     test_instances = get_training_data(paths, threshold=threshold)
     model_tree = None
 
@@ -566,7 +580,7 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             match = model_tree.evaluate(scan, scan.structure, error_tolerance=error_tolerance,
                                         extended_glycan_search=True)
             if progbar.is_hidden and i % 1000 == 0 and i != 0:
-                click.echo("%d Spectra Matched" % (i,))
+                logger.info("%d Spectra Matched" % (i,))
 
             correlations.append(match._mixture_apply(match._calculate_correlation_coef))
             peptide_correlations.append(match._mixture_apply(peptide_correlation))
@@ -575,11 +589,11 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             data_files.append(scan.title)
             glycopeptides.append(str(scan.target))
 
-    click.echo("%d Spectra Matched" % (i,))
+    logger.info("%d Spectra Matched" % (i,))
 
-    click.echo("Median Correlation: %03f" % np.nanmedian(correlations))
-    click.echo("Median Glycan Correlation: %03f" % np.nanmedian(glycan_correlations))
-    click.echo("Median Peptide Correlation: %03f" % np.nanmedian(peptide_correlations))
+    logger.info("Median Correlation: %03f" % np.nanmedian(correlations))
+    logger.info("Median Glycan Correlation: %03f" % np.nanmedian(glycan_correlations))
+    logger.info("Median Peptide Correlation: %03f" % np.nanmedian(peptide_correlations))
 
     with open(outpath, 'wb') as fh:
         pickle.dump({
