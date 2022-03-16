@@ -22,6 +22,7 @@ from glycopeptidepy._c.structure.base cimport AminoAcidResidueBase, SequencePosi
 from glycopeptidepy._c.structure.sequence_methods cimport _PeptideSequenceCore
 from glycopeptidepy._c.structure.fragment cimport (
     PeptideFragment, FragmentBase, IonSeriesBase, ChemicalShiftBase, StubFragment)
+from glycopeptidepy._c.structure.glycan cimport GlycosylationManager
 
 from glycopeptidepy.structure import IonSeries
 
@@ -357,3 +358,31 @@ cpdef _calculate_pearson_residuals(self, bint use_reliability=True, double base_
         denom_i = yhat[i] * (1 - yhat[i]) * reliability[i]
         pearson_residuals[i] = (delta_i / denom_i)
     return pearson_residuals
+
+
+@cython.cdivision(True)
+cpdef double classify_ascending_abundance_peptide_Y(spectrum_match):
+    cdef:
+        double abundance
+        size_t size, total_size
+        FragmentMatchMap solution_map
+        PeakFragmentPair pfp
+        FragmentBase frag
+        StubFragment stub
+        _PeptideSequenceCore target
+        IonSeriesBase series
+
+    solution_map = <FragmentMatchMap>spectrum_match.solution_map
+    target = <_PeptideSequenceCore?>spectrum_match.target
+    size = 0
+    abundance = 0
+    for obj in solution_map.members:
+        pfp = <PeakFragmentPair>obj
+        frag = <FragmentBase>pfp.fragment
+        if frag.get_series().int_code == IonSeries_stub_glycopeptide.int_code:
+            stub = <StubFragment>frag
+            if pfp.peak.intensity > abundance:
+                size = stub.get_glycosylation_size()
+                abundance = pfp.peak.intensity
+    total_size = (<GlycosylationManager>target._glycosylation_manager).get_total_glycosylation_size()
+    return size / total_size

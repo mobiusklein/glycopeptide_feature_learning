@@ -36,3 +36,6 @@ cdef class BackbonePosition(object):
 
 
 cpdef _calculate_pearson_residuals(self, bint use_reliability=*, double base_reliability=*)
+
+
+cpdef double classify_ascending_abundance_peptide_Y(spectrum_match)
