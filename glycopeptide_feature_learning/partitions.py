@@ -381,7 +381,10 @@ def _get_size_abundance_charge_vectors_peptide_Y(inst):
 def classify_ascending_abundance_peptide_Y(inst):
     sizes, abundances, _charges = _get_size_abundance_charge_vectors_peptide_Y(
         inst)
-    i_max = np.argmax(abundances)
+    try:
+        i_max = np.argmax(abundances)
+    except ValueError:
+        return 0.0
     # abundance_max = abundances[i_max]
     return sizes[i_max] / inst.target.total_glycosylation_size
 
