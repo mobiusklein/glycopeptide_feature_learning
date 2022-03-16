@@ -391,6 +391,7 @@ def classify_ascending_abundance_peptide_Y(inst):
 
 class ModelSelectorBase(object):
     model_fits: Dict[int, MultinomialRegressionFit]
+    _default_model = MultinomialRegressionFit
 
     selector_registry: Dict[str, type] = {}
 
@@ -425,7 +426,10 @@ class ModelSelectorBase(object):
 
     def get_model(self, spectrum_match) -> MultinomialRegressionFit:
         key = self.classify(spectrum_match)
-        return self.model_fits[key]
+        try:
+            return self.model_fits[key]
+        except KeyError:
+            return self._default_model
 
     def classify(self, spectrum_match) -> int:
         raise NotImplementedError()
@@ -437,6 +441,7 @@ class KMeansModelSelector(ModelSelectorBase):
     def __init__(self, model_fits: Dict[int, MultinomialRegressionFit], kmeans_fit: KMeans):
         super().__init__(model_fits)
         self.kmeans_fit = kmeans_fit
+        self._default_model = next(iter(self))
 
     def classify(self, spectrum_match) -> int:
         value = classify_ascending_abundance_peptide_Y(spectrum_match)
@@ -455,6 +460,9 @@ class KMeansModelSelector(ModelSelectorBase):
         }
         kmeans_fit = KMeans.from_json(state['kmeans_fit'])
         return cls(model_fits, kmeans_fit)
+
+    def __reduce__(self):
+        return self.__class__, (self.model_fits, self.kmeans_fit)
 
 
 class NullModelSelector(ModelSelectorBase):
@@ -480,6 +488,9 @@ class NullModelSelector(ModelSelectorBase):
 
     def __iter__(self):
         yield self.model_fit
+
+    def __reduce__(self):
+        return self.__class__, (self.model_fit, )
 
 
 class SplitModelFit(object):
