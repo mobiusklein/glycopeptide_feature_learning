@@ -523,3 +523,8 @@ class SplitModelFit(object):
     def __iter__(self):
         yield from self.peptide_models
         yield from self.glycan_models
+
+try:
+    from glycopeptide_feature_learning.scoring._c.scorer import classify_ascending_abundance_peptide_Y
+except ImportError:
+    pass
