@@ -363,7 +363,7 @@ cpdef _calculate_pearson_residuals(self, bint use_reliability=True, double base_
 @cython.cdivision(True)
 cpdef double classify_ascending_abundance_peptide_Y(spectrum_match):
     cdef:
-        double abundance
+        double abundance, ratio
         size_t size, total_size
         FragmentMatchMap solution_map
         PeakFragmentPair pfp
@@ -372,8 +372,10 @@ cpdef double classify_ascending_abundance_peptide_Y(spectrum_match):
         _PeptideSequenceCore target
         IonSeriesBase series
 
-    solution_map = <FragmentMatchMap>spectrum_match.solution_map
+    solution_map = <FragmentMatchMap?>spectrum_match.solution_map
     target = <_PeptideSequenceCore?>spectrum_match.target
+    if target._glycosylation_manager is None:
+        return 0
     size = 0
     abundance = 0
     for obj in solution_map.members:
@@ -384,5 +386,7 @@ cpdef double classify_ascending_abundance_peptide_Y(spectrum_match):
             if pfp.peak.intensity > abundance:
                 size = stub.get_glycosylation_size()
                 abundance = pfp.peak.intensity
+
     total_size = (<GlycosylationManager>target._glycosylation_manager).get_total_glycosylation_size()
-    return size / total_size
+    ratio = (<double>size) / (<double>total_size)
+    return ratio
