@@ -391,7 +391,7 @@ def classify_ascending_abundance_peptide_Y(inst):
 
 class ModelSelectorBase(object):
     model_fits: Dict[int, MultinomialRegressionFit]
-    _default_model = MultinomialRegressionFit
+    _default_model: MultinomialRegressionFit
 
     selector_registry: Dict[str, type] = {}
 
@@ -469,7 +469,7 @@ class NullModelSelector(ModelSelectorBase):
     model_fit: MultinomialRegressionFit
 
     def __init__(self, model_fit: MultinomialRegressionFit):
-        self.model_fit = model_fit
+        self._default_model = self.model_fit = model_fit
 
     def get_model(self, spectrum_match) -> MultinomialRegressionFit:
         return self.model_fit
