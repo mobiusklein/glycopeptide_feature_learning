@@ -1,4 +1,4 @@
-from typing import Generator, List, Optional
+from typing import Iterator, List, Optional
 
 from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase
 from glycan_profiling.tandem.spectrum_match import Unmodified
@@ -70,7 +70,7 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
         except KeyError:
             return None
 
-    def itermodels(self) -> Generator[MultinomialRegressionFit]:
+    def itermodels(self) -> Iterator[MultinomialRegressionFit]:
         if self.model_fits:
             yield from iter(self.model_fits)
         elif self.model_selectors:
