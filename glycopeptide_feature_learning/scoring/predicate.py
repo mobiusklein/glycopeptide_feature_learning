@@ -285,7 +285,7 @@ def decompressing_reconstructor(cls, data, kwargs=None):
     key = id(inst)
     i = 0
     node: ModelBindingScorer
-    for node in enumerate(inst):
+    for _j, node in enumerate(inst):
         for model in node.itermodels():
             model.model_key = (key, i)
             i += 1
