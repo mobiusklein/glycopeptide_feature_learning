@@ -199,7 +199,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
         # the 0.17 term ensures that the maximum value of the -log10 transform of the cdf is
         # mapped to approximately 1.0 (1.02). The maximum value is guaranteed to 6.0 because
         # the minimum value returned from the CDF is 0 + 1e-6 padding, which maps to 6.
-        temp *= (0.17 * pearson_peptide_score)
+        # temp *= (0.17 * pearson_peptide_score)
         peptide_score += temp
 
     # peptide reliability is usually less powerful, so it does not benefit
