@@ -1,5 +1,10 @@
+from typing import Generator, List, Optional
+
 from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase
 from glycan_profiling.tandem.spectrum_match import Unmodified
+
+from glycopeptide_feature_learning.multinomial_regression import MultinomialRegressionFit
+from glycopeptide_feature_learning.partitions import SplitModelFit, partition_cell_spec
 
 
 class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
@@ -42,7 +47,7 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
         return self.__class__, (self.tp, self.args, self.kwargs)
 
     @property
-    def model_fit(self):
+    def model_fit(self) -> Optional[MultinomialRegressionFit]:
         try:
             return self.kwargs['model_fits'][0]
         except KeyError:
@@ -52,21 +57,29 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
                 return None
 
     @property
-    def model_fits(self):
+    def model_fits(self) -> Optional[List[MultinomialRegressionFit]]:
         try:
             return self.kwargs['model_fits']
         except KeyError:
             return None
 
     @property
-    def model_selectors(self):
+    def model_selectors(self) -> Optional[SplitModelFit]:
         try:
             return self.kwargs['model_selectors']
         except KeyError:
             return None
 
+    def itermodels(self) -> Generator[MultinomialRegressionFit]:
+        if self.model_fits:
+            yield from iter(self.model_fits)
+        elif self.model_selectors:
+            yield from self.model_selectors
+        else:
+            yield self.model_fit
+
     @property
-    def partition_label(self):
+    def partition_label(self) -> Optional[partition_cell_spec]:
         try:
             return self.kwargs['partition']
         except KeyError:

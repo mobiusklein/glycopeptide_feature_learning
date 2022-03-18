@@ -281,7 +281,15 @@ def decompressing_reconstructor(cls, data, kwargs=None):
     if isinstance(data, (str, bytes)):
         buff = io.BytesIO(data)
         data = pickle.load(gzip.GzipFile(fileobj=buff))
-    return cls(data, **kwargs)
+    inst = cls(data, **kwargs)
+    key = id(inst)
+    i = 0
+    node: ModelBindingScorer
+    for node in enumerate(inst):
+        for model in node.itermodels():
+            model.model_key = (key, i)
+            i += 1
+    return inst
 
 
 def compressing_reducer(self):
@@ -543,8 +551,11 @@ class PredicateTreeBase(PredicateFilterBase, DummyScorer):
         else:
             meta = dict()
             omit_labile = False
+        model_key_i = 1
         for spec_d, model_d in d:
             model = MultinomialRegressionFit.from_json(model_d)
+            model.model_key = model_key_i
+            model_key_i += 1
             spec = partition_cell_spec.from_json(spec_d)
             # Ensure that all model specifications have the same number of dimensions for
             # the tree reconstruction to be consistent

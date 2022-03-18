@@ -1,6 +1,5 @@
-from locale import normalize
 import logging
-from typing import Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Union
 import six
 import base64
 import io
@@ -1177,8 +1176,10 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
 class MultinomialRegressionFit(object):
     n_observations = 0
 
+    model_key: Optional[Any] = None
+
     def __init__(self, coef, scaled_y, mu, reliabilities, dispersion, weights, covariance_unscaled,
-                 deviance, H, model_type=FragmentType, reliability_model=None, **info):
+                 deviance, H, model_type=FragmentType, reliability_model=None, model_key=None, **info):
         self.coef = coef
         self.scaled_y = scaled_y
         self.mu = mu
@@ -1192,6 +1193,7 @@ class MultinomialRegressionFit(object):
         self.model_type = model_type
         self.reliability_model = reliability_model
         self.n_observations = len(scaled_y)
+        self.model_key = model_key
 
     def compact(self):
         self.scaled_y = None
@@ -1481,6 +1483,11 @@ class MultinomialRegressionFit(object):
     def __eq__(self, other):
         if not isinstance(other, MultinomialRegressionFit):
             return False
+
+        if self.model_key is not None:
+            if other.model_key is not None:
+                return self.model_key == other.model_key
+
         if not np.allclose(self.coef, other.coef):
             return False
         if self.reliability_model != other.reliability_model:
