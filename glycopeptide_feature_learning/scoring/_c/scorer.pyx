@@ -140,13 +140,12 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
         np.ndarray[np.float64_t, ndim=1] intens, yhat, reliability
         np.ndarray[np.float64_t, ndim=1, mode='c'] n_term_ions, c_term_ions
         double t, coverage_score, normalizer
-        double corr_score, corr, peptide_score, pearson_peptide_score
-        double temp, delta_i, denom_i
+        double corr_score, corr, peptide_score
+        double temp
         double* intens_
         double* yhat_
-        size_t i, n, size, n_isnan
+        size_t i, n
         _FragmentType ci
-        np.npy_intp knd
         BackbonePosition pos
         FragmentBase frag
         IonSeriesBase series
@@ -175,8 +174,6 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
     if n == 0:
         return 0
 
-    n_isnan = 0
-    knd = n
     peptide_score = 0.0
 
     intens_ = <double*>PyMem_Malloc(sizeof(double) * n)
@@ -185,13 +182,13 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
         pos = <BackbonePosition>PyList_GET_ITEM(backbones, i)
         intens_[i] = pos.intensity
         yhat_[i] = pos.predicted
-        delta_i = (intens_[i] - yhat_[i]) ** 2
-        if intens_[i] > yhat_[i]:
-            delta_i /= 2
-        denom_i = yhat_[i] * (1 - yhat_[i]) * pos.reliability
-        pearson_peptide_score = -log10(PearsonResidualCDF.interpolate_scalar(delta_i / denom_i) + 1e-6)
-        if isnan(pearson_peptide_score):
-            pearson_peptide_score = 0.0
+        # delta_i = (intens_[i] - yhat_[i]) ** 2
+        # if intens_[i] > yhat_[i]:
+        #     delta_i /= 2
+        # denom_i = yhat_[i] * (1 - yhat_[i]) * pos.reliability
+        # pearson_peptide_score = -log10(PearsonResidualCDF.interpolate_scalar(delta_i / denom_i) + 1e-6)
+        # if isnan(pearson_peptide_score):
+        #     pearson_peptide_score = 0.0
 
         temp = log10(intens_[i] * t)
         temp *= 1 - abs(pos.match.peak_pair.mass_accuracy() / error_tolerance) ** 4
@@ -387,6 +384,6 @@ cpdef double classify_ascending_abundance_peptide_Y(spectrum_match):
                 size = stub.get_glycosylation_size()
                 abundance = pfp.peak.intensity
 
-    total_size = (<GlycosylationManager>target._glycosylation_manager).get_total_glycosylation_size()
+    total_size = (<GlycosylationManager?>target._glycosylation_manager).get_total_glycosylation_size()
     ratio = (<double>size) / (<double>total_size)
     return ratio

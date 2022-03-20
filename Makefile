@@ -1,5 +1,5 @@
 dev:
-	python setup.py develop
+	pip install -v -e . --no-build-isolation
 
 
 test:
