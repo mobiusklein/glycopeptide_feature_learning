@@ -1,6 +1,6 @@
 # cython: embedsignature=True
 cimport cython
-from cpython cimport PyTuple_GetItem, PyTuple_Size, PyList_GET_ITEM, PyList_GET_SIZE
+from cpython cimport PyTuple_GetItem, PyTuple_Size, PyList_GET_ITEM, PyList_GET_SIZE, PySet_Size, PyTuple_GET_ITEM
 from cpython.int cimport PyInt_AsLong
 from libc.stdlib cimport malloc, calloc, free
 from libc.math cimport log10, log, sqrt, exp
@@ -17,12 +17,22 @@ from collections import OrderedDict
 
 from ms_deisotope._c.peak_set cimport DeconvolutedPeak, DeconvolutedPeakSet
 
+from brainpy._c.double_vector cimport (
+    DoubleVector as dvec,
+    make_double_vector,
+    make_double_vector_with_size,
+    free_double_vector,
+    double_vector_append,
+    double_vector_to_list)
+
 from glycan_profiling._c.structure.fragment_match_map cimport (
     FragmentMatchMap, PeakFragmentPair)
 
 from glycopeptidepy._c.structure.base cimport AminoAcidResidueBase, SequencePosition
 from glycopeptidepy._c.structure.sequence_methods cimport _PeptideSequenceCore
-from glycopeptidepy._c.structure.fragment cimport PeptideFragment, FragmentBase, IonSeriesBase, ChemicalShiftBase
+from glycopeptidepy._c.structure.fragment cimport (
+    PeptideFragment, FragmentBase, StubFragment,
+    IonSeriesBase, ChemicalShiftBase)
 
 from glypy.utils.enum import Enum
 from glypy.utils.cenum cimport EnumValue, IntEnumValue, EnumMeta
@@ -34,9 +44,19 @@ from glycopeptidepy.structure.fragment import IonSeries
 
 
 from glycopeptide_feature_learning.amino_acid_classification import (
-    AminoAcidClassification, classify_amide_bond_frank)
+    AminoAcidClassification)
 from glycopeptide_feature_learning._c.amino_acid_classification cimport (
-    classify_residue_frank)
+    classify_residue_frank, classify_amide_bond_frank)
+
+cdef:
+    IonSeriesBase IonSeries_b, IonSeries_y, IonSeries_c, IonSeries_z, IonSeries_stub_glycopeptide, IonSeries_oxonium
+
+IonSeries_b = IonSeries.b
+IonSeries_y = IonSeries.y
+IonSeries_c = IonSeries.c
+IonSeries_z = IonSeries.z
+IonSeries_stub_glycopeptide = IonSeries.stub_glycopeptide
+IonSeries_oxonium = IonSeries.oxonium_ion
 
 
 @six.add_metaclass(EnumMeta)
@@ -82,6 +102,8 @@ cdef int StubFragment_max_glycosylation_size = 14
 cdef:
     EnumValue FragmentSeriesClassification_unassigned = FragmentSeriesClassification.unassigned
     EnumValue FragmentSeriesClassification_stub_glycopeptide = FragmentSeriesClassification.stub_glycopeptide
+    EnumValue FragmentSeriesClassification_b = FragmentSeriesClassification.b
+    EnumValue FragmentSeriesClassification_y = FragmentSeriesClassification.y
 
 
 cpdef int get_nterm_index_from_fragment(PeptideFragment fragment, _PeptideSequenceCore structure):
@@ -302,31 +324,49 @@ cpdef np.ndarray[feature_dtype_t, ndim=2] encode_classification(cls, list classi
             X[i, j] = features[j]
     return X
 
+
+cdef EnumValue encode_peptide_fragment_series(IonSeriesBase series):
+    if series.int_code == IonSeries_b.int_code:
+        return FragmentSeriesClassification_b
+    elif series.int_code == IonSeries_c.int_code:
+        return FragmentSeriesClassification_y
+    else:
+        raise KeyError(series.name)
+
+
 @cython.binding(True)
 cpdef from_peak_peptide_fragment_pair(cls, PeakFragmentPair peak_fragment_pair, _PeptideSequenceCore structure):
     cdef:
         DeconvolutedPeak peak
-        FragmentBase fragment
+        PeptideFragment fragment
+        tuple terms
     peak = peak_fragment_pair.peak
     fragment = peak_fragment_pair.fragment
     residue = <object>PyList_GET_ITEM(fragment.flanking_amino_acids, 0)
     residue2 = <object>PyList_GET_ITEM(fragment.flanking_amino_acids, 1)
-    nterm, cterm = classify_amide_bond_frank(residue, residue2)
-    glycosylation = fragment.is_glycosylated
+    terms = classify_amide_bond_frank(residue, residue2)
+    nterm = <object>PyTuple_GET_ITEM(terms, 0)
+    cterm = <object>PyTuple_GET_ITEM(terms, 1)
+    glycosylation = fragment._is_glycosylated()
     inst = cls(
-        nterm, cterm, FragmentSeriesClassification[fragment.get_series().name],
-        glycosylation, min(peak.charge, FragmentCharge_max + 1),
-        peak_fragment_pair, structure)
+        nterm,
+        cterm,
+        encode_peptide_fragment_series(fragment.get_series()),
+        glycosylation,
+        min(peak.charge, FragmentCharge_max + 1),
+        peak_fragment_pair,
+        structure)
     return inst
 
 @cython.binding(True)
-def build_fragment_intensity_matches(cls, gpsm, include_unassigned_sum=True):
+cpdef build_fragment_intensity_matches(cls, gpsm, bint include_unassigned_sum=True):
 
     cdef:
-        list fragment_classification, intensities_acc
+        list fragment_classification
         np.ndarray[double, ndim=1] intensities
+        dvec* intensities_acc
         set counted
-        double matched_total, total, unassigned, normalized
+        double matched_total, total, unassigned, normalized, peak_intensity
         FragmentMatchMap solution_map
         PeakFragmentPair peak_fragment_pair
         DeconvolutedPeak peak
@@ -337,8 +377,9 @@ def build_fragment_intensity_matches(cls, gpsm, include_unassigned_sum=True):
         int glycosylation_size
         size_t i
         np.npy_intp n
+
     fragment_classification = []
-    intensities_acc = []
+
     matched_total = 0
     peak_set = gpsm.deconvoluted_peak_set
     total = 0
@@ -348,56 +389,68 @@ def build_fragment_intensity_matches(cls, gpsm, include_unassigned_sum=True):
 
     structure = gpsm.target
     counted = set()
-    if gpsm.solution_map is None:
-        gpsm.match()
     solution_map = <FragmentMatchMap>gpsm.solution_map
+    if solution_map is None:
+        gpsm.match()
+        solution_map = <FragmentMatchMap>gpsm.solution_map
+
+    intensities_acc = make_double_vector_with_size(PySet_Size(solution_map.members))
+
     for peak_fragment_pair in solution_map.members:
         peak = peak_fragment_pair.peak
         fragment = peak_fragment_pair.fragment
+
         if peak not in counted:
             matched_total += peak.intensity
             counted.add(peak)
 
         series = fragment.get_series()
-        if series.name == 'oxonium_ion':
+        if series.int_code == IonSeries_oxonium.int_code:
             continue
-        intensities_acc.append(peak)
-        if series.name == 'stub_glycopeptide':
-            glycosylation_size = PyInt_AsLong(fragment.glycosylation_size)
+
+        double_vector_append(intensities_acc, peak.intensity)
+        # intensities_acc.append(peak)
+        if series.int_code == IonSeries_stub_glycopeptide.int_code:
+            glycosylation_size = PyInt_AsLong((<StubFragment>fragment).get_glycosylation_size())
             fragment_classification.append(
                 cls(
                     None, None, FragmentSeriesClassification_stub_glycopeptide,
                     min(glycosylation_size, StubFragment_max_glycosylation_size),
                     min(peak.charge, FragmentCharge_max + 1),
                     peak_fragment_pair, structure))
-            continue
-        inst = from_peak_peptide_fragment_pair(cls, peak_fragment_pair, structure)
-        fragment_classification.append(inst)
+        else:
+            inst = from_peak_peptide_fragment_pair(cls, peak_fragment_pair, structure)
+            fragment_classification.append(inst)
 
     normalized = 0.0
     if include_unassigned_sum:
-        n = PyList_GET_SIZE(intensities_acc) + 1
+        # n = PyList_GET_SIZE(intensities_acc) + 1
+        n = intensities_acc.used + 1
         intensities = np.PyArray_ZEROS(1, &n, np.NPY_DOUBLE, 0)
         for i in range(n - 1):
-            peak = <DeconvolutedPeak>PyList_GET_ITEM(intensities_acc, i)
-            intensities[i] = peak.intensity
-            normalized += peak.intensity
+            # peak = <DeconvolutedPeak>PyList_GET_ITEM(intensities_acc, i)
+            peak_intensity = intensities_acc.v[i]
+            intensities[i] = peak_intensity
+            normalized += peak_intensity
+
         unassigned = total - matched_total
         intensities[n - 1] = (unassigned)
         normalized += unassigned
         ft = cls(None, None, FragmentSeriesClassification_unassigned, 0, 0, None, None)
         fragment_classification.append(ft)
     else:
-        n = PyList_GET_SIZE(intensities_acc)
+        # n = PyList_GET_SIZE(intensities_acc)
+        n = intensities_acc.used
         intensities = np.PyArray_ZEROS(1, &n, np.NPY_DOUBLE, 0)
         for i in range(n):
-            peak = <DeconvolutedPeak>PyList_GET_ITEM(intensities_acc, i)
-            intensities[i] = peak.intensity
-            normalized += peak.intensity
+            # peak = <DeconvolutedPeak>PyList_GET_ITEM(intensities_acc, i)
+            peak_intensity = intensities_acc.v[i]
+            intensities[i] = peak_intensity
+            normalized += peak_intensity
 
+    free_double_vector(intensities_acc)
     if normalized / total > 1.0:
         total *= (normalized / total)
-
     return fragment_classification, intensities, total
 
 

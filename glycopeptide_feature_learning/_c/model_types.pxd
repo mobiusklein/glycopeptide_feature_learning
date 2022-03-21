@@ -62,3 +62,5 @@ cpdef int get_cleavage_site_distance_from_center(_FragmentType self)
 
 
 cpdef list classify_sequence_by_residues(_PeptideSequenceCore sequence)
+
+cpdef build_fragment_intensity_matches(cls, gpsm, bint include_unassigned_sum=*)
