@@ -328,7 +328,7 @@ cpdef np.ndarray[feature_dtype_t, ndim=2] encode_classification(cls, list classi
 cdef EnumValue encode_peptide_fragment_series(IonSeriesBase series):
     if series.int_code == IonSeries_b.int_code:
         return FragmentSeriesClassification_b
-    elif series.int_code == IonSeries_c.int_code:
+    elif series.int_code == IonSeries_y.int_code:
         return FragmentSeriesClassification_y
     else:
         raise KeyError(series.name)
