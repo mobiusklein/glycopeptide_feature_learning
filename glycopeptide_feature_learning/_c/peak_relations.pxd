@@ -9,6 +9,9 @@ from glycopeptidepy._c.structure.fragment cimport (FragmentBase, PeptideFragment
 from glycan_profiling._c.structure.fragment_match_map cimport (PeakFragmentPair, FragmentMatchMap)
 
 
+cpdef set get_peak_index(FragmentMatchMap self)
+
+
 cdef class FeatureBase(object):
     cdef:
         public str name
@@ -21,7 +24,7 @@ cdef class FeatureBase(object):
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=*)
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                              FragmentMatchMap solution_map, structure=*)
+                              FragmentMatchMap solution_map, structure=*, set peak_indices=*)
 
 
 cdef class MassOffsetFeature(FeatureBase):
@@ -34,7 +37,8 @@ cdef class MassOffsetFeature(FeatureBase):
 
 
 cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                                      FragmentMatchMap solution_map, structure=*) except *
+                                      FragmentMatchMap solution_map, structure=*, set peak_indices=*) except *
+
 
 cdef class FeatureFunctionEstimatorBase(object):
     cdef:
@@ -69,7 +73,7 @@ cdef class FittedFeatureBase(object):
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=*)
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                              FragmentMatchMap solution_map, structure=*)
+                              FragmentMatchMap solution_map, structure=*, set peak_indices=*)
     cpdef double _feature_probability(self, double p=*)
 
 
@@ -81,7 +85,7 @@ cdef class FragmentationFeatureBase(object):
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=*)
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                              FragmentMatchMap solution_map, structure=*)
+                              FragmentMatchMap solution_map, structure=*, set peak_indices=*)
 
 
 cdef class FragmentationModelBase(object):

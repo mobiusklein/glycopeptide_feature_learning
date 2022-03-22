@@ -63,6 +63,20 @@ cdef int intensity_ratio_function(DeconvolutedPeak peak1, DeconvolutedPeak peak2
         return 5
 
 
+cpdef set get_peak_index(FragmentMatchMap self):
+    cdef:
+        PeakFragmentPair pfp
+        DeconvolutedPeak peak
+        set result
+
+    result = set()
+    for obj in self.members:
+        pfp = <PeakFragmentPair>obj
+        peak = pfp.peak
+        result.add(peak._index.neutral_mass)
+    return result
+
+
 cdef class FeatureBase(object):
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None):
@@ -145,7 +159,9 @@ cdef class FeatureBase(object):
         return not (self == other)
 
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                              FragmentMatchMap solution_map, structure=None):
+                              FragmentMatchMap solution_map, structure=None, set peak_indices=None):
+        if peak_indices is not None:
+            return to_peak._index.neutral_mass in peak_indices
         return solution_map.by_peak.has_key(to_peak)
 
     def specialize(self, from_charge, to_charge, intensity_ratio):
@@ -319,13 +335,16 @@ cdef class MassOffsetFeature(FeatureBase):
 
 @cython.binding(True)
 cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                                      FragmentMatchMap solution_map, structure=None) except *:
+                                      FragmentMatchMap solution_map, structure=None, set peak_indices=None) except *:
     cdef:
         bint is_peak_expected, validated_aa
         list matched_fragments, flanking_amino_acids
         size_t i, n
         FragmentBase frag
-    is_peak_expected = solution_map.by_peak.has_key(to_peak)
+    if peak_indices is not None:
+        is_peak_expected = to_peak._index.neutral_mass in peak_indices
+    else:
+        is_peak_expected = solution_map.by_peak.has_key(to_peak)
     if not is_peak_expected:
         return False
     matched_fragments = solution_map.by_peak.getitem(from_peak)
@@ -353,8 +372,8 @@ cdef class FittedFeatureBase(object):
         return result
 
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                              FragmentMatchMap solution_map, structure=None):
-        return self.feature.is_valid_match(from_peak, to_peak, solution_map, structure)
+                              FragmentMatchMap solution_map, structure=None, set peak_indices=None):
+        return self.feature.is_valid_match(from_peak, to_peak, solution_map, structure, peak_indices)
 
     @cython.cdivision(True)
     cpdef double _feature_probability(self, double p=0.5):
@@ -438,8 +457,8 @@ cdef class FragmentationFeatureBase(object):
         return pairs
 
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                              FragmentMatchMap solution_map, structure=None):
-        return self.feature.is_valid_match(from_peak, to_peak, solution_map, structure)
+                              FragmentMatchMap solution_map, structure=None, set peak_indices=None):
+        return self.feature.is_valid_match(from_peak, to_peak, solution_map, structure, peak_indices)
 
 
 cdef class FragmentationModelBase(object):
@@ -555,6 +574,7 @@ cdef class FragmentationModelCollectionBase(object):
     cpdef dict find_matches(self, scan, FragmentMatchMap solution_map, structure):
         cdef:
             dict match_to_features, models
+            set peak_index_set
             DeconvolutedPeakSet deconvoluted_peak_set
 
             PeakFragmentPair peak_fragment
@@ -576,6 +596,9 @@ cdef class FragmentationModelCollectionBase(object):
         match_to_features = dict()
         deconvoluted_peak_set = scan.deconvoluted_peak_set
         models = self.models
+
+        peak_index_set = get_peak_index(solution_map)
+
         for obj in solution_map.members:
             peak_fragment = <PeakFragmentPair>obj
             peak = peak_fragment.peak
@@ -592,7 +615,7 @@ cdef class FragmentationModelCollectionBase(object):
                 k = PyList_GET_SIZE(rels)
                 for j in range(k):
                     rel = <PeakRelation>PyList_GET_ITEM(rels, j)
-                    if feature.is_valid_match(rel.from_peak, rel.to_peak, solution_map, structure):
+                    if feature.is_valid_match(rel.from_peak, rel.to_peak, solution_map, structure, peak_index_set):
                         PyList_Append(
                             get_item_default_list(match_to_features, rel.from_peak),
                             rel)
@@ -753,9 +776,9 @@ cdef class PeakRelation(object):
 
     cpdef tuple peak_key(self):
         if self.from_peak._index.neutral_mass < self.to_peak._index.neutral_mass:
-            return self.from_peak, self.to_peak
+            return self.from_peak._index.neutral_mass, self.to_peak._index.neutral_mass
         else:
-            return self.to_peak, self.from_peak
+            return self.to_peak._index.neutral_mass, self.from_peak._index.neutral_mass
 
     @staticmethod
     cdef PeakRelation _create(DeconvolutedPeak from_peak, DeconvolutedPeak to_peak, feature, IonSeriesBase series):
