@@ -776,9 +776,9 @@ cdef class PeakRelation(object):
 
     cpdef tuple peak_key(self):
         if self.from_peak._index.neutral_mass < self.to_peak._index.neutral_mass:
-            return self.from_peak._index.neutral_mass, self.to_peak._index.neutral_mass
+            return self.from_peak, self.to_peak
         else:
-            return self.to_peak._index.neutral_mass, self.from_peak._index.neutral_mass
+            return self.to_peak, self.from_peak
 
     @staticmethod
     cdef PeakRelation _create(DeconvolutedPeak from_peak, DeconvolutedPeak to_peak, feature, IonSeriesBase series):
