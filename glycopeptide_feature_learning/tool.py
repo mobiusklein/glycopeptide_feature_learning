@@ -306,6 +306,7 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
                                  use_mixture: bool=True, use_reliability: bool=True,
                                  include_unassigned_sum: bool=True, **kwargs) -> partitions.SplitModelFit:
     fm = peak_relations.FragmentationModelCollection(cell.fit)
+    logger.info("... Fitting Peptide Model")
     try:
         peptide_fit = regression_model.fit_regression(
             cell.subset,
@@ -359,6 +360,7 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
         clustered_groups[cluster_labels[i]].append(match)
 
     glycan_fits = {}
+    logger.info("... Fitting Glycan Model")
     for cluster_key, subset in clustered_groups.items():
         try:
             glycan_fit = regression_model.fit_regression(
@@ -428,11 +430,8 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
               help='Whether to split training the peptide and glycan portions of the model')
 def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False,
          omit_labile=False, model_type=None, fit_partitioned=False):
-    logger = logging.getLogger()
     if debug:
-        logger.setLevel("DEBUG")
-    else:
-        logger.setLevel("INFO")
+        logger.setLevel(logging.DEBUG)
     if isinstance(model_type, basestring):
         model_type = multinomial_regression.FragmentType.get_model_by_name(model_type)
     if model_type is None:
@@ -516,9 +515,6 @@ def strip_model_arrays(inpath, outpath):
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
 @click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full", "naive-partial-peptide", "partitioned-glycan"]), default='partial-peptide')
 def compile_model(inpath, outpath, model_type="partial-peptide"):
-    logger = logging.getLogger()
-    logger.setLevel("INFO")
-
     model_cls = {
         "partial-peptide": PartialSplitScorerTree,
         "full": SplitScorerTree,
@@ -543,9 +539,6 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
 @click.argument("model_path", type=click.Path(exists=True, dir_okay=False))
 @click.option('-t', '--threshold', type=float, default=0.0)
 def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_tolerance=2e-5):
-    logger = logging.getLogger()
-    logger.setLevel("INFO")
-
     test_instances = get_training_data(paths, threshold=threshold)
     model_tree = None
 
@@ -582,9 +575,9 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             if progbar.is_hidden and i % 1000 == 0 and i != 0:
                 logger.info("%d Spectra Matched" % (i,))
 
-            correlations.append(match._mixture_apply(match._calculate_correlation_coef))
-            peptide_correlations.append(match._mixture_apply(peptide_correlation))
-            glycan_correlations.append(match._mixture_apply(glycan_correlation))
+            correlations.append(match.total_correlation())
+            peptide_correlations.append(match.peptide_correlation())
+            glycan_correlations.append(match.glycan_correlation())
             scan_ids.append(scan.id)
             data_files.append(scan.title)
             glycopeptides.append(str(scan.target))
@@ -611,7 +604,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 def cli():
-    pass
+    root_logger = logging.getLogger()
+    root_logger.setLevel("INFO")
 
 
 cli.add_command(main, "fit-model")
