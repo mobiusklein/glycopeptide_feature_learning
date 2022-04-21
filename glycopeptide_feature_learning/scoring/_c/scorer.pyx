@@ -194,7 +194,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
 
         temp = log10(intens_[i] * t)
         temp *= 1 - abs(pos.match.peak_pair.mass_accuracy() / error_tolerance) ** 4
-        temp *= unpad(pos.reliability, base_reliability) + 0.75
+        temp *= unpad(pos.reliability, base_reliability) + 1.0
 
         # the 0.17 term ensures that the maximum value of the -log10 transform of the cdf is
         # mapped to approximately 1.0 (1.02). The maximum value is guaranteed to 6.0 because
@@ -210,7 +210,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
 
     # peptide fragment correlation is weaker than the glycan correlation.
     corr = (1.0 + corr) / 2.0
-    corr_score = corr * 2.0 * log10(n) + reliability_sum
+    corr_score = corr * 2.0 * log10(n)
 
     target = <_PeptideSequenceCore>self.target
     coverage_score = self._calculate_peptide_coverage()
