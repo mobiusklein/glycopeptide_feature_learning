@@ -37,7 +37,7 @@ from glycan_profiling.cli.validators import RelativeMassErrorParam
 
 
 logger = logging.getLogger(
-    "glycopeptide_feature_learning.tool")
+    "glycopeptide_feature_learning")
 logger.addHandler(logging.NullHandler())
 
 

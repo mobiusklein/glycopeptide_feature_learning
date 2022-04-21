@@ -141,6 +141,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
         np.ndarray[np.float64_t, ndim=1, mode='c'] n_term_ions, c_term_ions
         double t, coverage_score, normalizer
         double corr_score, corr, peptide_score
+        double reliability_sum
         double temp
         double* intens_
         double* yhat_
@@ -175,6 +176,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
         return 0
 
     peptide_score = 0.0
+    reliability_sum = 0.0
 
     intens_ = <double*>PyMem_Malloc(sizeof(double) * n)
     yhat_ = <double*>PyMem_Malloc(sizeof(double) * n)
@@ -193,6 +195,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
         temp = log10(intens_[i] * t)
         temp *= 1 - abs(pos.match.peak_pair.mass_accuracy() / error_tolerance) ** 4
         temp *= unpad(pos.reliability, base_reliability) + 0.75
+
         # the 0.17 term ensures that the maximum value of the -log10 transform of the cdf is
         # mapped to approximately 1.0 (1.02). The maximum value is guaranteed to 6.0 because
         # the minimum value returned from the CDF is 0 + 1e-6 padding, which maps to 6.
@@ -207,7 +210,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
 
     # peptide fragment correlation is weaker than the glycan correlation.
     corr = (1.0 + corr) / 2.0
-    corr_score = corr * 2.0 * log10(n)
+    corr_score = corr * 2.0 * log10(n) + reliability_sum
 
     target = <_PeptideSequenceCore>self.target
     coverage_score = self._calculate_peptide_coverage()
@@ -284,7 +287,7 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
 
     peptide_coverage = self._calculate_peptide_coverage()
     corr = (1 + corr) / 2
-    corr_score = corr * (n_signif_frags) + reliability_sum
+    corr_score = corr * n_signif_frags + reliability_sum * n_signif_frags
 
     # corr_score *= min(peptide_coverage + 0.75, 1.0)
     # corr_score *= normalized_sigmoid(max(peptide_coverage - 0.03, 0.0) * 42)
@@ -292,13 +295,13 @@ def calculate_partial_glycan_score(self, double error_tolerance=2e-5, bint use_r
     corr_score *= min(exp(peptide_coverage * 3) - 1, 1)
 
     glycan_prior = 0.0
-    oxonium_component = self._signature_ion_score()
+    # oxonium_component = self._signature_ion_score()
     coverage = self._calculate_glycan_coverage(
         core_weight, coverage_weight, fragile_fucose=fragile_fucose,
         extended_glycan_search=extended_glycan_search)
     if coverage > 0:
         glycan_prior = self.target.glycan_prior
-    glycan_score = (glycan_score + corr_score + glycan_prior) * coverage + oxonium_component
+    glycan_score = (glycan_score + corr_score + glycan_prior) * coverage #+ oxonium_component
 
     PyMem_Free(intens_)
     PyMem_Free(yhat_)
