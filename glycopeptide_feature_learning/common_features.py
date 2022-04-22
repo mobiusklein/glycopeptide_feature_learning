@@ -50,7 +50,7 @@ def build_building_block_set(gpsms):
 
 
 def make_feature_specs():
-    from .peak_relations import MassOffsetFeature, LinkFeature
+    from .peak_relations import MassOffsetFeature, LinkFeature, ComplementFeature
     features = {
         MassOffsetFeature(
             0.0, name='charge-diff'): lambda x: x.feature.from_charge != x.feature.to_charge,
@@ -73,6 +73,9 @@ def make_feature_specs():
     for link in amino_acid_blocks:
         feat = LinkFeature(link)
         backbone_features[feat] = lambda x: True
+    backbone_features[ComplementFeature(0, name="Complement")] = lambda x: True
+    backbone_features[ComplementFeature(
+        glypy.monosaccharide_residues.HexNAc.mass(), name="Complement plus HexNAc")] = lambda x: True
     return features, backbone_features, stub_features
 
 

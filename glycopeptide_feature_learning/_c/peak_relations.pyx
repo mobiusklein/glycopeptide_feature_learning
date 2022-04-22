@@ -10,7 +10,7 @@ from cpython.object cimport PyObject
 from cpython.dict cimport PyDict_GetItem, PyDict_SetItem, PyDict_Next
 from cpython.tuple cimport PyTuple_GET_ITEM, PyTuple_GET_SIZE
 from cpython.sequence cimport PySequence_List
-from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM, PyList_Append
+from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM, PyList_Append, PyList_GetItem
 
 np.import_array()
 
@@ -334,13 +334,37 @@ cdef class MassOffsetFeature(FeatureBase):
 
 
 @cython.binding(True)
+cpdef list ComplementFeature_find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None):
+    cdef:
+        list matches
+        tuple peaks_in_range
+        double reference_mass, delta_mass
+        size_t i, n
+
+    matches = []
+    reference_mass = structure.peptide_backbone_mass
+    reference_mass += self.offset
+    delta_mass = reference_mass - peak.neutral_mass
+
+    peaks_in_range = peak_list.all_peaks_for(delta_mass, 2 * self.tolerance)
+    n = PyTuple_GET_SIZE(peaks_in_range)
+    for i in range(n):
+        peak2 = <DeconvolutedPeak>PyTuple_GET_ITEM(peaks_in_range, i)
+        if peak is not peak2 and abs((peak2.neutral_mass + peak.neutral_mass) - reference_mass) / reference_mass < self.tolerance:
+            matches.append(peak2)
+    return matches
+
+
+@cython.binding(True)
 cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
                                       FragmentMatchMap solution_map, structure=None, set peak_indices=None) except *:
     cdef:
         bint is_peak_expected, validated_aa
         list matched_fragments, flanking_amino_acids
-        size_t i, n
+        size_t i, n, j
         FragmentBase frag
+        double err
+        AminoAcidResidueBase residue
     if peak_indices is not None:
         is_peak_expected = to_peak._index.neutral_mass in peak_indices
     else:
@@ -359,9 +383,15 @@ cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak f
             residue = self.amino_acid.residue
         except AttributeError:
             residue = self.amino_acid
-        if residue in flanking_amino_acids:
-            validated_aa = True
+        for j in range(2):
+            if abs(residue.mass - (<AminoAcidResidueBase>PyList_GetItem(flanking_amino_acids, j)).mass) < 1e-5:
+                validated_aa = True
+                break
+        if validated_aa:
             break
+        # if residue in flanking_amino_acids:
+        #     validated_aa = True
+        #     break
     return validated_aa
 
 

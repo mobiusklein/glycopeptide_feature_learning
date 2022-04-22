@@ -210,6 +210,8 @@ def _load_feature_from_json(cls, d):
     feature_type = d['feature_type']
     if feature_type == LinkFeature.feature_type:
         return LinkFeature.from_json(d)
+    elif feature_type == ComplementFeature.feature_type:
+        return ComplementFeature.from_json(d)
     else:
         return MassOffsetFeature.from_json(d)
 
@@ -499,6 +501,43 @@ try:
     LinkFeature.is_valid_match = LinkFeature_is_valid_match
 except ImportError as err:
     print(err)
+
+
+class ComplementFeature(MassOffsetFeature):
+    feature_type = "complement"
+
+    def __init__(self, offset, tolerance=2e-5, name=None, intensity_ratio=OUT_OF_RANGE_INT,
+                 from_charge=OUT_OF_RANGE_INT, to_charge=OUT_OF_RANGE_INT, feature_type=None,
+                 terminal=''):
+
+        if not feature_type:
+            feature_type = self.feature_type
+        if name is None:
+            name = "Complement:" + str(offset)
+
+        super(ComplementFeature, self).__init__(
+            offset, tolerance, name, intensity_ratio, from_charge, to_charge,
+            feature_type, terminal)
+
+    def find_matches(self, peak, peak_list, structure=None):
+        matches = []
+        reference_mass = structure.peptide_backbone_mass
+        reference_mass += self.offset
+        delta_mass = reference_mass - peak.neutral_mass
+
+        peaks_in_range = peak_list.all_peaks_for(delta_mass, 2 * self.tolerance)
+        for peak2 in peaks_in_range:
+            if peak is not peak2 and abs((peak2.neutral_mass + peak.neutral_mass) - reference_mass) / reference_mass < self.tolerance:
+                matches.append(peak2)
+        return matches
+
+
+try:
+    from glycopeptide_feature_learning._c.peak_relations import ComplementFeature_find_matches
+    ComplementFeature.find_matches = ComplementFeature_find_matches
+except ImportError as err:
+    print(err)
+
 
 
 class PeakRelation(object):

@@ -165,6 +165,13 @@ def get_peak_relation_features():
     for link in common_features.amino_acid_blocks:
         feat = peak_relations.LinkFeature(link)
         link_features[feat] = lambda x: True
+
+    link_features[peak_relations.ComplementFeature(
+        0, name="Complement")] = lambda x: True
+    link_features[peak_relations.ComplementFeature(
+        glypy.monosaccharide_residues.HexNAc.mass(), name="Complement plus HexNAc")] = lambda x: True
+    link_features[peak_relations.ComplementFeature(
+        -glypy.monosaccharide_residues.HexNAc.mass(), name="Complement minus HexNAc")] = lambda x: True
     return features, stub_features, link_features
 
 

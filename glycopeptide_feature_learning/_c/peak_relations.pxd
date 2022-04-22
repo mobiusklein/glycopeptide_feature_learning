@@ -36,6 +36,8 @@ cdef class MassOffsetFeature(FeatureBase):
     cpdef bint test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2)
 
 
+
+cpdef list ComplementFeature_find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=*)
 cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
                                       FragmentMatchMap solution_map, structure=*, set peak_indices=*) except *
 
