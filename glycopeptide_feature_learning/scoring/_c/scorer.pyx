@@ -141,7 +141,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
         np.ndarray[np.float64_t, ndim=1, mode='c'] n_term_ions, c_term_ions
         double t, coverage_score, normalizer
         double corr_score, corr, peptide_score
-        double reliability_sum
+        double reliability_sum, rel_i
         double temp
         double* intens_
         double* yhat_
@@ -194,8 +194,9 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
 
         temp = log10(intens_[i] * t)
         temp *= 1 - abs(pos.match.peak_pair.mass_accuracy() / error_tolerance) ** 4
-        temp *= unpad(pos.reliability, base_reliability) + 1.0
-
+        rel_i = unpad(pos.reliability, base_reliability)
+        temp *= rel_i + 1.0
+        reliability_sum += rel_i
         # the 0.17 term ensures that the maximum value of the -log10 transform of the cdf is
         # mapped to approximately 1.0 (1.02). The maximum value is guaranteed to 6.0 because
         # the minimum value returned from the CDF is 0 + 1e-6 padding, which maps to 6.
@@ -218,6 +219,7 @@ def calculate_peptide_score(self, double error_tolerance=2e-5, bint use_reliabil
     PyMem_Free(intens_)
     PyMem_Free(yhat_)
     peptide_score += corr_score
+    peptide_score += reliability_sum
     peptide_score *= coverage_score ** coverage_weight
     return peptide_score
 
