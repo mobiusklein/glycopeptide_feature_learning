@@ -453,7 +453,7 @@ def calculate_peptide_score_no_glycosylation(self, double error_tolerance=2e-5, 
         yhat_[i] = pos.predicted
 
         frag = pos.match.get_fragment()
-        if frag._is_glycosylated():
+        if (<PeptideFragment>frag)._is_glycosylated():
             continue
 
         temp = log10(intens_[i] * t)
