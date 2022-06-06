@@ -392,3 +392,179 @@ cpdef double classify_ascending_abundance_peptide_Y(spectrum_match):
     total_size = (<GlycosylationManager?>target._glycosylation_manager).get_total_glycosylation_size()
     ratio = (<double>size) / (<double>total_size)
     return ratio
+
+
+@cython.binding(True)
+@cython.boundscheck(False)
+@cython.cdivision(True)
+def calculate_peptide_score_no_glycosylation(self, double error_tolerance=2e-5, bint use_reliability=True, double base_reliability=0.5,
+                                             double coverage_weight=0.7, **kwargs):
+    cdef:
+        list c, backbones
+        tuple coverage_result
+        np.ndarray[np.float64_t, ndim=1] intens, yhat, reliability
+        np.ndarray[np.float64_t, ndim=1, mode='c'] n_term_ions, c_term_ions
+        double t, coverage_score, normalizer
+        double corr_score, corr, peptide_score
+        double reliability_sum, rel_i
+        double temp
+        double* intens_
+        double* yhat_
+        size_t i, n
+        _FragmentType ci
+        BackbonePosition pos
+        FragmentBase frag
+        IonSeriesBase series
+        _PeptideSequenceCore target
+
+    c, intens, t, yhat = self._get_predicted_intensities()
+    if self.model_fit.reliability_model is None:
+        use_reliability = False
+    if not use_reliability:
+        reliability = None
+    else:
+        reliability = self._get_reliabilities(c, base_reliability=base_reliability)
+    backbones = []
+    n = PyList_GET_SIZE(c)
+    for i in range(n):
+        ci = <_FragmentType>PyList_GET_ITEM(c, i)
+        if ci.is_assigned():
+            frag = ci.get_fragment()
+            series = frag.get_series()
+            if (series.int_code == IonSeries_b.int_code or
+                series.int_code == IonSeries_y.int_code or
+                series.int_code == IonSeries_c.int_code or
+                series.int_code == IonSeries_z.int_code):
+                backbones.append(
+                    BackbonePosition._create(
+                        ci, intens[i] / t, yhat[i], reliability[i] if use_reliability else 1.0))
+    n = PyList_GET_SIZE(backbones)
+    if n == 0:
+        return 0
+
+    peptide_score = 0.0
+    reliability_sum = 0.0
+
+    intens_ = <double*>PyMem_Malloc(sizeof(double) * n)
+    yhat_ = <double*>PyMem_Malloc(sizeof(double) * n)
+    for i in range(n):
+        pos = <BackbonePosition>PyList_GET_ITEM(backbones, i)
+        intens_[i] = pos.intensity
+        yhat_[i] = pos.predicted
+
+        frag = pos.match.get_fragment()
+        if frag._is_glycosylated():
+            continue
+
+        temp = log10(intens_[i] * t)
+        temp *= 1 - abs(pos.match.peak_pair.mass_accuracy() / error_tolerance) ** 4
+        rel_i = unpad(pos.reliability, base_reliability)
+        temp *= rel_i + 1.0
+        reliability_sum += rel_i
+        peptide_score += temp
+
+    # peptide reliability is usually less powerful, so it does not benefit
+    # us to use the normalized correlation coefficient here
+    corr = correlation(intens_, yhat_, n)
+    if isnan(corr):
+        corr = -0.5
+
+    # peptide fragment correlation is weaker than the glycan correlation.
+    corr = (1.0 + corr) / 2.0
+    corr_score = corr * 2.0 * log10(n)
+
+    target = <_PeptideSequenceCore>self.target
+    coverage_score = self._calculate_peptide_coverage_no_glycosylated()
+
+    PyMem_Free(intens_)
+    PyMem_Free(yhat_)
+    peptide_score += corr_score
+    peptide_score += reliability_sum
+    peptide_score *= coverage_score ** coverage_weight
+    return peptide_score
+
+
+@cython.binding(True)
+@cython.boundscheck(False)
+@cython.cdivision(True)
+def calculate_partial_glycan_score_no_glycosylated_peptide_coverage(self, double error_tolerance=2e-5, bint use_reliability=True, double base_reliability=0.5,
+                                                                    double core_weight=0.4, double coverage_weight=0.6, fragile_fucose=False, extended_glycan_search=True, **kwargs):
+    cdef:
+        list c, stubs
+        np.ndarray[np.float64_t, ndim=1] intens, yhat, reliability
+        size_t i, n, n_signif_frags
+        _FragmentType ci
+        FragmentBase frag
+        double* reliability_
+        double* intens_
+        double* yhat_
+        double oxonium_component, coverage, glycan_prior
+        double glycan_score, temp, t
+        double corr, corr_score, reliability_sum
+        double peptide_coverage
+
+    c, intens, t, yhat = self._get_predicted_intensities()
+    if self.model_fit.reliability_model is None or not use_reliability:
+        reliability = np.ones_like(yhat)
+    else:
+        reliability = self._get_reliabilities(c, base_reliability=base_reliability)
+    stubs = []
+    n = PyList_GET_SIZE(c)
+    n_signif_frags = 0
+    for i in range(n):
+        ci = <_FragmentType>PyList_GET_ITEM(c, i)
+        if ci.is_assigned():
+            frag = ci.get_fragment()
+
+            if frag.get_series().int_code == IonSeries_stub_glycopeptide.int_code:
+                if (<StubFragment>frag).get_glycosylation_size() > 1:
+                    n_signif_frags += 1
+                stubs.append(
+                    BackbonePosition._create(
+                        ci, intens[i] / t, yhat[i], reliability[i]))
+    n = PyList_GET_SIZE(stubs)
+    if n == 0:
+        return 0
+    glycan_score = 0.0
+    intens_ = <double*>PyMem_Malloc(sizeof(double) * n)
+    yhat_ = <double*>PyMem_Malloc(sizeof(double) * n)
+    reliability_sum = 0.0
+    for i in range(n):
+        pos = <BackbonePosition>PyList_GET_ITEM(stubs, i)
+        intens_[i] = pos.intensity
+        yhat_[i] = pos.predicted
+        reliability_sum += pos.reliability
+
+        temp = log10(intens_[i] * t)
+        temp *= 1 - abs(pos.match.peak_pair.mass_accuracy() / error_tolerance) ** 4
+        glycan_score += temp
+
+    if n > 1:
+        corr = correlation(intens_, yhat_, n)
+        if isnan(corr):
+            corr = -0.5
+
+    else:
+        corr = -0.5
+
+    peptide_coverage = self._calculate_peptide_coverage_no_glycosylated()
+    corr = (1 + corr) / 2
+    corr_score = corr * n_signif_frags + reliability_sum * n_signif_frags
+
+    # corr_score *= min(peptide_coverage + 0.75, 1.0)
+    # corr_score *= normalized_sigmoid(max(peptide_coverage - 0.03, 0.0) * 42)
+    # corr_score *= shifted_normalized_sigmoid_erf(peptide_coverage)
+    corr_score *= min(exp(peptide_coverage * 3) - 1, 1)
+
+    glycan_prior = 0.0
+    # oxonium_component = self._signature_ion_score()
+    coverage = self._calculate_glycan_coverage(
+        core_weight, coverage_weight, fragile_fucose=fragile_fucose,
+        extended_glycan_search=extended_glycan_search)
+    if coverage > 0:
+        glycan_prior = self.target.glycan_prior
+    glycan_score = (glycan_score + corr_score + glycan_prior) * coverage #+ oxonium_component
+
+    PyMem_Free(intens_)
+    PyMem_Free(yhat_)
+    return max(glycan_score, 0)

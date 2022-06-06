@@ -28,7 +28,7 @@ from glycopeptide_feature_learning import (
 from glycopeptide_feature_learning.scoring import (
     PartialSplitScorerTree, SplitScorerTree, PartitionedPredicateTree)
 
-from glycopeptide_feature_learning.scoring.scorer import NaivePartialSplitScorerTree
+from glycopeptide_feature_learning.scoring.scorer import NaivePartialSplitScorerTree, NoGlycosylatedPeptidePartitionedPredicateTree
 
 import glypy
 from glycopeptidepy.structure.fragment import IonSeries
@@ -520,13 +520,17 @@ def strip_model_arrays(inpath, outpath):
 @click.command("compile-model", short_help="Compile a model into a Python-loadable file")
 @click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
-@click.option("-m", "--model-type", type=click.Choice(["partial-peptide", "full", "naive-partial-peptide", "partitioned-glycan"]), default='partial-peptide')
+@click.option("-m", "--model-type", type=click.Choice([
+    "partial-peptide", "full", "naive-partial-peptide", "partitioned-glycan",
+    "no-glycosylated-partitioned-glycan"
+]), default='partial-peptide')
 def compile_model(inpath, outpath, model_type="partial-peptide"):
     model_cls = {
         "partial-peptide": PartialSplitScorerTree,
         "full": SplitScorerTree,
         "naive-partial-peptide": NaivePartialSplitScorerTree,
         "partitioned-glycan": PartitionedPredicateTree,
+        "no-glycosylated-partitioned-glycan": NoGlycosylatedPeptidePartitionedPredicateTree
     }[model_type]
     click.echo("Loading Model", err=True)
     model_tree = model_cls.from_file(inpath)
@@ -559,19 +563,8 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
     data_files = []
     glycopeptides = []
 
-    def peptide_correlation(match):
-        c, inten, t, y, rel = match.get_predicted_intensities_series(
-            ['b', 'y'], True)
-        return np.corrcoef(inten, y)[1, 0]
-
-    def glycan_correlation(match):
-        c, inten, t, y, rel = match.get_predicted_intensities_series(
-            ['stub_glycopeptide'], True)
-        return np.corrcoef(inten, y)[1, 0]
-
     progbar = click.progressbar(
         enumerate(test_instances), length=len(test_instances), show_eta=True, label='Matching Peaks',
-
         item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '')
 
     assert len(test_instances) > 0

@@ -1126,3 +1126,44 @@ class PartitionedPredicateTree(PredicateTreeBase):
     @classmethod
     def _bind_model_scorer(cls, scorer_type, models, partition=None):
         return ModelBindingScorer(scorer_type, model_selectors=models[0], partition=partition)
+
+
+try:
+    from ._c.scorer import calculate_peptide_score_no_glycosylation, calculate_partial_glycan_score_no_glycosylated_peptide_coverage
+except ImportError:
+    pass
+
+
+class NoGlycosylatedPeptidePartitionedPartialSplitScorer(PartitionedPartialSplitScorer):
+
+    def calculate_peptide_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5,
+                                coverage_weight=0.7, *args, **kwargs):
+        peptide_model = self.model_selectors.get_peptide_model(self)
+        self.model_fit = peptide_model
+        value = calculate_peptide_score_no_glycosylation(
+            error_tolerance, use_reliability,
+            base_reliability,
+            coverage_weight,
+            *args, **kwargs)
+        self.model_fit = None
+        return value
+
+    def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
+                               coverage_weight=0.5, fragile_fucose=False, **kwargs):
+        glycan_model = self.model_selectors.get_glycan_model(self)
+        self.model_fit = glycan_model
+        value = calculate_partial_glycan_score_no_glycosylated_peptide_coverage(
+            error_tolerance,
+            use_reliability,
+            base_reliability,
+            core_weight,
+            coverage_weight,
+            fragile_fucose,
+            **kwargs)
+        self.model_fit = None
+        return value
+
+
+class NoGlycosylatedPeptidePartitionedPredicateTree(PartitionedPredicateTree):
+    _scorer_type = NoGlycosylatedPeptidePartitionedPartialSplitScorer
+    _short_peptide_scorer_type = NoGlycosylatedPeptidePartitionedPartialSplitScorer
