@@ -1141,6 +1141,7 @@ class NoGlycosylatedPeptidePartitionedPartialSplitScorer(PartitionedPartialSplit
         peptide_model = self.model_selectors.get_peptide_model(self)
         self.model_fit = peptide_model
         value = calculate_peptide_score_no_glycosylation(
+            self,
             error_tolerance, use_reliability,
             base_reliability,
             coverage_weight,
@@ -1153,6 +1154,7 @@ class NoGlycosylatedPeptidePartitionedPartialSplitScorer(PartitionedPartialSplit
         glycan_model = self.model_selectors.get_glycan_model(self)
         self.model_fit = glycan_model
         value = calculate_partial_glycan_score_no_glycosylated_peptide_coverage(
+            self,
             error_tolerance,
             use_reliability,
             base_reliability,
