@@ -470,8 +470,8 @@ def calculate_peptide_score_no_glycosylation(self, double error_tolerance=2e-5, 
         corr = -0.5
 
     # peptide fragment correlation is weaker than the glycan correlation.
-    corr = (1.0 + corr) / 2.0
-    corr_score = corr * 2.0 * log10(n)
+    # corr_score = peptide_correlation_score1(corr, n)
+    corr_score = peptide_correlation_score2(corr, n)
 
     target = <_PeptideSequenceCore>self.target
     coverage_score = self._calculate_peptide_coverage_no_glycosylated()
@@ -482,6 +482,28 @@ def calculate_peptide_score_no_glycosylation(self, double error_tolerance=2e-5, 
     peptide_score += reliability_sum
     peptide_score *= coverage_score ** coverage_weight
     return peptide_score
+
+
+cdef double peptide_correlation_score1(double corr, long n):
+    cdef:
+        double corr_score
+    corr = (1.0 + corr) / 2.0
+    corr_score = corr * 2.0 * log10(n)
+    return corr_score
+
+
+cdef double peptide_correlation_score2(double corr, long n):
+    cdef:
+        double corr_score
+
+    if corr <= 0:
+        corr_score = 0
+    else:
+        if corr > (1 - 1e-3):
+            corr = 1 - 1e-3
+        corr_score = -np.log(1 - corr)
+        corr_score *= n
+    return corr_score
 
 
 @cython.binding(True)
