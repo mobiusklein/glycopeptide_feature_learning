@@ -470,8 +470,7 @@ def calculate_peptide_score_no_glycosylation(self, double error_tolerance=2e-5, 
         corr = -0.5
 
     # peptide fragment correlation is weaker than the glycan correlation.
-    # corr_score = peptide_correlation_score1(corr, n)
-    corr_score = peptide_correlation_score2(corr, n)
+    corr_score = peptide_correlation_score1(corr, n)
 
     target = <_PeptideSequenceCore>self.target
     coverage_score = self._calculate_peptide_coverage_no_glycosylated()
