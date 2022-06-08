@@ -737,7 +737,7 @@ class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer)
         localization_score = (glycosylated_coverage_score * glycosylated_weight)
         return localization_score
 
-    def calculate_score(self, error_tolerance=2e-5, peptide_weight=0.65, glycosylated_weight=10.,
+    def calculate_score(self, error_tolerance=2e-5, peptide_weight=0.65, glycosylated_weight=1.,
                         base_reliability=0.5, *args, **kwargs):
         # intensity = -math.log10(self._intensity_component_binomial())
         mass_accuracy = self._precursor_mass_accuracy_score()
