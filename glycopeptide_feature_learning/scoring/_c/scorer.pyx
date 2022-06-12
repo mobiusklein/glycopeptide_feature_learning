@@ -406,6 +406,7 @@ def calculate_peptide_score_no_glycosylation(self, double error_tolerance=2e-5, 
         np.ndarray[np.float64_t, ndim=1, mode='c'] n_term_ions, c_term_ions
         double t, coverage_score, normalizer
         double corr_score, corr, peptide_score
+        double weighted_coverage_scaler
         double reliability_sum, rel_i
         double temp
         double* intens_
@@ -417,6 +418,7 @@ def calculate_peptide_score_no_glycosylation(self, double error_tolerance=2e-5, 
         IonSeriesBase series
         _PeptideSequenceCore target
 
+
     c, intens, t, yhat = self._get_predicted_intensities()
     if self.model_fit.reliability_model is None:
         use_reliability = False
@@ -425,6 +427,8 @@ def calculate_peptide_score_no_glycosylation(self, double error_tolerance=2e-5, 
     else:
         reliability = self._get_reliabilities(c, base_reliability=base_reliability)
     backbones = []
+    coverage_score = self._calculate_peptide_coverage_no_glycosylated()
+    weighted_coverage_scaler = min(exp(coverage_score * 3) - 1, 1)
     n = PyList_GET_SIZE(c)
     for i in range(n):
         ci = <_FragmentType>PyList_GET_ITEM(c, i)
@@ -458,22 +462,17 @@ def calculate_peptide_score_no_glycosylation(self, double error_tolerance=2e-5, 
 
         temp = log10(intens_[i] * t)
         temp *= 1 - abs(pos.match.peak_pair.mass_accuracy() / error_tolerance) ** 4
-        rel_i = unpad(pos.reliability, base_reliability)
+        rel_i = unpad(pos.reliability, base_reliability) * weighted_coverage_scaler
         temp *= rel_i + 1.0
         reliability_sum += rel_i
         peptide_score += temp
 
-    # peptide reliability is usually less powerful, so it does not benefit
-    # us to use the normalized correlation coefficient here
     corr = correlation(intens_, yhat_, n)
     if isnan(corr):
         corr = -0.5
 
     # peptide fragment correlation is weaker than the glycan correlation.
     corr_score = peptide_correlation_score1(corr, n)
-
-    target = <_PeptideSequenceCore>self.target
-    coverage_score = self._calculate_peptide_coverage_no_glycosylated()
 
     PyMem_Free(intens_)
     PyMem_Free(yhat_)

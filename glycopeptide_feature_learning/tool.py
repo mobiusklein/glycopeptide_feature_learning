@@ -61,12 +61,12 @@ def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: 
     n_files = len(training_files)
     progbar = click.progressbar(
         training_files, length=n_files, show_eta=True, label='Loading GPSM Data',
-        item_show_func=lambda x: os.path.basename(x) if x is not None else '')
+        item_show_func=lambda x: f"{os.path.basename(x)} ({len(training_instances)} spectra read)" if x is not None else '')
     with progbar:
         for train_file in progbar:
             reader = data_source.AnnotatedMGFDeserializer(open(train_file, 'rb'))
             if progbar.is_hidden:
-                logger.info("Reading %s" % (os.path.basename(train_file),))
+                logger.info("Reading %s (%d spectra read)", (os.path.basename(train_file), len(training_instances)))
             for instance in reader:
                 if instance.annotations['ms2_score'] < threshold:
                     continue
@@ -521,9 +521,8 @@ def strip_model_arrays(inpath, outpath):
 @click.argument("inpath", type=click.Path(exists=True, dir_okay=False))
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
 @click.option("-m", "--model-type", type=click.Choice([
-    "partial-peptide", "full", "naive-partial-peptide", "partitioned-glycan",
-    "no-glycosylated-partitioned-glycan"
-]), default='partial-peptide')
+    "partitioned-glycan", "no-glycosylated-partitioned-glycan"
+]), default="no-glycosylated-partitioned-glycan")
 def compile_model(inpath, outpath, model_type="partial-peptide"):
     model_cls = {
         "partial-peptide": PartialSplitScorerTree,
