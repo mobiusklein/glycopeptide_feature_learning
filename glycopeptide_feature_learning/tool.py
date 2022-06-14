@@ -66,7 +66,7 @@ def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: 
         for train_file in progbar:
             reader = data_source.AnnotatedMGFDeserializer(open(train_file, 'rb'))
             if progbar.is_hidden:
-                logger.info("Reading %s (%d spectra read)", (os.path.basename(train_file), len(training_instances)))
+                logger.info("Reading %s (%d spectra read)", os.path.basename(train_file), len(training_instances))
             for instance in reader:
                 if instance.annotations['ms2_score'] < threshold:
                     continue
