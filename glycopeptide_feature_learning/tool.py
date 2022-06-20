@@ -44,7 +44,7 @@ logger.addHandler(logging.NullHandler())
 DEFAULT_MODEL_TYPE = multinomial_regression.LabileMonosaccharideAwareModel
 
 
-def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: float=50.0) -> List[data_source.AnnotatedScan]:
+def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: float=50.0, min_q_value: float=1.0) -> List[data_source.AnnotatedScan]:
     training_files = []
     for path in paths:
         training_files.extend(glob.glob(path))
@@ -68,7 +68,7 @@ def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: 
             if progbar.is_hidden:
                 logger.info("Reading %s (%d spectra read)", os.path.basename(train_file), len(training_instances))
             for instance in reader:
-                if instance.annotations['ms2_score'] < threshold:
+                if instance.annotations['ms2_score'] < threshold or instance.annotations['q_value'] > min_q_value:
                     continue
                 if instance.mass_shift.name not in ("Unmodified", "Ammonium"):
                     warnings.warn("Skipping mass shift %r" % (instance.mass_shift))
@@ -423,6 +423,7 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
 @click.argument('paths', metavar='PATH', #type=click.Path(exists=True, dir_okay=False),
                 nargs=-1)
 @click.option('-t', '--threshold', type=float, default=50.0)
+@click.option("-q", "--min-q-value", type=float, default=1.0)
 @click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option('-o', '--output-path', type=click.Path())
 @click.option('-m', '--error-tolerance', type=RelativeMassErrorParam(), default=2e-5)
@@ -433,10 +434,10 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
                     'greatly increasing the size of the model output file'))
 @click.option("-b / -nb", "--omit-labile / --include-labile", default=True, is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
 @click.option("--debug", is_flag=True, default=False, help='Enable debug logging')
-@click.option("-P", "--fit-partitioned", is_flag=True, default=False,
+@click.option("-P", "--fit-partitioned", is_flag=True, default=True,
               help='Whether to split training the peptide and glycan portions of the model')
-def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False,
-         omit_labile=False, model_type=None, fit_partitioned=False):
+def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False,
+         omit_labile=False, model_type=None, fit_partitioned=True):
     if debug:
         logger.setLevel(logging.DEBUG)
     if isinstance(model_type, basestring):
@@ -449,7 +450,8 @@ def main(paths, threshold=50.0, output_path=None, blacklist_path=None, error_tol
     logger.info("Omit Labile Groups: %r" % (omit_labile, ))
     logger.info("Loading data from %s" % (', '.join(paths)))
 
-    training_instances = get_training_data(paths, blacklist_path, threshold)
+    training_instances = get_training_data(
+        paths, blacklist_path, threshold, min_q_value=min_q_value)
     if len(training_instances) == 0:
         raise click.ClickException("No training examples were found.")
 
@@ -548,8 +550,12 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
 @click.argument("outpath", type=click.Path(dir_okay=False, writable=True))
 @click.argument("model_path", type=click.Path(exists=True, dir_okay=False))
 @click.option('-t', '--threshold', type=float, default=0.0)
-def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_tolerance=2e-5):
-    test_instances = get_training_data(paths, threshold=threshold)
+@click.option("-q", "--min-q-value", type=float, default=1.0)
+def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_tolerance=2e-5, min_q_value=1.0):
+    test_instances = get_training_data(
+        paths,
+        threshold=threshold,
+        min_q_value=min_q_value)
     model_tree = None
 
     with open(model_path, 'rb') as fh:
