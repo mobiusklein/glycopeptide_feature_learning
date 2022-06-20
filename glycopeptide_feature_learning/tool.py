@@ -434,7 +434,7 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
                     'greatly increasing the size of the model output file'))
 @click.option("-b / -nb", "--omit-labile / --include-labile", default=True, is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
 @click.option("--debug", is_flag=True, default=False, help='Enable debug logging')
-@click.option("-P", "--fit-partitioned", is_flag=True, default=True,
+@click.option("-P/-C", "--fit-partitioned/--fit-combined", is_flag=True, default=True,
               help='Whether to split training the peptide and glycan portions of the model')
 def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False,
          omit_labile=False, model_type=None, fit_partitioned=True):
@@ -444,10 +444,11 @@ def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_pat
         model_type = multinomial_regression.FragmentType.get_model_by_name(model_type)
     if model_type is None:
         model_type = DEFAULT_MODEL_TYPE
-    logger.info("Model Type: %r" % (model_type, ))
-    logger.info("Minimum Score: %0.3f" % (threshold, ))
-    logger.info("Mass Error Tolerance: %0.3e" % (error_tolerance, ))
-    logger.info("Omit Labile Groups: %r" % (omit_labile, ))
+    logger.info("Model Type: %r", model_type)
+    logger.info("Fit Partitioned: %r", fit_partitioned)
+    logger.info("Minimum Score: %0.3f, Minimum FDR: %0.3f", threshold, min_q_value)
+    logger.info("Mass Error Tolerance: %0.3e", error_tolerance)
+    logger.info("Omit Labile Groups: %r", omit_labile)
     logger.info("Loading data from %s" % (', '.join(paths)))
 
     training_instances = get_training_data(
