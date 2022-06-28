@@ -1165,6 +1165,9 @@ class NoGlycosylatedPeptidePartitionedPartialSplitScorer(PartitionedPartialSplit
         self.model_fit = None
         return value
 
+    def peptide_coverage(self):
+        return self._calculate_peptide_coverage_no_glycosylated()
+
 
 class NoGlycosylatedPeptidePartitionedPredicateTree(PartitionedPredicateTree):
     _scorer_type = NoGlycosylatedPeptidePartitionedPartialSplitScorer
