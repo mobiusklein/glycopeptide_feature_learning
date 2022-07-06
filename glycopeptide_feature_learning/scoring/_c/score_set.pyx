@@ -176,6 +176,7 @@ cdef class ModelScoreSet(ScoreSet):
             "peptide_backbone_count",
             "glycan_correlation",
         ])
+        return field_names
 
     cpdef list values(self):
         cdef list values = super(ModelScoreSet, self).values()

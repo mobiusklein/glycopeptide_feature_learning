@@ -18,6 +18,7 @@ from glycopeptide_feature_learning.multinomial_regression import MultinomialRegr
 
 
 from .base import (DummyScorer, ModelBindingScorer)
+from ._c.score_set import ModelScoreSet
 
 
 class PredicateBase(object):
@@ -603,3 +604,7 @@ class PredicateTreeBase(PredicateFilterBase, DummyScorer):
 
     def __reduce__(self):
         return compressing_reducer(self)
+
+    @classmethod
+    def get_score_set_type(cls):
+        return ModelScoreSet
