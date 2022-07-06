@@ -46,6 +46,9 @@ def make_extensions():
         Extension(name='glycopeptide_feature_learning.scoring._c.scorer',
                   sources=["glycopeptide_feature_learning/scoring/_c/scorer.pyx"],
                   include_dirs=[numpy.get_include()]),
+        Extension(name='glycopeptide_feature_learning.scoring._c.score_set',
+                  sources=["glycopeptide_feature_learning/scoring/_c/score_set.pyx"],
+                  include_dirs=[numpy.get_include()]),
     ], compiler_directives=cython_directives)
     return extensions
 

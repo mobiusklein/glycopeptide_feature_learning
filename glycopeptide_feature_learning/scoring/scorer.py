@@ -19,6 +19,8 @@ from glycopeptide_feature_learning.utils import distcorr
 
 from .predicate import PredicateTreeBase, ModelBindingScorer
 
+from ._c.score_set import ModelScoreSet
+
 
 def pad(x, p=0.5):
     return (1 - p) * x + p
@@ -272,6 +274,10 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
     def __reduce__(self):
         return self.__class__, (self.scan, self.target, self.mass_shift, self.model_fit, self.partition)
 
+    @classmethod
+    def get_score_set_type(cls):
+        return ModelScoreSet
+
 
 class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, MultinomialRegressionScorerBase):
 
@@ -404,6 +410,10 @@ class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, MultinomialReg
         peptide_score += corr_score
         peptide_score *= coverage_score
         return peptide_score
+
+    @classmethod
+    def get_score_set_type(cls):
+        return ModelScoreSet
 
     def calculate_score(self, error_tolerance=2e-5, backbone_weight=None,
                         glycosylated_weight=None, stub_weight=None,
@@ -579,6 +589,10 @@ class ShortPeptideMultinomialRegressionMixtureScorer(MultinomialRegressionMixtur
 class PredicateTree(PredicateTreeBase):
     _scorer_type = MultinomialRegressionMixtureScorer
     _short_peptide_scorer_type = ShortPeptideMultinomialRegressionMixtureScorer
+
+    @classmethod
+    def get_score_set_type(cls):
+        return ModelScoreSet
 
 
 PartitionTree = PredicateTree
@@ -954,6 +968,9 @@ class NaivePartialSplitScorerTree(PredicateTree):
 class PartitionedPartialSplitScorer(_MultiModelCache, PartialSplitScorer):
     model_selectors: SplitModelFit
 
+    _peptide_correlation = None
+    _glycan_correlation = None
+
     def __init__(self, scan, sequence, mass_shift=None, model_selectors=None, partition=None):
         super().__init__(scan, sequence, mass_shift)
         self.structure = self.target
@@ -991,17 +1008,23 @@ class PartitionedPartialSplitScorer(_MultiModelCache, PartialSplitScorer):
         return value
 
     def peptide_correlation(self):
+        if self._peptide_correlation is not None:
+            return self._peptide_correlation
         peptide_model = self.model_selectors.get_peptide_model(self)
         self.model_fit = peptide_model
         value = super().peptide_correlation()
         self.model_fit = None
+        self._peptide_correlation = value
         return value
 
     def glycan_correlation(self):
+        if self._glycan_correlation is not None:
+            return self._glycan_correlation
         glycan_model = self.model_selectors.get_glycan_model(self)
         self.model_fit = glycan_model
         value = super().glycan_correlation()
         self.model_fit = None
+        self._glycan_correlation = value
         return value
 
     def _get_predicted_peaks(self, use_reliability=False, base_reliability=0.5):
