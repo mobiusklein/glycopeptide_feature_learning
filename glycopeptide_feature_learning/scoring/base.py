@@ -6,6 +6,8 @@ from glycan_profiling.tandem.spectrum_match import Unmodified
 from glycopeptide_feature_learning.multinomial_regression import MultinomialRegressionFit
 from glycopeptide_feature_learning.partitions import SplitModelFit, partition_cell_spec
 
+from ._c.score_set import ModelScoreSet
+from .fdr_model import CorrelationPeptideSVMModel
 
 class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
     def __init__(self, tp, args=None, kwargs=None, *_args, **_kwargs):
@@ -110,3 +112,15 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
 class DummyScorer(GlycopeptideSpectrumMatcherBase):
     def __init__(self, *args, **kwargs):
         raise TypeError("DummyScorer should not be instantiated!")
+
+
+class HelperMethods:
+
+    @classmethod
+    def get_score_set_type(cls):
+        return ModelScoreSet
+
+    @classmethod
+    def get_fdr_model_for_dimension(cls, label: str):
+        if label == 'peptide':
+            return CorrelationPeptideSVMModel

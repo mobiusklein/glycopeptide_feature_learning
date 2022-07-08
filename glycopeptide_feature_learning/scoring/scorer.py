@@ -14,6 +14,7 @@ from glycan_profiling.tandem.glycopeptide.scoring.precursor_mass_accuracy import
 from glycopeptide_feature_learning.multinomial_regression import (
     MultinomialRegressionFit, PearsonResidualCDF, least_squares_scale_coefficient)
 from glycopeptide_feature_learning.partitions import SplitModelFit, partition_cell_spec
+from glycopeptide_feature_learning.scoring.base import HelperMethods
 
 from glycopeptide_feature_learning.utils import distcorr
 
@@ -274,12 +275,8 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
     def __reduce__(self):
         return self.__class__, (self.scan, self.target, self.mass_shift, self.model_fit, self.partition)
 
-    @classmethod
-    def get_score_set_type(cls):
-        return ModelScoreSet
 
-
-class MultinomialRegressionScorer(CoverageWeightedBinomialScorer, MultinomialRegressionScorerBase):
+class MultinomialRegressionScorer(HelperMethods, CoverageWeightedBinomialScorer, MultinomialRegressionScorerBase):
 
     def __init__(self, scan, sequence, mass_shift=None, model_fit=None, partition=None):
         super(MultinomialRegressionScorer, self).__init__(scan, sequence, mass_shift)
@@ -634,7 +631,7 @@ class NaivePredicateTreeWithoutReliability(NaivePredicateTree):
     _short_peptide_scorer_type = ShortPeptideNaiveScorerWithoutReliability
 
 
-class SplitScorer(MultinomialRegressionScorerBase, SignatureAwareCoverageScorer):
+class SplitScorer(HelperMethods, MultinomialRegressionScorerBase, SignatureAwareCoverageScorer):
 
     _glycan_score = None
     _peptide_score = None

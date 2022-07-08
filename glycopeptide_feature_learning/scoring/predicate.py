@@ -17,7 +17,7 @@ from glycopeptide_feature_learning.partitions import classify_proton_mobility, p
 from glycopeptide_feature_learning.multinomial_regression import MultinomialRegressionFit
 
 
-from .base import (DummyScorer, ModelBindingScorer)
+from .base import (DummyScorer, ModelBindingScorer, HelperMethods)
 from ._c.score_set import ModelScoreSet
 
 
@@ -479,7 +479,7 @@ class PredicateFilter(PredicateFilterBase):
         return acc
 
 
-class PredicateTreeBase(PredicateFilterBase, DummyScorer):
+class PredicateTreeBase(PredicateFilterBase, HelperMethods, DummyScorer):
     """A base class for predicate tree based model determination.
     """
 
@@ -604,7 +604,3 @@ class PredicateTreeBase(PredicateFilterBase, DummyScorer):
 
     def __reduce__(self):
         return compressing_reducer(self)
-
-    @classmethod
-    def get_score_set_type(cls):
-        return ModelScoreSet
