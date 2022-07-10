@@ -1,6 +1,7 @@
+from typing import List
 import numpy as np
 
-from glycan_profiling.tandem import svm
+from glycan_profiling.tandem.target_decoy import svm
 
 
 class CorrelationPeptideSVMModel(svm.PeptideScoreSVMModel):
@@ -15,3 +16,10 @@ class CorrelationPeptideSVMModel(svm.PeptideScoreSVMModel):
                 * psm.score_set.peptide_coverage,
             )
         return features
+
+    def feature_names(self) -> List[str]:
+        return [
+            "peptide_score",
+            "peptide_coverage",
+            "peptide_correlation_score"
+        ]
