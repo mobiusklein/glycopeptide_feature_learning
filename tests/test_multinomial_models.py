@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from glycopeptide_feature_learning.test.common import datafile
+from .common import datafile
 
 from glycopeptide_feature_learning.multinomial_regression import (
     FragmentType, ProlineSpecializingModel, StubGlycopeptideCompositionModel,
