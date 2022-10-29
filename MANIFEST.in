@@ -1,2 +1,4 @@
 # include requirements.txt
 recursive-include src/glycopeptide_feature_learning/data *.txt
+recursive-include src/glycopeptide_feature_learning/_c *.pyx *.pxd *.h
+recursive-include src/glycopeptide_feature_learning/scoring/_c *.pyx *.pxd *.h
