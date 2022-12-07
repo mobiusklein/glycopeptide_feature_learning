@@ -3249,11 +3249,12 @@ struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet {
   float oxonium_ion_intensity_utilization;
   int n_stub_glycopeptide_matches;
   float peptide_coverage;
+  float total_signal_utilization;
 };
 
 
-/* "glycan_profiling/_c/tandem/spectrum_match.pxd":47
- *                           int n_stub_glycopeptide_matches, float peptide_coverage)
+/* "glycan_profiling/_c/tandem/spectrum_match.pxd":48
+ *                           int n_stub_glycopeptide_matches, float peptide_coverage, float total_signal_utilization)
  * 
  * cdef class FDRSet(object):             # <<<<<<<<<<<<<<
  *     cdef:
@@ -3269,7 +3270,7 @@ struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet {
 };
 
 
-/* "glycan_profiling/_c/tandem/spectrum_match.pxd":65
+/* "glycan_profiling/_c/tandem/spectrum_match.pxd":66
  * @cython.final
  * @cython.freelist(1000)
  * cdef class PeakFoundRecord(object):             # <<<<<<<<<<<<<<
@@ -3284,7 +3285,7 @@ struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord
 };
 
 
-/* "glycan_profiling/_c/tandem/spectrum_match.pxd":79
+/* "glycan_profiling/_c/tandem/spectrum_match.pxd":80
  * 
  * @cython.final
  * cdef class PeakLabelMap(object):             # <<<<<<<<<<<<<<
@@ -3313,7 +3314,7 @@ struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelSc
 };
 
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":133
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":142
  *             raise IndexError(i)
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -4253,13 +4254,13 @@ struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet
   int (*_eq)(struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet *, struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet *, int __pyx_skip_dispatch);
   PyObject *(*pack)(struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet *, int __pyx_skip_dispatch);
   PyObject *(*values)(struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet *, int __pyx_skip_dispatch);
-  struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet *(*_create)(float, float, float, float, float, float, int, float);
+  struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet *(*_create)(float, float, float, float, float, float, int, float, float);
 };
 static struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet *__pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet;
 
 
-/* "glycan_profiling/_c/tandem/spectrum_match.pxd":47
- *                           int n_stub_glycopeptide_matches, float peptide_coverage)
+/* "glycan_profiling/_c/tandem/spectrum_match.pxd":48
+ *                           int n_stub_glycopeptide_matches, float peptide_coverage, float total_signal_utilization)
  * 
  * cdef class FDRSet(object):             # <<<<<<<<<<<<<<
  *     cdef:
@@ -4276,7 +4277,7 @@ struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet {
 static struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet *__pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet;
 
 
-/* "glycan_profiling/_c/tandem/spectrum_match.pxd":65
+/* "glycan_profiling/_c/tandem/spectrum_match.pxd":66
  * @cython.final
  * @cython.freelist(1000)
  * cdef class PeakFoundRecord(object):             # <<<<<<<<<<<<<<
@@ -4291,7 +4292,7 @@ static struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_P
 static CYTHON_INLINE struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord *__pyx_f_16glycan_profiling_2_c_6tandem_14spectrum_match_15PeakFoundRecord__create(struct __pyx_obj_12ms_deisotope_2_c_8peak_set_DeconvolutedPeak *, int);
 
 
-/* "glycan_profiling/_c/tandem/spectrum_match.pxd":79
+/* "glycan_profiling/_c/tandem/spectrum_match.pxd":80
  * 
  * @cython.final
  * cdef class PeakLabelMap(object):             # <<<<<<<<<<<<<<
@@ -4317,7 +4318,7 @@ static struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_P
 
 struct __pyx_vtabstruct_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet {
   struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet __pyx_base;
-  struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *(*_create_model_score_set)(float, float, float, float, float, float, int, float, float, int, float);
+  struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *(*_create_model_score_set)(float, float, float, float, float, float, int, float, float, float, int, float);
 };
 static struct __pyx_vtabstruct_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_vtabptr_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet;
 
@@ -4945,7 +4946,7 @@ static int __Pyx_ImportVoidPtr(PyObject *module, const char *name, void **p, con
 static int __Pyx_InitStrings(__Pyx_StringTabEntry *t);
 
 static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_pack(struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_v_self, int __pyx_skip_dispatch); /* proto*/
-static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet__create_model_score_set(float __pyx_v_glycopeptide_score, float __pyx_v_peptide_score, float __pyx_v_glycan_score, float __pyx_v_glycan_coverage, float __pyx_v_stub_glycopeptide_intensity_utilization, float __pyx_v_oxonium_ion_intensity_utilization, int __pyx_v_n_stub_glycopeptide_matches, float __pyx_v_peptide_coverage, float __pyx_v_peptide_correlation, int __pyx_v_peptide_backbone_count, float __pyx_v_glycan_correlation); /* proto*/
+static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet__create_model_score_set(float __pyx_v_glycopeptide_score, float __pyx_v_peptide_score, float __pyx_v_glycan_score, float __pyx_v_glycan_coverage, float __pyx_v_stub_glycopeptide_intensity_utilization, float __pyx_v_oxonium_ion_intensity_utilization, int __pyx_v_n_stub_glycopeptide_matches, float __pyx_v_peptide_coverage, float __pyx_v_total_signal_utilization, float __pyx_v_peptide_correlation, int __pyx_v_peptide_backbone_count, float __pyx_v_glycan_correlation); /* proto*/
 static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_values(struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_v_self, int __pyx_skip_dispatch); /* proto*/
 static CYTHON_INLINE struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord *__pyx_f_16glycan_profiling_2_c_6tandem_14spectrum_match_15PeakFoundRecord__create(struct __pyx_obj_12ms_deisotope_2_c_8peak_set_DeconvolutedPeak *__pyx_v_peak, int __pyx_v_checked); /* proto*/
 
@@ -5227,10 +5228,11 @@ static const char __pyx_k_ModelScoreSet___iter[] = "ModelScoreSet.__iter__";
 static const char __pyx_k_from_spectrum_matcher[] = "from_spectrum_matcher";
 static const char __pyx_k_peptide_backbone_count[] = "peptide_backbone_count";
 static const char __pyx_k_oxonium_ion_utilization[] = "oxonium_ion_utilization";
+static const char __pyx_k_total_signal_utilization[] = "total_signal_utilization";
 static const char __pyx_k_n_stub_glycopeptide_matches[] = "n_stub_glycopeptide_matches";
 static const char __pyx_k_count_peptide_Y_ion_utilization[] = "count_peptide_Y_ion_utilization";
 static const char __pyx_k_numpy_core_multiarray_failed_to[] = "numpy.core.multiarray failed to import";
-static const char __pyx_k_self___class_____name___self_gl[] = "{self.__class__.__name__}({self.glycopeptide_score}, {self.peptide_score}, {self.glycan_score}, {self.glycan_coverage}, {self.stub_glycopeptide_intensity_utilization}, {self.oxonium_ion_intensity_utilization}, {self.n_stub_glycopeptide_matches}, {self.peptide_coverage}, {self.peptide_correlation}, {self.peptide_backbone_count}, {self.glycan_correlation})";
+static const char __pyx_k_self___class_____name___self_gl[] = "{self.__class__.__name__}({self.glycopeptide_score}, {self.peptide_score}, {self.glycan_score}, {self.glycan_coverage}, {self.stub_glycopeptide_intensity_utilization}, {self.oxonium_ion_intensity_utilization}, {self.n_stub_glycopeptide_matches}, {self.peptide_coverage}, {self.total_signal_utilization}, {self.peptide_correlation}, {self.peptide_backbone_count}, {self.glycan_correlation})";
 static const char __pyx_k_glycopeptide_feature_learning_sc[] = "glycopeptide_feature_learning.scoring._c.score_set";
 static const char __pyx_k_numpy_core_umath_failed_to_impor[] = "numpy.core.umath failed to import";
 static const char __pyx_k_oxonium_ion_intensity_utilizatio[] = "oxonium_ion_intensity_utilization";
@@ -5282,9 +5284,10 @@ static PyObject *__pyx_n_s_super;
 static PyObject *__pyx_n_s_temp;
 static PyObject *__pyx_n_s_test;
 static PyObject *__pyx_n_s_throw;
+static PyObject *__pyx_n_s_total_signal_utilization;
 static PyObject *__pyx_n_s_unpack;
 static PyObject *__pyx_n_s_values;
-static int __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet___init__(struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_v_self, PyObject *__pyx_v_glycopeptide_score, PyObject *__pyx_v_peptide_score, PyObject *__pyx_v_glycan_score, PyObject *__pyx_v_glycan_coverage, PyObject *__pyx_v_stub_glycopeptide_intensity_utilization, PyObject *__pyx_v_oxonium_ion_intensity_utilization, PyObject *__pyx_v_n_stub_glycopeptide_matches, PyObject *__pyx_v_peptide_coverage, PyObject *__pyx_v_peptide_correlation, PyObject *__pyx_v_peptide_backbone_count, PyObject *__pyx_v_glycan_correlation); /* proto */
+static int __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet___init__(struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_v_self, PyObject *__pyx_v_glycopeptide_score, PyObject *__pyx_v_peptide_score, PyObject *__pyx_v_glycan_score, PyObject *__pyx_v_glycan_coverage, PyObject *__pyx_v_stub_glycopeptide_intensity_utilization, PyObject *__pyx_v_oxonium_ion_intensity_utilization, PyObject *__pyx_v_n_stub_glycopeptide_matches, PyObject *__pyx_v_peptide_coverage, PyObject *__pyx_v_total_signal_utilization, PyObject *__pyx_v_peptide_correlation, PyObject *__pyx_v_peptide_backbone_count, PyObject *__pyx_v_glycan_correlation); /* proto */
 static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_2pack(struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_4unpack(PyObject *__pyx_v_data); /* proto */
 static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_6__repr__(struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_v_self); /* proto */
@@ -5317,7 +5320,7 @@ static PyObject *__pyx_codeobj__4;
  * cdef class ModelScoreSet(ScoreSet):
  *     def __init__(self, glycopeptide_score=0., peptide_score=0., glycan_score=0., glycan_coverage=0.,             # <<<<<<<<<<<<<<
  *                  stub_glycopeptide_intensity_utilization=0., oxonium_ion_intensity_utilization=0.,
- *                  n_stub_glycopeptide_matches=0, peptide_coverage=0.0, peptide_correlation=0.0, peptide_backbone_count=0,
+ *                  n_stub_glycopeptide_matches=0, peptide_coverage=0.0, total_signal_utilization=0.0,
  */
 
 /* Python wrapper */
@@ -5331,6 +5334,7 @@ static int __pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13Mo
   PyObject *__pyx_v_oxonium_ion_intensity_utilization = 0;
   PyObject *__pyx_v_n_stub_glycopeptide_matches = 0;
   PyObject *__pyx_v_peptide_coverage = 0;
+  PyObject *__pyx_v_total_signal_utilization = 0;
   PyObject *__pyx_v_peptide_correlation = 0;
   PyObject *__pyx_v_peptide_backbone_count = 0;
   PyObject *__pyx_v_glycan_correlation = 0;
@@ -5341,8 +5345,8 @@ static int __pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13Mo
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__init__ (wrapper)", 0);
   {
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_glycopeptide_score,&__pyx_n_s_peptide_score,&__pyx_n_s_glycan_score,&__pyx_n_s_glycan_coverage,&__pyx_n_s_stub_glycopeptide_intensity_util,&__pyx_n_s_oxonium_ion_intensity_utilizatio,&__pyx_n_s_n_stub_glycopeptide_matches,&__pyx_n_s_peptide_coverage,&__pyx_n_s_peptide_correlation,&__pyx_n_s_peptide_backbone_count,&__pyx_n_s_glycan_correlation,0};
-    PyObject* values[11] = {0,0,0,0,0,0,0,0,0,0,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_glycopeptide_score,&__pyx_n_s_peptide_score,&__pyx_n_s_glycan_score,&__pyx_n_s_glycan_coverage,&__pyx_n_s_stub_glycopeptide_intensity_util,&__pyx_n_s_oxonium_ion_intensity_utilizatio,&__pyx_n_s_n_stub_glycopeptide_matches,&__pyx_n_s_peptide_coverage,&__pyx_n_s_total_signal_utilization,&__pyx_n_s_peptide_correlation,&__pyx_n_s_peptide_backbone_count,&__pyx_n_s_glycan_correlation,0};
+    PyObject* values[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
     values[0] = ((PyObject *)__pyx_float_0_);
     values[1] = ((PyObject *)__pyx_float_0_);
     values[2] = ((PyObject *)__pyx_float_0_);
@@ -5352,12 +5356,15 @@ static int __pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13Mo
     values[6] = ((PyObject *)__pyx_int_0);
     values[7] = ((PyObject *)__pyx_float_0_0);
     values[8] = ((PyObject *)__pyx_float_0_0);
-    values[9] = ((PyObject *)__pyx_int_0);
-    values[10] = ((PyObject *)__pyx_float_0_0);
+    values[9] = ((PyObject *)__pyx_float_0_0);
+    values[10] = ((PyObject *)__pyx_int_0);
+    values[11] = ((PyObject *)__pyx_float_0_0);
     if (unlikely(__pyx_kwds)) {
       Py_ssize_t kw_args;
       const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
       switch (pos_args) {
+        case 12: values[11] = PyTuple_GET_ITEM(__pyx_args, 11);
+        CYTHON_FALLTHROUGH;
         case 11: values[10] = PyTuple_GET_ITEM(__pyx_args, 10);
         CYTHON_FALLTHROUGH;
         case 10: values[9] = PyTuple_GET_ITEM(__pyx_args, 9);
@@ -5435,20 +5442,26 @@ static int __pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13Mo
         CYTHON_FALLTHROUGH;
         case  8:
         if (kw_args > 0) {
-          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_peptide_correlation);
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_total_signal_utilization);
           if (value) { values[8] = value; kw_args--; }
         }
         CYTHON_FALLTHROUGH;
         case  9:
         if (kw_args > 0) {
-          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_peptide_backbone_count);
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_peptide_correlation);
           if (value) { values[9] = value; kw_args--; }
         }
         CYTHON_FALLTHROUGH;
         case 10:
         if (kw_args > 0) {
-          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_glycan_correlation);
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_peptide_backbone_count);
           if (value) { values[10] = value; kw_args--; }
+        }
+        CYTHON_FALLTHROUGH;
+        case 11:
+        if (kw_args > 0) {
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_glycan_correlation);
+          if (value) { values[11] = value; kw_args--; }
         }
       }
       if (unlikely(kw_args > 0)) {
@@ -5456,6 +5469,8 @@ static int __pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13Mo
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
+        case 12: values[11] = PyTuple_GET_ITEM(__pyx_args, 11);
+        CYTHON_FALLTHROUGH;
         case 11: values[10] = PyTuple_GET_ITEM(__pyx_args, 10);
         CYTHON_FALLTHROUGH;
         case 10: values[9] = PyTuple_GET_ITEM(__pyx_args, 9);
@@ -5490,26 +5505,27 @@ static int __pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13Mo
     __pyx_v_oxonium_ion_intensity_utilization = values[5];
     __pyx_v_n_stub_glycopeptide_matches = values[6];
     __pyx_v_peptide_coverage = values[7];
-    __pyx_v_peptide_correlation = values[8];
-    __pyx_v_peptide_backbone_count = values[9];
-    __pyx_v_glycan_correlation = values[10];
+    __pyx_v_total_signal_utilization = values[8];
+    __pyx_v_peptide_correlation = values[9];
+    __pyx_v_peptide_backbone_count = values[10];
+    __pyx_v_glycan_correlation = values[11];
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__init__", 0, 0, 11, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 13, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__init__", 0, 0, 12, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 13, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("glycopeptide_feature_learning.scoring._c.score_set.ModelScoreSet.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return -1;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet___init__(((struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *)__pyx_v_self), __pyx_v_glycopeptide_score, __pyx_v_peptide_score, __pyx_v_glycan_score, __pyx_v_glycan_coverage, __pyx_v_stub_glycopeptide_intensity_utilization, __pyx_v_oxonium_ion_intensity_utilization, __pyx_v_n_stub_glycopeptide_matches, __pyx_v_peptide_coverage, __pyx_v_peptide_correlation, __pyx_v_peptide_backbone_count, __pyx_v_glycan_correlation);
+  __pyx_r = __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet___init__(((struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *)__pyx_v_self), __pyx_v_glycopeptide_score, __pyx_v_peptide_score, __pyx_v_glycan_score, __pyx_v_glycan_coverage, __pyx_v_stub_glycopeptide_intensity_utilization, __pyx_v_oxonium_ion_intensity_utilization, __pyx_v_n_stub_glycopeptide_matches, __pyx_v_peptide_coverage, __pyx_v_total_signal_utilization, __pyx_v_peptide_correlation, __pyx_v_peptide_backbone_count, __pyx_v_glycan_correlation);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static int __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet___init__(struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_v_self, PyObject *__pyx_v_glycopeptide_score, PyObject *__pyx_v_peptide_score, PyObject *__pyx_v_glycan_score, PyObject *__pyx_v_glycan_coverage, PyObject *__pyx_v_stub_glycopeptide_intensity_utilization, PyObject *__pyx_v_oxonium_ion_intensity_utilization, PyObject *__pyx_v_n_stub_glycopeptide_matches, PyObject *__pyx_v_peptide_coverage, PyObject *__pyx_v_peptide_correlation, PyObject *__pyx_v_peptide_backbone_count, PyObject *__pyx_v_glycan_correlation) {
+static int __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet___init__(struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_v_self, PyObject *__pyx_v_glycopeptide_score, PyObject *__pyx_v_peptide_score, PyObject *__pyx_v_glycan_score, PyObject *__pyx_v_glycan_coverage, PyObject *__pyx_v_stub_glycopeptide_intensity_utilization, PyObject *__pyx_v_oxonium_ion_intensity_utilization, PyObject *__pyx_v_n_stub_glycopeptide_matches, PyObject *__pyx_v_peptide_coverage, PyObject *__pyx_v_total_signal_utilization, PyObject *__pyx_v_peptide_correlation, PyObject *__pyx_v_peptide_backbone_count, PyObject *__pyx_v_glycan_correlation) {
   int __pyx_r;
   __Pyx_RefNannyDeclarations
   float __pyx_t_1;
@@ -5519,114 +5535,124 @@ static int __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13Mo
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__init__", 0);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":17
- *                  n_stub_glycopeptide_matches=0, peptide_coverage=0.0, peptide_correlation=0.0, peptide_backbone_count=0,
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":18
+ *                  peptide_correlation=0.0, peptide_backbone_count=0,
  *                  glycan_correlation=0.0):
  *         self.glycopeptide_score = glycopeptide_score             # <<<<<<<<<<<<<<
  *         self.peptide_score = peptide_score
  *         self.glycan_score = glycan_score
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_glycopeptide_score); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 17, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_glycopeptide_score); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 18, __pyx_L1_error)
   __pyx_v_self->__pyx_base.glycopeptide_score = __pyx_t_1;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":18
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":19
  *                  glycan_correlation=0.0):
  *         self.glycopeptide_score = glycopeptide_score
  *         self.peptide_score = peptide_score             # <<<<<<<<<<<<<<
  *         self.glycan_score = glycan_score
  *         self.glycan_coverage = glycan_coverage
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_peptide_score); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 18, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_peptide_score); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 19, __pyx_L1_error)
   __pyx_v_self->__pyx_base.peptide_score = __pyx_t_1;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":19
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":20
  *         self.glycopeptide_score = glycopeptide_score
  *         self.peptide_score = peptide_score
  *         self.glycan_score = glycan_score             # <<<<<<<<<<<<<<
  *         self.glycan_coverage = glycan_coverage
  * 
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_glycan_score); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 19, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_glycan_score); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 20, __pyx_L1_error)
   __pyx_v_self->__pyx_base.glycan_score = __pyx_t_1;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":20
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":21
  *         self.peptide_score = peptide_score
  *         self.glycan_score = glycan_score
  *         self.glycan_coverage = glycan_coverage             # <<<<<<<<<<<<<<
  * 
  *         self.stub_glycopeptide_intensity_utilization = stub_glycopeptide_intensity_utilization
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_glycan_coverage); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 20, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_glycan_coverage); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 21, __pyx_L1_error)
   __pyx_v_self->__pyx_base.glycan_coverage = __pyx_t_1;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":22
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":23
  *         self.glycan_coverage = glycan_coverage
  * 
  *         self.stub_glycopeptide_intensity_utilization = stub_glycopeptide_intensity_utilization             # <<<<<<<<<<<<<<
  *         self.oxonium_ion_intensity_utilization = oxonium_ion_intensity_utilization
  *         self.n_stub_glycopeptide_matches = n_stub_glycopeptide_matches
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_stub_glycopeptide_intensity_utilization); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 22, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_stub_glycopeptide_intensity_utilization); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 23, __pyx_L1_error)
   __pyx_v_self->__pyx_base.stub_glycopeptide_intensity_utilization = __pyx_t_1;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":23
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":24
  * 
  *         self.stub_glycopeptide_intensity_utilization = stub_glycopeptide_intensity_utilization
  *         self.oxonium_ion_intensity_utilization = oxonium_ion_intensity_utilization             # <<<<<<<<<<<<<<
  *         self.n_stub_glycopeptide_matches = n_stub_glycopeptide_matches
  * 
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_oxonium_ion_intensity_utilization); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 23, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_oxonium_ion_intensity_utilization); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 24, __pyx_L1_error)
   __pyx_v_self->__pyx_base.oxonium_ion_intensity_utilization = __pyx_t_1;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":24
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":25
  *         self.stub_glycopeptide_intensity_utilization = stub_glycopeptide_intensity_utilization
  *         self.oxonium_ion_intensity_utilization = oxonium_ion_intensity_utilization
  *         self.n_stub_glycopeptide_matches = n_stub_glycopeptide_matches             # <<<<<<<<<<<<<<
  * 
  *         self.peptide_coverage = peptide_coverage
  */
-  __pyx_t_2 = __Pyx_PyInt_As_int(__pyx_v_n_stub_glycopeptide_matches); if (unlikely((__pyx_t_2 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 24, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyInt_As_int(__pyx_v_n_stub_glycopeptide_matches); if (unlikely((__pyx_t_2 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 25, __pyx_L1_error)
   __pyx_v_self->__pyx_base.n_stub_glycopeptide_matches = __pyx_t_2;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":26
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":27
  *         self.n_stub_glycopeptide_matches = n_stub_glycopeptide_matches
  * 
  *         self.peptide_coverage = peptide_coverage             # <<<<<<<<<<<<<<
+ *         self.total_signal_utilization = total_signal_utilization
  * 
- *         self.peptide_correlation = peptide_correlation
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_peptide_coverage); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_peptide_coverage); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 27, __pyx_L1_error)
   __pyx_v_self->__pyx_base.peptide_coverage = __pyx_t_1;
 
   /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":28
+ * 
  *         self.peptide_coverage = peptide_coverage
+ *         self.total_signal_utilization = total_signal_utilization             # <<<<<<<<<<<<<<
+ * 
+ *         self.peptide_correlation = peptide_correlation
+ */
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_total_signal_utilization); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 28, __pyx_L1_error)
+  __pyx_v_self->__pyx_base.total_signal_utilization = __pyx_t_1;
+
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":30
+ *         self.total_signal_utilization = total_signal_utilization
  * 
  *         self.peptide_correlation = peptide_correlation             # <<<<<<<<<<<<<<
  *         self.peptide_backbone_count = peptide_backbone_count
  *         self.glycan_correlation = glycan_correlation
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_peptide_correlation); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 28, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_peptide_correlation); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 30, __pyx_L1_error)
   __pyx_v_self->peptide_correlation = __pyx_t_1;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":29
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":31
  * 
  *         self.peptide_correlation = peptide_correlation
  *         self.peptide_backbone_count = peptide_backbone_count             # <<<<<<<<<<<<<<
  *         self.glycan_correlation = glycan_correlation
  * 
  */
-  __pyx_t_2 = __Pyx_PyInt_As_int(__pyx_v_peptide_backbone_count); if (unlikely((__pyx_t_2 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 29, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyInt_As_int(__pyx_v_peptide_backbone_count); if (unlikely((__pyx_t_2 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 31, __pyx_L1_error)
   __pyx_v_self->peptide_backbone_count = __pyx_t_2;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":30
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":32
  *         self.peptide_correlation = peptide_correlation
  *         self.peptide_backbone_count = peptide_backbone_count
  *         self.glycan_correlation = glycan_correlation             # <<<<<<<<<<<<<<
  * 
  *     cpdef bytearray pack(self):
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_glycan_correlation); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 30, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_glycan_correlation); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 32, __pyx_L1_error)
   __pyx_v_self->glycan_correlation = __pyx_t_1;
 
   /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":13
@@ -5634,7 +5660,7 @@ static int __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13Mo
  * cdef class ModelScoreSet(ScoreSet):
  *     def __init__(self, glycopeptide_score=0., peptide_score=0., glycan_score=0., glycan_coverage=0.,             # <<<<<<<<<<<<<<
  *                  stub_glycopeptide_intensity_utilization=0., oxonium_ion_intensity_utilization=0.,
- *                  n_stub_glycopeptide_matches=0, peptide_coverage=0.0, peptide_correlation=0.0, peptide_backbone_count=0,
+ *                  n_stub_glycopeptide_matches=0, peptide_coverage=0.0, total_signal_utilization=0.0,
  */
 
   /* function exit code */
@@ -5648,7 +5674,7 @@ static int __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13Mo
   return __pyx_r;
 }
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":32
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":34
  *         self.glycan_correlation = glycan_correlation
  * 
  *     cpdef bytearray pack(self):             # <<<<<<<<<<<<<<
@@ -5658,7 +5684,7 @@ static int __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13Mo
 
 static PyObject *__pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_3pack(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
 static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_pack(struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_v_self, int __pyx_skip_dispatch) {
-  float __pyx_v_data[11];
+  float __pyx_v_data[12];
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -5679,7 +5705,7 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
     if (unlikely(!__Pyx_object_dict_version_matches(((PyObject *)__pyx_v_self), __pyx_tp_dict_version, __pyx_obj_dict_version))) {
       PY_UINT64_T __pyx_type_dict_guard = __Pyx_get_tp_dict_version(((PyObject *)__pyx_v_self));
       #endif
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 32, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 34, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)(void*)__pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_3pack)) {
         __Pyx_XDECREF(__pyx_r);
@@ -5696,10 +5722,10 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
         }
         __pyx_t_2 = (__pyx_t_4) ? __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4) : __Pyx_PyObject_CallNoArg(__pyx_t_3);
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 32, __pyx_L1_error)
+        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 34, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-        if (!(likely(PyByteArray_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "bytearray", Py_TYPE(__pyx_t_2)->tp_name), 0))) __PYX_ERR(0, 32, __pyx_L1_error)
+        if (!(likely(PyByteArray_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "bytearray", Py_TYPE(__pyx_t_2)->tp_name), 0))) __PYX_ERR(0, 34, __pyx_L1_error)
         __pyx_r = ((PyObject*)__pyx_t_2);
         __pyx_t_2 = 0;
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -5718,7 +5744,7 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
     #endif
   }
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":35
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":37
  *         cdef:
  *             float[NUM_SCORES] data
  *         data[0] = self.glycopeptide_score             # <<<<<<<<<<<<<<
@@ -5728,7 +5754,7 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
   __pyx_t_5 = __pyx_v_self->__pyx_base.glycopeptide_score;
   (__pyx_v_data[0]) = __pyx_t_5;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":36
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":38
  *             float[NUM_SCORES] data
  *         data[0] = self.glycopeptide_score
  *         data[1] = self.peptide_score             # <<<<<<<<<<<<<<
@@ -5738,7 +5764,7 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
   __pyx_t_5 = __pyx_v_self->__pyx_base.peptide_score;
   (__pyx_v_data[1]) = __pyx_t_5;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":37
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":39
  *         data[0] = self.glycopeptide_score
  *         data[1] = self.peptide_score
  *         data[2] = self.glycan_score             # <<<<<<<<<<<<<<
@@ -5748,7 +5774,7 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
   __pyx_t_5 = __pyx_v_self->__pyx_base.glycan_score;
   (__pyx_v_data[2]) = __pyx_t_5;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":38
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":40
  *         data[1] = self.peptide_score
  *         data[2] = self.glycan_score
  *         data[3] = self.glycan_coverage             # <<<<<<<<<<<<<<
@@ -5758,7 +5784,7 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
   __pyx_t_5 = __pyx_v_self->__pyx_base.glycan_coverage;
   (__pyx_v_data[3]) = __pyx_t_5;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":39
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":41
  *         data[2] = self.glycan_score
  *         data[3] = self.glycan_coverage
  *         data[4] = self.stub_glycopeptide_intensity_utilization             # <<<<<<<<<<<<<<
@@ -5768,7 +5794,7 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
   __pyx_t_5 = __pyx_v_self->__pyx_base.stub_glycopeptide_intensity_utilization;
   (__pyx_v_data[4]) = __pyx_t_5;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":40
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":42
  *         data[3] = self.glycan_coverage
  *         data[4] = self.stub_glycopeptide_intensity_utilization
  *         data[5] = self.oxonium_ion_intensity_utilization             # <<<<<<<<<<<<<<
@@ -5778,69 +5804,79 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
   __pyx_t_5 = __pyx_v_self->__pyx_base.oxonium_ion_intensity_utilization;
   (__pyx_v_data[5]) = __pyx_t_5;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":41
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":43
  *         data[4] = self.stub_glycopeptide_intensity_utilization
  *         data[5] = self.oxonium_ion_intensity_utilization
  *         data[6] = <int>self.n_stub_glycopeptide_matches             # <<<<<<<<<<<<<<
  *         data[7] = self.peptide_coverage
- *         data[8] = self.peptide_correlation
+ *         data[8] = self.total_signal_utilization
  */
   (__pyx_v_data[6]) = ((int)__pyx_v_self->__pyx_base.n_stub_glycopeptide_matches);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":42
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":44
  *         data[5] = self.oxonium_ion_intensity_utilization
  *         data[6] = <int>self.n_stub_glycopeptide_matches
  *         data[7] = self.peptide_coverage             # <<<<<<<<<<<<<<
- *         data[8] = self.peptide_correlation
- *         data[9] = <int>self.peptide_backbone_count
+ *         data[8] = self.total_signal_utilization
+ *         data[9] = self.peptide_correlation
  */
   __pyx_t_5 = __pyx_v_self->__pyx_base.peptide_coverage;
   (__pyx_v_data[7]) = __pyx_t_5;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":43
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":45
  *         data[6] = <int>self.n_stub_glycopeptide_matches
  *         data[7] = self.peptide_coverage
- *         data[8] = self.peptide_correlation             # <<<<<<<<<<<<<<
- *         data[9] = <int>self.peptide_backbone_count
- *         data[10] = self.glycan_correlation
+ *         data[8] = self.total_signal_utilization             # <<<<<<<<<<<<<<
+ *         data[9] = self.peptide_correlation
+ *         data[10] = <int>self.peptide_backbone_count
  */
-  __pyx_t_5 = __pyx_v_self->peptide_correlation;
+  __pyx_t_5 = __pyx_v_self->__pyx_base.total_signal_utilization;
   (__pyx_v_data[8]) = __pyx_t_5;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":44
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":46
  *         data[7] = self.peptide_coverage
- *         data[8] = self.peptide_correlation
- *         data[9] = <int>self.peptide_backbone_count             # <<<<<<<<<<<<<<
- *         data[10] = self.glycan_correlation
+ *         data[8] = self.total_signal_utilization
+ *         data[9] = self.peptide_correlation             # <<<<<<<<<<<<<<
+ *         data[10] = <int>self.peptide_backbone_count
+ *         data[11] = self.glycan_correlation
+ */
+  __pyx_t_5 = __pyx_v_self->peptide_correlation;
+  (__pyx_v_data[9]) = __pyx_t_5;
+
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":47
+ *         data[8] = self.total_signal_utilization
+ *         data[9] = self.peptide_correlation
+ *         data[10] = <int>self.peptide_backbone_count             # <<<<<<<<<<<<<<
+ *         data[11] = self.glycan_correlation
  *         return ((<char*>data)[:sizeof(float) * NUM_SCORES])
  */
-  (__pyx_v_data[9]) = ((int)__pyx_v_self->peptide_backbone_count);
+  (__pyx_v_data[10]) = ((int)__pyx_v_self->peptide_backbone_count);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":45
- *         data[8] = self.peptide_correlation
- *         data[9] = <int>self.peptide_backbone_count
- *         data[10] = self.glycan_correlation             # <<<<<<<<<<<<<<
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":48
+ *         data[9] = self.peptide_correlation
+ *         data[10] = <int>self.peptide_backbone_count
+ *         data[11] = self.glycan_correlation             # <<<<<<<<<<<<<<
  *         return ((<char*>data)[:sizeof(float) * NUM_SCORES])
  * 
  */
   __pyx_t_5 = __pyx_v_self->glycan_correlation;
-  (__pyx_v_data[10]) = __pyx_t_5;
+  (__pyx_v_data[11]) = __pyx_t_5;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":46
- *         data[9] = <int>self.peptide_backbone_count
- *         data[10] = self.glycan_correlation
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":49
+ *         data[10] = <int>self.peptide_backbone_count
+ *         data[11] = self.glycan_correlation
  *         return ((<char*>data)[:sizeof(float) * NUM_SCORES])             # <<<<<<<<<<<<<<
  * 
  *     @staticmethod
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyByteArray_FromStringAndSize(((char *)__pyx_v_data) + 0, ((sizeof(float)) * 11) - 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 46, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyByteArray_FromStringAndSize(((char *)__pyx_v_data) + 0, ((sizeof(float)) * 12) - 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 49, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":32
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":34
  *         self.glycan_correlation = glycan_correlation
  * 
  *     cpdef bytearray pack(self):             # <<<<<<<<<<<<<<
@@ -5885,7 +5921,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("pack", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_pack(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 32, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_pack(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 34, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -5902,7 +5938,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   return __pyx_r;
 }
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":49
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":52
  * 
  *     @staticmethod
  *     def unpack(bytearray data):             # <<<<<<<<<<<<<<
@@ -5941,7 +5977,7 @@ static PyObject *__pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_se
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "unpack") < 0)) __PYX_ERR(0, 49, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "unpack") < 0)) __PYX_ERR(0, 52, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
@@ -5952,13 +5988,13 @@ static PyObject *__pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("unpack", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 49, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("unpack", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 52, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("glycopeptide_feature_learning.scoring._c.score_set.ModelScoreSet.unpack", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_data), (&PyByteArray_Type), 1, "data", 1))) __PYX_ERR(0, 49, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_data), (&PyByteArray_Type), 1, "data", 1))) __PYX_ERR(0, 52, __pyx_L1_error)
   __pyx_r = __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_4unpack(__pyx_v_data);
 
   /* function exit code */
@@ -5979,6 +6015,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   float __pyx_v_peptide_coverage;
   float __pyx_v_peptide_correlation;
   int __pyx_v_peptide_backbone_count;
+  float __pyx_v_total_signal_utilization;
   float __pyx_v_glycan_correlation;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
@@ -5989,17 +6026,17 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("unpack", 0);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":60
- *             int peptide_backbone_count
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":64
+ *             float total_signal_utilization
  *             float glycan_correlation
  *         temp = data             # <<<<<<<<<<<<<<
  *         buff = <float*>(temp)
  *         stub_utilization = buff[4]
  */
-  __pyx_t_1 = __Pyx_PyObject_AsWritableString(__pyx_v_data); if (unlikely((!__pyx_t_1) && PyErr_Occurred())) __PYX_ERR(0, 60, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_AsWritableString(__pyx_v_data); if (unlikely((!__pyx_t_1) && PyErr_Occurred())) __PYX_ERR(0, 64, __pyx_L1_error)
   __pyx_v_temp = __pyx_t_1;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":61
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":65
  *             float glycan_correlation
  *         temp = data
  *         buff = <float*>(temp)             # <<<<<<<<<<<<<<
@@ -6008,7 +6045,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  */
   __pyx_v_buff = ((float *)__pyx_v_temp);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":62
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":66
  *         temp = data
  *         buff = <float*>(temp)
  *         stub_utilization = buff[4]             # <<<<<<<<<<<<<<
@@ -6017,7 +6054,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  */
   __pyx_v_stub_utilization = (__pyx_v_buff[4]);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":63
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":67
  *         buff = <float*>(temp)
  *         stub_utilization = buff[4]
  *         oxonium_utilization = buff[5]             # <<<<<<<<<<<<<<
@@ -6026,74 +6063,83 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  */
   __pyx_v_oxonium_utilization = (__pyx_v_buff[5]);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":64
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":68
  *         stub_utilization = buff[4]
  *         oxonium_utilization = buff[5]
  *         n_stub_glycopeptide_matches = <int>buff[6]             # <<<<<<<<<<<<<<
  *         peptide_coverage = buff[7]
- *         peptide_correlation = buff[8]
+ *         total_signal_utilization = buff[8]
  */
   __pyx_v_n_stub_glycopeptide_matches = ((int)(__pyx_v_buff[6]));
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":65
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":69
  *         oxonium_utilization = buff[5]
  *         n_stub_glycopeptide_matches = <int>buff[6]
  *         peptide_coverage = buff[7]             # <<<<<<<<<<<<<<
- *         peptide_correlation = buff[8]
- *         peptide_backbone_count = <int>buff[9]
+ *         total_signal_utilization = buff[8]
+ *         peptide_correlation = buff[9]
  */
   __pyx_v_peptide_coverage = (__pyx_v_buff[7]);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":66
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":70
  *         n_stub_glycopeptide_matches = <int>buff[6]
  *         peptide_coverage = buff[7]
- *         peptide_correlation = buff[8]             # <<<<<<<<<<<<<<
- *         peptide_backbone_count = <int>buff[9]
- *         glycan_correlation = buff[10]
+ *         total_signal_utilization = buff[8]             # <<<<<<<<<<<<<<
+ *         peptide_correlation = buff[9]
+ *         peptide_backbone_count = <int>buff[10]
  */
-  __pyx_v_peptide_correlation = (__pyx_v_buff[8]);
+  __pyx_v_total_signal_utilization = (__pyx_v_buff[8]);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":67
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":71
  *         peptide_coverage = buff[7]
- *         peptide_correlation = buff[8]
- *         peptide_backbone_count = <int>buff[9]             # <<<<<<<<<<<<<<
- *         glycan_correlation = buff[10]
+ *         total_signal_utilization = buff[8]
+ *         peptide_correlation = buff[9]             # <<<<<<<<<<<<<<
+ *         peptide_backbone_count = <int>buff[10]
+ *         glycan_correlation = buff[11]
+ */
+  __pyx_v_peptide_correlation = (__pyx_v_buff[9]);
+
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":72
+ *         total_signal_utilization = buff[8]
+ *         peptide_correlation = buff[9]
+ *         peptide_backbone_count = <int>buff[10]             # <<<<<<<<<<<<<<
+ *         glycan_correlation = buff[11]
  *         return ModelScoreSet._create_model_score_set(
  */
-  __pyx_v_peptide_backbone_count = ((int)(__pyx_v_buff[9]));
+  __pyx_v_peptide_backbone_count = ((int)(__pyx_v_buff[10]));
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":68
- *         peptide_correlation = buff[8]
- *         peptide_backbone_count = <int>buff[9]
- *         glycan_correlation = buff[10]             # <<<<<<<<<<<<<<
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":73
+ *         peptide_correlation = buff[9]
+ *         peptide_backbone_count = <int>buff[10]
+ *         glycan_correlation = buff[11]             # <<<<<<<<<<<<<<
  *         return ModelScoreSet._create_model_score_set(
  *             buff[0], buff[1], buff[2], buff[3], stub_utilization,
  */
-  __pyx_v_glycan_correlation = (__pyx_v_buff[10]);
+  __pyx_v_glycan_correlation = (__pyx_v_buff[11]);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":69
- *         peptide_backbone_count = <int>buff[9]
- *         glycan_correlation = buff[10]
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":74
+ *         peptide_backbone_count = <int>buff[10]
+ *         glycan_correlation = buff[11]
  *         return ModelScoreSet._create_model_score_set(             # <<<<<<<<<<<<<<
  *             buff[0], buff[1], buff[2], buff[3], stub_utilization,
  *             oxonium_utilization, n_stub_glycopeptide_matches, peptide_coverage,
  */
   __Pyx_XDECREF(__pyx_r);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":72
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":77
  *             buff[0], buff[1], buff[2], buff[3], stub_utilization,
  *             oxonium_utilization, n_stub_glycopeptide_matches, peptide_coverage,
- *             peptide_correlation, peptide_backbone_count, glycan_correlation)             # <<<<<<<<<<<<<<
+ *             total_signal_utilization, peptide_correlation, peptide_backbone_count, glycan_correlation)             # <<<<<<<<<<<<<<
  * 
  *     @staticmethod
  */
-  __pyx_t_2 = ((PyObject *)__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet__create_model_score_set((__pyx_v_buff[0]), (__pyx_v_buff[1]), (__pyx_v_buff[2]), (__pyx_v_buff[3]), __pyx_v_stub_utilization, __pyx_v_oxonium_utilization, __pyx_v_n_stub_glycopeptide_matches, __pyx_v_peptide_coverage, __pyx_v_peptide_correlation, __pyx_v_peptide_backbone_count, __pyx_v_glycan_correlation)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 69, __pyx_L1_error)
+  __pyx_t_2 = ((PyObject *)__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet__create_model_score_set((__pyx_v_buff[0]), (__pyx_v_buff[1]), (__pyx_v_buff[2]), (__pyx_v_buff[3]), __pyx_v_stub_utilization, __pyx_v_oxonium_utilization, __pyx_v_n_stub_glycopeptide_matches, __pyx_v_peptide_coverage, __pyx_v_total_signal_utilization, __pyx_v_peptide_correlation, __pyx_v_peptide_backbone_count, __pyx_v_glycan_correlation)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 74, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":49
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":52
  * 
  *     @staticmethod
  *     def unpack(bytearray data):             # <<<<<<<<<<<<<<
@@ -6112,15 +6158,15 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   return __pyx_r;
 }
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":75
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":80
  * 
  *     @staticmethod
  *     cdef ModelScoreSet _create_model_score_set(float glycopeptide_score, float peptide_score, float glycan_score, float glycan_coverage,             # <<<<<<<<<<<<<<
  *                                                float stub_glycopeptide_intensity_utilization, float oxonium_ion_intensity_utilization,
- *                                                int n_stub_glycopeptide_matches, float peptide_coverage, float peptide_correlation,
+ *                                                int n_stub_glycopeptide_matches, float peptide_coverage, float total_signal_utilization,
  */
 
-static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet__create_model_score_set(float __pyx_v_glycopeptide_score, float __pyx_v_peptide_score, float __pyx_v_glycan_score, float __pyx_v_glycan_coverage, float __pyx_v_stub_glycopeptide_intensity_utilization, float __pyx_v_oxonium_ion_intensity_utilization, int __pyx_v_n_stub_glycopeptide_matches, float __pyx_v_peptide_coverage, float __pyx_v_peptide_correlation, int __pyx_v_peptide_backbone_count, float __pyx_v_glycan_correlation) {
+static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet__create_model_score_set(float __pyx_v_glycopeptide_score, float __pyx_v_peptide_score, float __pyx_v_glycan_score, float __pyx_v_glycan_coverage, float __pyx_v_stub_glycopeptide_intensity_utilization, float __pyx_v_oxonium_ion_intensity_utilization, int __pyx_v_n_stub_glycopeptide_matches, float __pyx_v_peptide_coverage, float __pyx_v_total_signal_utilization, float __pyx_v_peptide_correlation, int __pyx_v_peptide_backbone_count, float __pyx_v_glycan_correlation) {
   struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_v_self = 0;
   struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
@@ -6130,19 +6176,19 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_create_model_score_set", 0);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":81
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":86
  *         cdef:
  *             ModelScoreSet self
  *         self = ModelScoreSet.__new__(ModelScoreSet)             # <<<<<<<<<<<<<<
  *         self.glycopeptide_score = glycopeptide_score
  *         self.peptide_score = peptide_score
  */
-  __pyx_t_1 = ((PyObject *)__pyx_tp_new_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet(((PyTypeObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet), __pyx_empty_tuple, NULL)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 81, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_tp_new_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet(((PyTypeObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet), __pyx_empty_tuple, NULL)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 86, __pyx_L1_error)
   __Pyx_GOTREF(((PyObject *)__pyx_t_1));
   __pyx_v_self = ((struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":82
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":87
  *             ModelScoreSet self
  *         self = ModelScoreSet.__new__(ModelScoreSet)
  *         self.glycopeptide_score = glycopeptide_score             # <<<<<<<<<<<<<<
@@ -6151,7 +6197,7 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
  */
   __pyx_v_self->__pyx_base.glycopeptide_score = __pyx_v_glycopeptide_score;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":83
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":88
  *         self = ModelScoreSet.__new__(ModelScoreSet)
  *         self.glycopeptide_score = glycopeptide_score
  *         self.peptide_score = peptide_score             # <<<<<<<<<<<<<<
@@ -6160,7 +6206,7 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
  */
   __pyx_v_self->__pyx_base.peptide_score = __pyx_v_peptide_score;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":84
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":89
  *         self.glycopeptide_score = glycopeptide_score
  *         self.peptide_score = peptide_score
  *         self.glycan_score = glycan_score             # <<<<<<<<<<<<<<
@@ -6169,7 +6215,7 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
  */
   __pyx_v_self->__pyx_base.glycan_score = __pyx_v_glycan_score;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":85
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":90
  *         self.peptide_score = peptide_score
  *         self.glycan_score = glycan_score
  *         self.glycan_coverage = glycan_coverage             # <<<<<<<<<<<<<<
@@ -6178,7 +6224,7 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
  */
   __pyx_v_self->__pyx_base.glycan_coverage = __pyx_v_glycan_coverage;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":86
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":91
  *         self.glycan_score = glycan_score
  *         self.glycan_coverage = glycan_coverage
  *         self.stub_glycopeptide_intensity_utilization = stub_glycopeptide_intensity_utilization             # <<<<<<<<<<<<<<
@@ -6187,7 +6233,7 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
  */
   __pyx_v_self->__pyx_base.stub_glycopeptide_intensity_utilization = __pyx_v_stub_glycopeptide_intensity_utilization;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":87
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":92
  *         self.glycan_coverage = glycan_coverage
  *         self.stub_glycopeptide_intensity_utilization = stub_glycopeptide_intensity_utilization
  *         self.oxonium_ion_intensity_utilization = oxonium_ion_intensity_utilization             # <<<<<<<<<<<<<<
@@ -6196,35 +6242,44 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
  */
   __pyx_v_self->__pyx_base.oxonium_ion_intensity_utilization = __pyx_v_oxonium_ion_intensity_utilization;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":88
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":93
  *         self.stub_glycopeptide_intensity_utilization = stub_glycopeptide_intensity_utilization
  *         self.oxonium_ion_intensity_utilization = oxonium_ion_intensity_utilization
  *         self.n_stub_glycopeptide_matches = n_stub_glycopeptide_matches             # <<<<<<<<<<<<<<
  *         self.peptide_coverage = peptide_coverage
- *         self.peptide_correlation = peptide_correlation
+ *         self.total_signal_utilization = total_signal_utilization
  */
   __pyx_v_self->__pyx_base.n_stub_glycopeptide_matches = __pyx_v_n_stub_glycopeptide_matches;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":89
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":94
  *         self.oxonium_ion_intensity_utilization = oxonium_ion_intensity_utilization
  *         self.n_stub_glycopeptide_matches = n_stub_glycopeptide_matches
  *         self.peptide_coverage = peptide_coverage             # <<<<<<<<<<<<<<
+ *         self.total_signal_utilization = total_signal_utilization
  *         self.peptide_correlation = peptide_correlation
- *         self.peptide_backbone_count = peptide_backbone_count
  */
   __pyx_v_self->__pyx_base.peptide_coverage = __pyx_v_peptide_coverage;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":90
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":95
  *         self.n_stub_glycopeptide_matches = n_stub_glycopeptide_matches
  *         self.peptide_coverage = peptide_coverage
+ *         self.total_signal_utilization = total_signal_utilization             # <<<<<<<<<<<<<<
+ *         self.peptide_correlation = peptide_correlation
+ *         self.peptide_backbone_count = peptide_backbone_count
+ */
+  __pyx_v_self->__pyx_base.total_signal_utilization = __pyx_v_total_signal_utilization;
+
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":96
+ *         self.peptide_coverage = peptide_coverage
+ *         self.total_signal_utilization = total_signal_utilization
  *         self.peptide_correlation = peptide_correlation             # <<<<<<<<<<<<<<
  *         self.peptide_backbone_count = peptide_backbone_count
  *         self.glycan_correlation = glycan_correlation
  */
   __pyx_v_self->peptide_correlation = __pyx_v_peptide_correlation;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":91
- *         self.peptide_coverage = peptide_coverage
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":97
+ *         self.total_signal_utilization = total_signal_utilization
  *         self.peptide_correlation = peptide_correlation
  *         self.peptide_backbone_count = peptide_backbone_count             # <<<<<<<<<<<<<<
  *         self.glycan_correlation = glycan_correlation
@@ -6232,7 +6287,7 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
  */
   __pyx_v_self->peptide_backbone_count = __pyx_v_peptide_backbone_count;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":92
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":98
  *         self.peptide_correlation = peptide_correlation
  *         self.peptide_backbone_count = peptide_backbone_count
  *         self.glycan_correlation = glycan_correlation             # <<<<<<<<<<<<<<
@@ -6241,7 +6296,7 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
  */
   __pyx_v_self->glycan_correlation = __pyx_v_glycan_correlation;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":93
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":99
  *         self.peptide_backbone_count = peptide_backbone_count
  *         self.glycan_correlation = glycan_correlation
  *         return self             # <<<<<<<<<<<<<<
@@ -6253,12 +6308,12 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
   __pyx_r = __pyx_v_self;
   goto __pyx_L0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":75
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":80
  * 
  *     @staticmethod
  *     cdef ModelScoreSet _create_model_score_set(float glycopeptide_score, float peptide_score, float glycan_score, float glycan_coverage,             # <<<<<<<<<<<<<<
  *                                                float stub_glycopeptide_intensity_utilization, float oxonium_ion_intensity_utilization,
- *                                                int n_stub_glycopeptide_matches, float peptide_coverage, float peptide_correlation,
+ *                                                int n_stub_glycopeptide_matches, float peptide_coverage, float total_signal_utilization,
  */
 
   /* function exit code */
@@ -6273,7 +6328,7 @@ static struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_
   return __pyx_r;
 }
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":95
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":101
  *         return self
  * 
  *     def __repr__(self):             # <<<<<<<<<<<<<<
@@ -6306,7 +6361,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__repr__", 0);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":97
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":103
  *     def __repr__(self):
  *         template = (
  *             "{self.__class__.__name__}({self.glycopeptide_score}, {self.peptide_score},"             # <<<<<<<<<<<<<<
@@ -6316,20 +6371,20 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __Pyx_INCREF(__pyx_kp_s_self___class_____name___self_gl);
   __pyx_v_template = __pyx_kp_s_self___class_____name___self_gl;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":102
- *             " {self.peptide_correlation}, {self.peptide_backbone_count}, {self.glycan_correlation}"
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":109
+ *             " {self.glycan_correlation}"
  *             ")")
  *         return template.format(self=self)             # <<<<<<<<<<<<<<
  * 
  *     def __len__(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_template, __pyx_n_s_format); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 102, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_template, __pyx_n_s_format); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 109, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 102, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 109, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_self, ((PyObject *)__pyx_v_self)) < 0) __PYX_ERR(0, 102, __pyx_L1_error)
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_empty_tuple, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 102, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_self, ((PyObject *)__pyx_v_self)) < 0) __PYX_ERR(0, 109, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_empty_tuple, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 109, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
@@ -6337,7 +6392,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":95
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":101
  *         return self
  * 
  *     def __repr__(self):             # <<<<<<<<<<<<<<
@@ -6359,7 +6414,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   return __pyx_r;
 }
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":104
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":111
  *         return template.format(self=self)
  * 
  *     def __len__(self):             # <<<<<<<<<<<<<<
@@ -6385,7 +6440,7 @@ static Py_ssize_t __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_s
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__len__", 0);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":105
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":112
  * 
  *     def __len__(self):
  *         return 7             # <<<<<<<<<<<<<<
@@ -6395,7 +6450,7 @@ static Py_ssize_t __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_s
   __pyx_r = 7;
   goto __pyx_L0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":104
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":111
  *         return template.format(self=self)
  * 
  *     def __len__(self):             # <<<<<<<<<<<<<<
@@ -6409,7 +6464,7 @@ static Py_ssize_t __pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_s
   return __pyx_r;
 }
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":107
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":114
  *         return 7
  * 
  *     def __getitem__(self, int i):             # <<<<<<<<<<<<<<
@@ -6428,7 +6483,7 @@ static PyObject *__pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__getitem__ (wrapper)", 0);
   assert(__pyx_arg_i); {
-    __pyx_v_i = __Pyx_PyInt_As_int(__pyx_arg_i); if (unlikely((__pyx_v_i == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 107, __pyx_L3_error)
+    __pyx_v_i = __Pyx_PyInt_As_int(__pyx_arg_i); if (unlikely((__pyx_v_i == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 114, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -6453,7 +6508,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__getitem__", 0);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":108
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":115
  * 
  *     def __getitem__(self, int i):
  *         if i == 0:             # <<<<<<<<<<<<<<
@@ -6463,7 +6518,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   switch (__pyx_v_i) {
     case 0:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":109
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":116
  *     def __getitem__(self, int i):
  *         if i == 0:
  *             return self.glycopeptide_score             # <<<<<<<<<<<<<<
@@ -6471,13 +6526,13 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  *             return self.peptide_score
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycopeptide_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 109, __pyx_L1_error)
+    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycopeptide_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 116, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":108
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":115
  * 
  *     def __getitem__(self, int i):
  *         if i == 0:             # <<<<<<<<<<<<<<
@@ -6487,7 +6542,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
     break;
     case 1:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":111
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":118
  *             return self.glycopeptide_score
  *         elif i == 1:
  *             return self.peptide_score             # <<<<<<<<<<<<<<
@@ -6495,13 +6550,13 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  *             return self.glycan_score
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.peptide_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 111, __pyx_L1_error)
+    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.peptide_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 118, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":110
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":117
  *         if i == 0:
  *             return self.glycopeptide_score
  *         elif i == 1:             # <<<<<<<<<<<<<<
@@ -6511,7 +6566,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
     break;
     case 2:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":113
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":120
  *             return self.peptide_score
  *         elif i == 2:
  *             return self.glycan_score             # <<<<<<<<<<<<<<
@@ -6519,13 +6574,13 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  *             return self.glycan_coverage
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycan_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 113, __pyx_L1_error)
+    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycan_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 120, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":112
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":119
  *         elif i == 1:
  *             return self.peptide_score
  *         elif i == 2:             # <<<<<<<<<<<<<<
@@ -6535,7 +6590,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
     break;
     case 3:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":115
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":122
  *             return self.glycan_score
  *         elif i == 3:
  *             return self.glycan_coverage             # <<<<<<<<<<<<<<
@@ -6543,13 +6598,13 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  *             return self.stub_glycopeptide_intensity_utilization
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycan_coverage); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 115, __pyx_L1_error)
+    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycan_coverage); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 122, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":114
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":121
  *         elif i == 2:
  *             return self.glycan_score
  *         elif i == 3:             # <<<<<<<<<<<<<<
@@ -6559,7 +6614,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
     break;
     case 4:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":117
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":124
  *             return self.glycan_coverage
  *         elif i == 4:
  *             return self.stub_glycopeptide_intensity_utilization             # <<<<<<<<<<<<<<
@@ -6567,13 +6622,13 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  *             return self.oxonium_ion_intensity_utilization
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.stub_glycopeptide_intensity_utilization); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 117, __pyx_L1_error)
+    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.stub_glycopeptide_intensity_utilization); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 124, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":116
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":123
  *         elif i == 3:
  *             return self.glycan_coverage
  *         elif i == 4:             # <<<<<<<<<<<<<<
@@ -6583,7 +6638,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
     break;
     case 5:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":119
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":126
  *             return self.stub_glycopeptide_intensity_utilization
  *         elif i == 5:
  *             return self.oxonium_ion_intensity_utilization             # <<<<<<<<<<<<<<
@@ -6591,13 +6646,13 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  *             return self.n_stub_glycopeptide_matches
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.oxonium_ion_intensity_utilization); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 119, __pyx_L1_error)
+    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.oxonium_ion_intensity_utilization); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 126, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":118
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":125
  *         elif i == 4:
  *             return self.stub_glycopeptide_intensity_utilization
  *         elif i == 5:             # <<<<<<<<<<<<<<
@@ -6607,7 +6662,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
     break;
     case 6:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":121
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":128
  *             return self.oxonium_ion_intensity_utilization
  *         elif i == 6:
  *             return self.n_stub_glycopeptide_matches             # <<<<<<<<<<<<<<
@@ -6615,13 +6670,13 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  *             return self.peptide_coverage
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->__pyx_base.n_stub_glycopeptide_matches); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 121, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->__pyx_base.n_stub_glycopeptide_matches); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 128, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":120
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":127
  *         elif i == 5:
  *             return self.oxonium_ion_intensity_utilization
  *         elif i == 6:             # <<<<<<<<<<<<<<
@@ -6631,21 +6686,21 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
     break;
     case 7:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":123
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":130
  *             return self.n_stub_glycopeptide_matches
  *         elif i == 7:
  *             return self.peptide_coverage             # <<<<<<<<<<<<<<
  *         elif i == 8:
- *             return self.peptide_correlation
+ *             return self.total_signal_utilization
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.peptide_coverage); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 123, __pyx_L1_error)
+    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.peptide_coverage); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 130, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":122
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":129
  *         elif i == 6:
  *             return self.n_stub_glycopeptide_matches
  *         elif i == 7:             # <<<<<<<<<<<<<<
@@ -6655,97 +6710,121 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
     break;
     case 8:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":125
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":132
  *             return self.peptide_coverage
  *         elif i == 8:
- *             return self.peptide_correlation             # <<<<<<<<<<<<<<
+ *             return self.total_signal_utilization             # <<<<<<<<<<<<<<
  *         elif i == 9:
- *             return self.peptide_backbone_count
+ *             return self.peptide_correlation
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->peptide_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 125, __pyx_L1_error)
+    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.total_signal_utilization); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 132, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":124
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":131
  *         elif i == 7:
  *             return self.peptide_coverage
  *         elif i == 8:             # <<<<<<<<<<<<<<
- *             return self.peptide_correlation
+ *             return self.total_signal_utilization
  *         elif i == 9:
  */
     break;
     case 9:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":127
- *             return self.peptide_correlation
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":134
+ *             return self.total_signal_utilization
  *         elif i == 9:
- *             return self.peptide_backbone_count             # <<<<<<<<<<<<<<
+ *             return self.peptide_correlation             # <<<<<<<<<<<<<<
  *         elif i == 10:
- *             return self.glycan_correlation
+ *             return self.peptide_backbone_count
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->peptide_backbone_count); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 127, __pyx_L1_error)
+    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->peptide_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 134, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":126
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":133
  *         elif i == 8:
- *             return self.peptide_correlation
+ *             return self.total_signal_utilization
  *         elif i == 9:             # <<<<<<<<<<<<<<
- *             return self.peptide_backbone_count
+ *             return self.peptide_correlation
  *         elif i == 10:
  */
     break;
     case 10:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":129
- *             return self.peptide_backbone_count
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":136
+ *             return self.peptide_correlation
  *         elif i == 10:
- *             return self.glycan_correlation             # <<<<<<<<<<<<<<
- *         else:
- *             raise IndexError(i)
+ *             return self.peptide_backbone_count             # <<<<<<<<<<<<<<
+ *         elif i == 11:
+ *             return self.glycan_correlation
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->glycan_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 129, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->peptide_backbone_count); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 136, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":128
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":135
  *         elif i == 9:
- *             return self.peptide_backbone_count
+ *             return self.peptide_correlation
  *         elif i == 10:             # <<<<<<<<<<<<<<
+ *             return self.peptide_backbone_count
+ *         elif i == 11:
+ */
+    break;
+    case 11:
+
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":138
+ *             return self.peptide_backbone_count
+ *         elif i == 11:
+ *             return self.glycan_correlation             # <<<<<<<<<<<<<<
+ *         else:
+ *             raise IndexError(i)
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->glycan_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 138, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __pyx_r = __pyx_t_1;
+    __pyx_t_1 = 0;
+    goto __pyx_L0;
+
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":137
+ *         elif i == 10:
+ *             return self.peptide_backbone_count
+ *         elif i == 11:             # <<<<<<<<<<<<<<
  *             return self.glycan_correlation
  *         else:
  */
     break;
     default:
 
-    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":131
+    /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":140
  *             return self.glycan_correlation
  *         else:
  *             raise IndexError(i)             # <<<<<<<<<<<<<<
  * 
  *     def __iter__(self):
  */
-    __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_i); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 131, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_i); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 140, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_builtin_IndexError, __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 131, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_builtin_IndexError, __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 140, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_Raise(__pyx_t_2, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __PYX_ERR(0, 131, __pyx_L1_error)
+    __PYX_ERR(0, 140, __pyx_L1_error)
     break;
   }
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":107
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":114
  *         return 7
  * 
  *     def __getitem__(self, int i):             # <<<<<<<<<<<<<<
@@ -6766,7 +6845,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
 }
 static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_14generator(__pyx_CoroutineObject *__pyx_generator, CYTHON_UNUSED PyThreadState *__pyx_tstate, PyObject *__pyx_sent_value); /* proto */
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":133
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":142
  *             raise IndexError(i)
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -6799,7 +6878,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   if (unlikely(!__pyx_cur_scope)) {
     __pyx_cur_scope = ((struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set___pyx_scope_struct____iter__ *)Py_None);
     __Pyx_INCREF(Py_None);
-    __PYX_ERR(0, 133, __pyx_L1_error)
+    __PYX_ERR(0, 142, __pyx_L1_error)
   } else {
     __Pyx_GOTREF(__pyx_cur_scope);
   }
@@ -6807,7 +6886,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __Pyx_INCREF((PyObject *)__pyx_cur_scope->__pyx_v_self);
   __Pyx_GIVEREF((PyObject *)__pyx_cur_scope->__pyx_v_self);
   {
-    __pyx_CoroutineObject *gen = __Pyx_Generator_New((__pyx_coroutine_body_t) __pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_14generator, NULL, (PyObject *) __pyx_cur_scope, __pyx_n_s_iter, __pyx_n_s_ModelScoreSet___iter, __pyx_n_s_glycopeptide_feature_learning_sc); if (unlikely(!gen)) __PYX_ERR(0, 133, __pyx_L1_error)
+    __pyx_CoroutineObject *gen = __Pyx_Generator_New((__pyx_coroutine_body_t) __pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_14generator, NULL, (PyObject *) __pyx_cur_scope, __pyx_n_s_iter, __pyx_n_s_ModelScoreSet___iter, __pyx_n_s_glycopeptide_feature_learning_sc); if (unlikely(!gen)) __PYX_ERR(0, 142, __pyx_L1_error)
     __Pyx_DECREF(__pyx_cur_scope);
     __Pyx_RefNannyFinishContext();
     return (PyObject *) gen;
@@ -6846,21 +6925,22 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
     case 9: goto __pyx_L12_resume_from_yield;
     case 10: goto __pyx_L13_resume_from_yield;
     case 11: goto __pyx_L14_resume_from_yield;
+    case 12: goto __pyx_L15_resume_from_yield;
     default: /* CPython raises the right error here */
     __Pyx_RefNannyFinishContext();
     return NULL;
   }
   __pyx_L3_first_run:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 133, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 142, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":134
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":143
  * 
  *     def __iter__(self):
  *         yield self.glycopeptide_score             # <<<<<<<<<<<<<<
  *         yield self.peptide_score
  *         yield self.glycan_score
  */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.glycopeptide_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 134, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.glycopeptide_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 143, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6871,16 +6951,16 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 1;
   return __pyx_r;
   __pyx_L4_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 134, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 143, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":135
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":144
  *     def __iter__(self):
  *         yield self.glycopeptide_score
  *         yield self.peptide_score             # <<<<<<<<<<<<<<
  *         yield self.glycan_score
  *         yield self.glycan_coverage
  */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.peptide_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 135, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.peptide_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 144, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6891,16 +6971,16 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 2;
   return __pyx_r;
   __pyx_L5_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 135, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 144, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":136
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":145
  *         yield self.glycopeptide_score
  *         yield self.peptide_score
  *         yield self.glycan_score             # <<<<<<<<<<<<<<
  *         yield self.glycan_coverage
  *         yield self.stub_glycopeptide_intensity_utilization
  */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.glycan_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 136, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.glycan_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 145, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6911,16 +6991,16 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 3;
   return __pyx_r;
   __pyx_L6_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 136, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 145, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":137
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":146
  *         yield self.peptide_score
  *         yield self.glycan_score
  *         yield self.glycan_coverage             # <<<<<<<<<<<<<<
  *         yield self.stub_glycopeptide_intensity_utilization
  *         yield self.oxonium_ion_intensity_utilization
  */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.glycan_coverage); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 137, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.glycan_coverage); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 146, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6931,16 +7011,16 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 4;
   return __pyx_r;
   __pyx_L7_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 137, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 146, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":138
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":147
  *         yield self.glycan_score
  *         yield self.glycan_coverage
  *         yield self.stub_glycopeptide_intensity_utilization             # <<<<<<<<<<<<<<
  *         yield self.oxonium_ion_intensity_utilization
  *         yield self.n_stub_glycopeptide_matches
  */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.stub_glycopeptide_intensity_utilization); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 138, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.stub_glycopeptide_intensity_utilization); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 147, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6951,16 +7031,16 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 5;
   return __pyx_r;
   __pyx_L8_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 138, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 147, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":139
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":148
  *         yield self.glycan_coverage
  *         yield self.stub_glycopeptide_intensity_utilization
  *         yield self.oxonium_ion_intensity_utilization             # <<<<<<<<<<<<<<
  *         yield self.n_stub_glycopeptide_matches
  *         yield self.peptide_coverage
  */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.oxonium_ion_intensity_utilization); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 139, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.oxonium_ion_intensity_utilization); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 148, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6971,16 +7051,16 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 6;
   return __pyx_r;
   __pyx_L9_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 139, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 148, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":140
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":149
  *         yield self.stub_glycopeptide_intensity_utilization
  *         yield self.oxonium_ion_intensity_utilization
  *         yield self.n_stub_glycopeptide_matches             # <<<<<<<<<<<<<<
  *         yield self.peptide_coverage
- *         yield self.peptide_correlation
+ *         yield self.total_signal_utilization
  */
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_cur_scope->__pyx_v_self->__pyx_base.n_stub_glycopeptide_matches); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 140, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_cur_scope->__pyx_v_self->__pyx_base.n_stub_glycopeptide_matches); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 149, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6991,16 +7071,16 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 7;
   return __pyx_r;
   __pyx_L10_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 140, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 149, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":141
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":150
  *         yield self.oxonium_ion_intensity_utilization
  *         yield self.n_stub_glycopeptide_matches
  *         yield self.peptide_coverage             # <<<<<<<<<<<<<<
+ *         yield self.total_signal_utilization
  *         yield self.peptide_correlation
- *         yield self.peptide_backbone_count
  */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.peptide_coverage); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 141, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.peptide_coverage); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 150, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7011,16 +7091,16 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 8;
   return __pyx_r;
   __pyx_L11_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 141, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 150, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":142
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":151
  *         yield self.n_stub_glycopeptide_matches
  *         yield self.peptide_coverage
- *         yield self.peptide_correlation             # <<<<<<<<<<<<<<
+ *         yield self.total_signal_utilization             # <<<<<<<<<<<<<<
+ *         yield self.peptide_correlation
  *         yield self.peptide_backbone_count
- *         yield self.glycan_correlation
  */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->peptide_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 142, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->__pyx_base.total_signal_utilization); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 151, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7031,16 +7111,16 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 9;
   return __pyx_r;
   __pyx_L12_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 142, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 151, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":143
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":152
  *         yield self.peptide_coverage
- *         yield self.peptide_correlation
- *         yield self.peptide_backbone_count             # <<<<<<<<<<<<<<
+ *         yield self.total_signal_utilization
+ *         yield self.peptide_correlation             # <<<<<<<<<<<<<<
+ *         yield self.peptide_backbone_count
  *         yield self.glycan_correlation
- * 
  */
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_cur_scope->__pyx_v_self->peptide_backbone_count); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 143, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->peptide_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 152, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7051,16 +7131,16 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 10;
   return __pyx_r;
   __pyx_L13_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 143, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 152, __pyx_L1_error)
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":144
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":153
+ *         yield self.total_signal_utilization
  *         yield self.peptide_correlation
- *         yield self.peptide_backbone_count
- *         yield self.glycan_correlation             # <<<<<<<<<<<<<<
+ *         yield self.peptide_backbone_count             # <<<<<<<<<<<<<<
+ *         yield self.glycan_correlation
  * 
- *     def __reduce__(self):
  */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->glycan_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 144, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_cur_scope->__pyx_v_self->peptide_backbone_count); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 153, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7071,10 +7151,30 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_generator->resume_label = 11;
   return __pyx_r;
   __pyx_L14_resume_from_yield:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 144, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 153, __pyx_L1_error)
+
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":154
+ *         yield self.peptide_correlation
+ *         yield self.peptide_backbone_count
+ *         yield self.glycan_correlation             # <<<<<<<<<<<<<<
+ * 
+ *     def __reduce__(self):
+ */
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_cur_scope->__pyx_v_self->glycan_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 154, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  __Pyx_Coroutine_ResetAndClearException(__pyx_generator);
+  /* return from generator, yielding value */
+  __pyx_generator->resume_label = 12;
+  return __pyx_r;
+  __pyx_L15_resume_from_yield:;
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 154, __pyx_L1_error)
   CYTHON_MAYBE_UNUSED_VAR(__pyx_cur_scope);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":133
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":142
  *             raise IndexError(i)
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -7099,7 +7199,7 @@ static PyObject *__pyx_gb_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   return __pyx_r;
 }
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":146
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":156
  *         yield self.glycan_correlation
  * 
  *     def __reduce__(self):             # <<<<<<<<<<<<<<
@@ -7137,12 +7237,13 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   PyObject *__pyx_t_11 = NULL;
   PyObject *__pyx_t_12 = NULL;
   PyObject *__pyx_t_13 = NULL;
+  PyObject *__pyx_t_14 = NULL;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__reduce__", 0);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":147
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":157
  * 
  *     def __reduce__(self):
  *         return self.__class__, (self.glycopeptide_score, self.peptide_score,             # <<<<<<<<<<<<<<
@@ -7150,94 +7251,106 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  *                                 self.oxonium_ion_intensity_utilization, self.n_stub_glycopeptide_matches,
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 147, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 157, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycopeptide_score); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 147, __pyx_L1_error)
+  __pyx_t_2 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycopeptide_score); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 157, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.peptide_score); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 147, __pyx_L1_error)
+  __pyx_t_3 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.peptide_score); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 157, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":148
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":158
  *     def __reduce__(self):
  *         return self.__class__, (self.glycopeptide_score, self.peptide_score,
  *                                 self.glycan_score, self.glycan_coverage, self.stub_glycopeptide_intensity_utilization,             # <<<<<<<<<<<<<<
  *                                 self.oxonium_ion_intensity_utilization, self.n_stub_glycopeptide_matches,
- *                                 self.peptide_coverage, self.peptide_correlation, self.peptide_backbone_count,
+ *                                 self.peptide_coverage, self.total_signal_utilization,
  */
-  __pyx_t_4 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycan_score); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 148, __pyx_L1_error)
+  __pyx_t_4 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycan_score); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 158, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycan_coverage); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 148, __pyx_L1_error)
+  __pyx_t_5 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.glycan_coverage); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 158, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.stub_glycopeptide_intensity_utilization); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 148, __pyx_L1_error)
+  __pyx_t_6 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.stub_glycopeptide_intensity_utilization); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 158, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":149
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":159
  *         return self.__class__, (self.glycopeptide_score, self.peptide_score,
  *                                 self.glycan_score, self.glycan_coverage, self.stub_glycopeptide_intensity_utilization,
  *                                 self.oxonium_ion_intensity_utilization, self.n_stub_glycopeptide_matches,             # <<<<<<<<<<<<<<
- *                                 self.peptide_coverage, self.peptide_correlation, self.peptide_backbone_count,
- *                                 self.glycan_correlation)
+ *                                 self.peptide_coverage, self.total_signal_utilization,
+ *                                 self.peptide_correlation, self.peptide_backbone_count,
  */
-  __pyx_t_7 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.oxonium_ion_intensity_utilization); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 149, __pyx_L1_error)
+  __pyx_t_7 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.oxonium_ion_intensity_utilization); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 159, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_8 = __Pyx_PyInt_From_int(__pyx_v_self->__pyx_base.n_stub_glycopeptide_matches); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 149, __pyx_L1_error)
+  __pyx_t_8 = __Pyx_PyInt_From_int(__pyx_v_self->__pyx_base.n_stub_glycopeptide_matches); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 159, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":150
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":160
  *                                 self.glycan_score, self.glycan_coverage, self.stub_glycopeptide_intensity_utilization,
  *                                 self.oxonium_ion_intensity_utilization, self.n_stub_glycopeptide_matches,
- *                                 self.peptide_coverage, self.peptide_correlation, self.peptide_backbone_count,             # <<<<<<<<<<<<<<
+ *                                 self.peptide_coverage, self.total_signal_utilization,             # <<<<<<<<<<<<<<
+ *                                 self.peptide_correlation, self.peptide_backbone_count,
+ *                                 self.glycan_correlation)
+ */
+  __pyx_t_9 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.peptide_coverage); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 160, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_9);
+  __pyx_t_10 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.total_signal_utilization); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 160, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_10);
+
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":161
+ *                                 self.oxonium_ion_intensity_utilization, self.n_stub_glycopeptide_matches,
+ *                                 self.peptide_coverage, self.total_signal_utilization,
+ *                                 self.peptide_correlation, self.peptide_backbone_count,             # <<<<<<<<<<<<<<
  *                                 self.glycan_correlation)
  * 
  */
-  __pyx_t_9 = PyFloat_FromDouble(__pyx_v_self->__pyx_base.peptide_coverage); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 150, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_9);
-  __pyx_t_10 = PyFloat_FromDouble(__pyx_v_self->peptide_correlation); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 150, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_10);
-  __pyx_t_11 = __Pyx_PyInt_From_int(__pyx_v_self->peptide_backbone_count); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 150, __pyx_L1_error)
+  __pyx_t_11 = PyFloat_FromDouble(__pyx_v_self->peptide_correlation); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 161, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
+  __pyx_t_12 = __Pyx_PyInt_From_int(__pyx_v_self->peptide_backbone_count); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 161, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_12);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":151
- *                                 self.oxonium_ion_intensity_utilization, self.n_stub_glycopeptide_matches,
- *                                 self.peptide_coverage, self.peptide_correlation, self.peptide_backbone_count,
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":162
+ *                                 self.peptide_coverage, self.total_signal_utilization,
+ *                                 self.peptide_correlation, self.peptide_backbone_count,
  *                                 self.glycan_correlation)             # <<<<<<<<<<<<<<
  * 
  *     @classmethod
  */
-  __pyx_t_12 = PyFloat_FromDouble(__pyx_v_self->glycan_correlation); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 151, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_12);
+  __pyx_t_13 = PyFloat_FromDouble(__pyx_v_self->glycan_correlation); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 162, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_13);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":147
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":157
  * 
  *     def __reduce__(self):
  *         return self.__class__, (self.glycopeptide_score, self.peptide_score,             # <<<<<<<<<<<<<<
  *                                 self.glycan_score, self.glycan_coverage, self.stub_glycopeptide_intensity_utilization,
  *                                 self.oxonium_ion_intensity_utilization, self.n_stub_glycopeptide_matches,
  */
-  __pyx_t_13 = PyTuple_New(11); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 147, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_13);
+  __pyx_t_14 = PyTuple_New(12); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 157, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_14);
   __Pyx_GIVEREF(__pyx_t_2);
-  PyTuple_SET_ITEM(__pyx_t_13, 0, __pyx_t_2);
+  PyTuple_SET_ITEM(__pyx_t_14, 0, __pyx_t_2);
   __Pyx_GIVEREF(__pyx_t_3);
-  PyTuple_SET_ITEM(__pyx_t_13, 1, __pyx_t_3);
+  PyTuple_SET_ITEM(__pyx_t_14, 1, __pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_4);
-  PyTuple_SET_ITEM(__pyx_t_13, 2, __pyx_t_4);
+  PyTuple_SET_ITEM(__pyx_t_14, 2, __pyx_t_4);
   __Pyx_GIVEREF(__pyx_t_5);
-  PyTuple_SET_ITEM(__pyx_t_13, 3, __pyx_t_5);
+  PyTuple_SET_ITEM(__pyx_t_14, 3, __pyx_t_5);
   __Pyx_GIVEREF(__pyx_t_6);
-  PyTuple_SET_ITEM(__pyx_t_13, 4, __pyx_t_6);
+  PyTuple_SET_ITEM(__pyx_t_14, 4, __pyx_t_6);
   __Pyx_GIVEREF(__pyx_t_7);
-  PyTuple_SET_ITEM(__pyx_t_13, 5, __pyx_t_7);
+  PyTuple_SET_ITEM(__pyx_t_14, 5, __pyx_t_7);
   __Pyx_GIVEREF(__pyx_t_8);
-  PyTuple_SET_ITEM(__pyx_t_13, 6, __pyx_t_8);
+  PyTuple_SET_ITEM(__pyx_t_14, 6, __pyx_t_8);
   __Pyx_GIVEREF(__pyx_t_9);
-  PyTuple_SET_ITEM(__pyx_t_13, 7, __pyx_t_9);
+  PyTuple_SET_ITEM(__pyx_t_14, 7, __pyx_t_9);
   __Pyx_GIVEREF(__pyx_t_10);
-  PyTuple_SET_ITEM(__pyx_t_13, 8, __pyx_t_10);
+  PyTuple_SET_ITEM(__pyx_t_14, 8, __pyx_t_10);
   __Pyx_GIVEREF(__pyx_t_11);
-  PyTuple_SET_ITEM(__pyx_t_13, 9, __pyx_t_11);
+  PyTuple_SET_ITEM(__pyx_t_14, 9, __pyx_t_11);
   __Pyx_GIVEREF(__pyx_t_12);
-  PyTuple_SET_ITEM(__pyx_t_13, 10, __pyx_t_12);
+  PyTuple_SET_ITEM(__pyx_t_14, 10, __pyx_t_12);
+  __Pyx_GIVEREF(__pyx_t_13);
+  PyTuple_SET_ITEM(__pyx_t_14, 11, __pyx_t_13);
   __pyx_t_2 = 0;
   __pyx_t_3 = 0;
   __pyx_t_4 = 0;
@@ -7249,19 +7362,20 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_t_10 = 0;
   __pyx_t_11 = 0;
   __pyx_t_12 = 0;
-  __pyx_t_12 = PyTuple_New(2); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 147, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_12);
-  __Pyx_GIVEREF(__pyx_t_1);
-  PyTuple_SET_ITEM(__pyx_t_12, 0, __pyx_t_1);
-  __Pyx_GIVEREF(__pyx_t_13);
-  PyTuple_SET_ITEM(__pyx_t_12, 1, __pyx_t_13);
-  __pyx_t_1 = 0;
   __pyx_t_13 = 0;
-  __pyx_r = __pyx_t_12;
-  __pyx_t_12 = 0;
+  __pyx_t_13 = PyTuple_New(2); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 157, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_13);
+  __Pyx_GIVEREF(__pyx_t_1);
+  PyTuple_SET_ITEM(__pyx_t_13, 0, __pyx_t_1);
+  __Pyx_GIVEREF(__pyx_t_14);
+  PyTuple_SET_ITEM(__pyx_t_13, 1, __pyx_t_14);
+  __pyx_t_1 = 0;
+  __pyx_t_14 = 0;
+  __pyx_r = __pyx_t_13;
+  __pyx_t_13 = 0;
   goto __pyx_L0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":146
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":156
  *         yield self.glycan_correlation
  * 
  *     def __reduce__(self):             # <<<<<<<<<<<<<<
@@ -7284,6 +7398,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __Pyx_XDECREF(__pyx_t_11);
   __Pyx_XDECREF(__pyx_t_12);
   __Pyx_XDECREF(__pyx_t_13);
+  __Pyx_XDECREF(__pyx_t_14);
   __Pyx_AddTraceback("glycopeptide_feature_learning.scoring._c.score_set.ModelScoreSet.__reduce__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
@@ -7292,11 +7407,11 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   return __pyx_r;
 }
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":154
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":165
  * 
  *     @classmethod
  *     def from_spectrum_matcher(cls, match):             # <<<<<<<<<<<<<<
- *         stub_utilization, stub_count, peptide_count = match.count_peptide_Y_ion_utilization()
+ *         stub_utilization, stub_count, peptide_count, total_signal_utilization = match.count_peptide_Y_ion_utilization()
  *         oxonium_utilization = match.oxonium_ion_utilization()
  */
 
@@ -7318,6 +7433,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   PyObject *__pyx_v_stub_utilization = NULL;
   PyObject *__pyx_v_stub_count = NULL;
   PyObject *__pyx_v_peptide_count = NULL;
+  PyObject *__pyx_v_total_signal_utilization = NULL;
   PyObject *__pyx_v_oxonium_utilization = NULL;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
@@ -7326,8 +7442,8 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   PyObject *__pyx_t_3 = NULL;
   PyObject *__pyx_t_4 = NULL;
   PyObject *__pyx_t_5 = NULL;
-  PyObject *(*__pyx_t_6)(PyObject *);
-  PyObject *__pyx_t_7 = NULL;
+  PyObject *__pyx_t_6 = NULL;
+  PyObject *(*__pyx_t_7)(PyObject *);
   PyObject *__pyx_t_8 = NULL;
   PyObject *__pyx_t_9 = NULL;
   PyObject *__pyx_t_10 = NULL;
@@ -7336,14 +7452,14 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("from_spectrum_matcher", 0);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":155
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":166
  *     @classmethod
  *     def from_spectrum_matcher(cls, match):
- *         stub_utilization, stub_count, peptide_count = match.count_peptide_Y_ion_utilization()             # <<<<<<<<<<<<<<
+ *         stub_utilization, stub_count, peptide_count, total_signal_utilization = match.count_peptide_Y_ion_utilization()             # <<<<<<<<<<<<<<
  *         oxonium_utilization = match.oxonium_ion_utilization()
  * 
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_count_peptide_Y_ion_utilization); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 155, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_count_peptide_Y_ion_utilization); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 166, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = NULL;
   if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_2))) {
@@ -7357,60 +7473,66 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   }
   __pyx_t_1 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 155, __pyx_L1_error)
+  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 166, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   if ((likely(PyTuple_CheckExact(__pyx_t_1))) || (PyList_CheckExact(__pyx_t_1))) {
     PyObject* sequence = __pyx_t_1;
     Py_ssize_t size = __Pyx_PySequence_SIZE(sequence);
-    if (unlikely(size != 3)) {
-      if (size > 3) __Pyx_RaiseTooManyValuesError(3);
+    if (unlikely(size != 4)) {
+      if (size > 4) __Pyx_RaiseTooManyValuesError(4);
       else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-      __PYX_ERR(0, 155, __pyx_L1_error)
+      __PYX_ERR(0, 166, __pyx_L1_error)
     }
     #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
     if (likely(PyTuple_CheckExact(sequence))) {
       __pyx_t_2 = PyTuple_GET_ITEM(sequence, 0); 
       __pyx_t_3 = PyTuple_GET_ITEM(sequence, 1); 
       __pyx_t_4 = PyTuple_GET_ITEM(sequence, 2); 
+      __pyx_t_5 = PyTuple_GET_ITEM(sequence, 3); 
     } else {
       __pyx_t_2 = PyList_GET_ITEM(sequence, 0); 
       __pyx_t_3 = PyList_GET_ITEM(sequence, 1); 
       __pyx_t_4 = PyList_GET_ITEM(sequence, 2); 
+      __pyx_t_5 = PyList_GET_ITEM(sequence, 3); 
     }
     __Pyx_INCREF(__pyx_t_2);
     __Pyx_INCREF(__pyx_t_3);
     __Pyx_INCREF(__pyx_t_4);
+    __Pyx_INCREF(__pyx_t_5);
     #else
-    __pyx_t_2 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 155, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 155, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_4 = PySequence_ITEM(sequence, 2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 155, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_4);
+    {
+      Py_ssize_t i;
+      PyObject** temps[4] = {&__pyx_t_2,&__pyx_t_3,&__pyx_t_4,&__pyx_t_5};
+      for (i=0; i < 4; i++) {
+        PyObject* item = PySequence_ITEM(sequence, i); if (unlikely(!item)) __PYX_ERR(0, 166, __pyx_L1_error)
+        __Pyx_GOTREF(item);
+        *(temps[i]) = item;
+      }
+    }
     #endif
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   } else {
     Py_ssize_t index = -1;
-    __pyx_t_5 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 155, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_5);
+    PyObject** temps[4] = {&__pyx_t_2,&__pyx_t_3,&__pyx_t_4,&__pyx_t_5};
+    __pyx_t_6 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 166, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_t_6 = Py_TYPE(__pyx_t_5)->tp_iternext;
-    index = 0; __pyx_t_2 = __pyx_t_6(__pyx_t_5); if (unlikely(!__pyx_t_2)) goto __pyx_L3_unpacking_failed;
-    __Pyx_GOTREF(__pyx_t_2);
-    index = 1; __pyx_t_3 = __pyx_t_6(__pyx_t_5); if (unlikely(!__pyx_t_3)) goto __pyx_L3_unpacking_failed;
-    __Pyx_GOTREF(__pyx_t_3);
-    index = 2; __pyx_t_4 = __pyx_t_6(__pyx_t_5); if (unlikely(!__pyx_t_4)) goto __pyx_L3_unpacking_failed;
-    __Pyx_GOTREF(__pyx_t_4);
-    if (__Pyx_IternextUnpackEndCheck(__pyx_t_6(__pyx_t_5), 3) < 0) __PYX_ERR(0, 155, __pyx_L1_error)
-    __pyx_t_6 = NULL;
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __pyx_t_7 = Py_TYPE(__pyx_t_6)->tp_iternext;
+    for (index=0; index < 4; index++) {
+      PyObject* item = __pyx_t_7(__pyx_t_6); if (unlikely(!item)) goto __pyx_L3_unpacking_failed;
+      __Pyx_GOTREF(item);
+      *(temps[index]) = item;
+    }
+    if (__Pyx_IternextUnpackEndCheck(__pyx_t_7(__pyx_t_6), 4) < 0) __PYX_ERR(0, 166, __pyx_L1_error)
+    __pyx_t_7 = NULL;
+    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     goto __pyx_L4_unpacking_done;
     __pyx_L3_unpacking_failed:;
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __pyx_t_6 = NULL;
+    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+    __pyx_t_7 = NULL;
     if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-    __PYX_ERR(0, 155, __pyx_L1_error)
+    __PYX_ERR(0, 166, __pyx_L1_error)
     __pyx_L4_unpacking_done:;
   }
   __pyx_v_stub_utilization = __pyx_t_2;
@@ -7419,15 +7541,55 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_t_3 = 0;
   __pyx_v_peptide_count = __pyx_t_4;
   __pyx_t_4 = 0;
+  __pyx_v_total_signal_utilization = __pyx_t_5;
+  __pyx_t_5 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":156
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":167
  *     def from_spectrum_matcher(cls, match):
- *         stub_utilization, stub_count, peptide_count = match.count_peptide_Y_ion_utilization()
+ *         stub_utilization, stub_count, peptide_count, total_signal_utilization = match.count_peptide_Y_ion_utilization()
  *         oxonium_utilization = match.oxonium_ion_utilization()             # <<<<<<<<<<<<<<
  * 
  *         return cls(match.score,
  */
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_oxonium_ion_utilization); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 156, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_oxonium_ion_utilization); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 167, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __pyx_t_4 = NULL;
+  if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_5))) {
+    __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_5);
+    if (likely(__pyx_t_4)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
+      __Pyx_INCREF(__pyx_t_4);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_5, function);
+    }
+  }
+  __pyx_t_1 = (__pyx_t_4) ? __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_4) : __Pyx_PyObject_CallNoArg(__pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
+  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 167, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __pyx_v_oxonium_utilization = __pyx_t_1;
+  __pyx_t_1 = 0;
+
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":169
+ *         oxonium_utilization = match.oxonium_ion_utilization()
+ * 
+ *         return cls(match.score,             # <<<<<<<<<<<<<<
+ *             match.peptide_score(),
+ *             match.glycan_score(),
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 169, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":170
+ * 
+ *         return cls(match.score,
+ *             match.peptide_score(),             # <<<<<<<<<<<<<<
+ *             match.glycan_score(),
+ *             match.glycan_coverage(),
+ */
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_peptide_score); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 170, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __pyx_t_3 = NULL;
   if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_4))) {
@@ -7439,33 +7601,20 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
       __Pyx_DECREF_SET(__pyx_t_4, function);
     }
   }
-  __pyx_t_1 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_4);
+  __pyx_t_5 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 156, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
+  if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 170, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_v_oxonium_utilization = __pyx_t_1;
-  __pyx_t_1 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":158
- *         oxonium_utilization = match.oxonium_ion_utilization()
- * 
- *         return cls(match.score,             # <<<<<<<<<<<<<<
- *             match.peptide_score(),
- *             match.glycan_score(),
- */
-  __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_score); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 158, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":159
- * 
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":171
  *         return cls(match.score,
- *             match.peptide_score(),             # <<<<<<<<<<<<<<
- *             match.glycan_score(),
+ *             match.peptide_score(),
+ *             match.glycan_score(),             # <<<<<<<<<<<<<<
  *             match.glycan_coverage(),
+ *             stub_utilization,
  */
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_peptide_score); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 159, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_glycan_score); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 171, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_t_2 = NULL;
   if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_3))) {
@@ -7479,93 +7628,68 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   }
   __pyx_t_4 = (__pyx_t_2) ? __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_2) : __Pyx_PyObject_CallNoArg(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 159, __pyx_L1_error)
+  if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 171, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":160
- *         return cls(match.score,
- *             match.peptide_score(),
- *             match.glycan_score(),             # <<<<<<<<<<<<<<
- *             match.glycan_coverage(),
- *             stub_utilization,
- */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_glycan_score); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 160, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_5 = NULL;
-  if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_2))) {
-    __pyx_t_5 = PyMethod_GET_SELF(__pyx_t_2);
-    if (likely(__pyx_t_5)) {
-      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_2);
-      __Pyx_INCREF(__pyx_t_5);
-      __Pyx_INCREF(function);
-      __Pyx_DECREF_SET(__pyx_t_2, function);
-    }
-  }
-  __pyx_t_3 = (__pyx_t_5) ? __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_5) : __Pyx_PyObject_CallNoArg(__pyx_t_2);
-  __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
-  if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 160, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":161
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":172
  *             match.peptide_score(),
  *             match.glycan_score(),
  *             match.glycan_coverage(),             # <<<<<<<<<<<<<<
  *             stub_utilization,
  *             oxonium_utilization,
  */
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_glycan_coverage); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 161, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_7 = NULL;
-  if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_5))) {
-    __pyx_t_7 = PyMethod_GET_SELF(__pyx_t_5);
-    if (likely(__pyx_t_7)) {
-      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
-      __Pyx_INCREF(__pyx_t_7);
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_glycan_coverage); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 172, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_6 = NULL;
+  if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_2))) {
+    __pyx_t_6 = PyMethod_GET_SELF(__pyx_t_2);
+    if (likely(__pyx_t_6)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_2);
+      __Pyx_INCREF(__pyx_t_6);
       __Pyx_INCREF(function);
-      __Pyx_DECREF_SET(__pyx_t_5, function);
+      __Pyx_DECREF_SET(__pyx_t_2, function);
     }
   }
-  __pyx_t_2 = (__pyx_t_7) ? __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_7) : __Pyx_PyObject_CallNoArg(__pyx_t_5);
-  __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
-  if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 161, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __pyx_t_3 = (__pyx_t_6) ? __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_6) : __Pyx_PyObject_CallNoArg(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+  if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 172, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":165
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":176
  *             oxonium_utilization,
  *             stub_count,
  *             match.peptide_coverage(),             # <<<<<<<<<<<<<<
  *             match.peptide_correlation(),
  *             peptide_count,
  */
-  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_peptide_coverage); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 165, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_7);
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_peptide_coverage); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 176, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
   __pyx_t_8 = NULL;
-  if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_7))) {
-    __pyx_t_8 = PyMethod_GET_SELF(__pyx_t_7);
+  if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_6))) {
+    __pyx_t_8 = PyMethod_GET_SELF(__pyx_t_6);
     if (likely(__pyx_t_8)) {
-      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_7);
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_6);
       __Pyx_INCREF(__pyx_t_8);
       __Pyx_INCREF(function);
-      __Pyx_DECREF_SET(__pyx_t_7, function);
+      __Pyx_DECREF_SET(__pyx_t_6, function);
     }
   }
-  __pyx_t_5 = (__pyx_t_8) ? __Pyx_PyObject_CallOneArg(__pyx_t_7, __pyx_t_8) : __Pyx_PyObject_CallNoArg(__pyx_t_7);
+  __pyx_t_2 = (__pyx_t_8) ? __Pyx_PyObject_CallOneArg(__pyx_t_6, __pyx_t_8) : __Pyx_PyObject_CallNoArg(__pyx_t_6);
   __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
-  if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 165, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
-  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 176, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":166
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":177
  *             stub_count,
  *             match.peptide_coverage(),
  *             match.peptide_correlation(),             # <<<<<<<<<<<<<<
  *             peptide_count,
- *             match.glycan_correlation()
+ *             match.glycan_correlation(),
  */
-  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_peptide_correlation); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 166, __pyx_L1_error)
+  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_peptide_correlation); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 177, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
   __pyx_t_9 = NULL;
   if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_8))) {
@@ -7577,20 +7701,20 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
       __Pyx_DECREF_SET(__pyx_t_8, function);
     }
   }
-  __pyx_t_7 = (__pyx_t_9) ? __Pyx_PyObject_CallOneArg(__pyx_t_8, __pyx_t_9) : __Pyx_PyObject_CallNoArg(__pyx_t_8);
+  __pyx_t_6 = (__pyx_t_9) ? __Pyx_PyObject_CallOneArg(__pyx_t_8, __pyx_t_9) : __Pyx_PyObject_CallNoArg(__pyx_t_8);
   __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
-  if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 166, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_7);
+  if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 177, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":168
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":179
  *             match.peptide_correlation(),
  *             peptide_count,
- *             match.glycan_correlation()             # <<<<<<<<<<<<<<
+ *             match.glycan_correlation(),             # <<<<<<<<<<<<<<
+ *             total_signal_utilization
  *         )
- * 
  */
-  __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_glycan_correlation); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 168, __pyx_L1_error)
+  __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_n_s_glycan_correlation); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 179, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_9);
   __pyx_t_10 = NULL;
   if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_9))) {
@@ -7604,27 +7728,27 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   }
   __pyx_t_8 = (__pyx_t_10) ? __Pyx_PyObject_CallOneArg(__pyx_t_9, __pyx_t_10) : __Pyx_PyObject_CallNoArg(__pyx_t_9);
   __Pyx_XDECREF(__pyx_t_10); __pyx_t_10 = 0;
-  if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 168, __pyx_L1_error)
+  if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 179, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":158
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":169
  *         oxonium_utilization = match.oxonium_ion_utilization()
  * 
  *         return cls(match.score,             # <<<<<<<<<<<<<<
  *             match.peptide_score(),
  *             match.glycan_score(),
  */
-  __pyx_t_9 = PyTuple_New(11); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 158, __pyx_L1_error)
+  __pyx_t_9 = PyTuple_New(12); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 169, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_9);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_t_1);
+  __Pyx_GIVEREF(__pyx_t_5);
+  PyTuple_SET_ITEM(__pyx_t_9, 1, __pyx_t_5);
   __Pyx_GIVEREF(__pyx_t_4);
-  PyTuple_SET_ITEM(__pyx_t_9, 1, __pyx_t_4);
+  PyTuple_SET_ITEM(__pyx_t_9, 2, __pyx_t_4);
   __Pyx_GIVEREF(__pyx_t_3);
-  PyTuple_SET_ITEM(__pyx_t_9, 2, __pyx_t_3);
-  __Pyx_GIVEREF(__pyx_t_2);
-  PyTuple_SET_ITEM(__pyx_t_9, 3, __pyx_t_2);
+  PyTuple_SET_ITEM(__pyx_t_9, 3, __pyx_t_3);
   __Pyx_INCREF(__pyx_v_stub_utilization);
   __Pyx_GIVEREF(__pyx_v_stub_utilization);
   PyTuple_SET_ITEM(__pyx_t_9, 4, __pyx_v_stub_utilization);
@@ -7634,34 +7758,37 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __Pyx_INCREF(__pyx_v_stub_count);
   __Pyx_GIVEREF(__pyx_v_stub_count);
   PyTuple_SET_ITEM(__pyx_t_9, 6, __pyx_v_stub_count);
-  __Pyx_GIVEREF(__pyx_t_5);
-  PyTuple_SET_ITEM(__pyx_t_9, 7, __pyx_t_5);
-  __Pyx_GIVEREF(__pyx_t_7);
-  PyTuple_SET_ITEM(__pyx_t_9, 8, __pyx_t_7);
+  __Pyx_GIVEREF(__pyx_t_2);
+  PyTuple_SET_ITEM(__pyx_t_9, 7, __pyx_t_2);
+  __Pyx_GIVEREF(__pyx_t_6);
+  PyTuple_SET_ITEM(__pyx_t_9, 8, __pyx_t_6);
   __Pyx_INCREF(__pyx_v_peptide_count);
   __Pyx_GIVEREF(__pyx_v_peptide_count);
   PyTuple_SET_ITEM(__pyx_t_9, 9, __pyx_v_peptide_count);
   __Pyx_GIVEREF(__pyx_t_8);
   PyTuple_SET_ITEM(__pyx_t_9, 10, __pyx_t_8);
+  __Pyx_INCREF(__pyx_v_total_signal_utilization);
+  __Pyx_GIVEREF(__pyx_v_total_signal_utilization);
+  PyTuple_SET_ITEM(__pyx_t_9, 11, __pyx_v_total_signal_utilization);
   __pyx_t_1 = 0;
+  __pyx_t_5 = 0;
   __pyx_t_4 = 0;
   __pyx_t_3 = 0;
   __pyx_t_2 = 0;
-  __pyx_t_5 = 0;
-  __pyx_t_7 = 0;
+  __pyx_t_6 = 0;
   __pyx_t_8 = 0;
-  __pyx_t_8 = __Pyx_PyObject_Call(((PyObject *)__pyx_v_cls), __pyx_t_9, NULL); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 158, __pyx_L1_error)
+  __pyx_t_8 = __Pyx_PyObject_Call(((PyObject *)__pyx_v_cls), __pyx_t_9, NULL); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 169, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
   __pyx_r = __pyx_t_8;
   __pyx_t_8 = 0;
   goto __pyx_L0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":154
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":165
  * 
  *     @classmethod
  *     def from_spectrum_matcher(cls, match):             # <<<<<<<<<<<<<<
- *         stub_utilization, stub_count, peptide_count = match.count_peptide_Y_ion_utilization()
+ *         stub_utilization, stub_count, peptide_count, total_signal_utilization = match.count_peptide_Y_ion_utilization()
  *         oxonium_utilization = match.oxonium_ion_utilization()
  */
 
@@ -7672,7 +7799,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_6);
   __Pyx_XDECREF(__pyx_t_8);
   __Pyx_XDECREF(__pyx_t_9);
   __Pyx_XDECREF(__pyx_t_10);
@@ -7682,13 +7809,14 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __Pyx_XDECREF(__pyx_v_stub_utilization);
   __Pyx_XDECREF(__pyx_v_stub_count);
   __Pyx_XDECREF(__pyx_v_peptide_count);
+  __Pyx_XDECREF(__pyx_v_total_signal_utilization);
   __Pyx_XDECREF(__pyx_v_oxonium_utilization);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":172
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":184
  * 
  *     @classmethod
  *     def field_names(cls):             # <<<<<<<<<<<<<<
@@ -7725,14 +7853,14 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("field_names", 0);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":173
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":185
  *     @classmethod
  *     def field_names(cls):
  *         cdef list field_names = super(ModelScoreSet, cls).field_names()             # <<<<<<<<<<<<<<
  *         field_names.extend([
  *             "peptide_correlation",
  */
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 173, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 185, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet));
   __Pyx_GIVEREF(((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet));
@@ -7740,10 +7868,10 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __Pyx_INCREF(((PyObject *)__pyx_v_cls));
   __Pyx_GIVEREF(((PyObject *)__pyx_v_cls));
   PyTuple_SET_ITEM(__pyx_t_2, 1, ((PyObject *)__pyx_v_cls));
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_super, __pyx_t_2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 173, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_super, __pyx_t_2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 185, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_field_names); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 173, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_field_names); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 185, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_3 = NULL;
@@ -7758,14 +7886,14 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   }
   __pyx_t_1 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 173, __pyx_L1_error)
+  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 185, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (!(likely(PyList_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_1)->tp_name), 0))) __PYX_ERR(0, 173, __pyx_L1_error)
+  if (!(likely(PyList_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_1)->tp_name), 0))) __PYX_ERR(0, 185, __pyx_L1_error)
   __pyx_v_field_names = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":174
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":186
  *     def field_names(cls):
  *         cdef list field_names = super(ModelScoreSet, cls).field_names()
  *         field_names.extend([             # <<<<<<<<<<<<<<
@@ -7774,22 +7902,22 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
  */
   if (unlikely(__pyx_v_field_names == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "extend");
-    __PYX_ERR(0, 174, __pyx_L1_error)
+    __PYX_ERR(0, 186, __pyx_L1_error)
   }
-  __pyx_t_4 = __Pyx_ListComp_Append(__pyx_v_field_names, __pyx_n_s_peptide_correlation); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(0, 174, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_ListComp_Append(__pyx_v_field_names, __pyx_n_s_peptide_correlation); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(0, 186, __pyx_L1_error)
   if (unlikely(__pyx_v_field_names == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "extend");
-    __PYX_ERR(0, 174, __pyx_L1_error)
+    __PYX_ERR(0, 186, __pyx_L1_error)
   }
-  __pyx_t_5 = __Pyx_ListComp_Append(__pyx_v_field_names, __pyx_n_s_peptide_backbone_count); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 174, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_ListComp_Append(__pyx_v_field_names, __pyx_n_s_peptide_backbone_count); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 186, __pyx_L1_error)
   if (unlikely(__pyx_v_field_names == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "extend");
-    __PYX_ERR(0, 174, __pyx_L1_error)
+    __PYX_ERR(0, 186, __pyx_L1_error)
   }
-  __pyx_t_6 = __Pyx_PyList_Append(__pyx_v_field_names, __pyx_n_s_glycan_correlation); if (unlikely(__pyx_t_6 == ((int)-1))) __PYX_ERR(0, 174, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyList_Append(__pyx_v_field_names, __pyx_n_s_glycan_correlation); if (unlikely(__pyx_t_6 == ((int)-1))) __PYX_ERR(0, 186, __pyx_L1_error)
   (void)((__pyx_t_4 | (__pyx_t_5 | __pyx_t_6)));
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":179
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":191
  *             "glycan_correlation",
  *         ])
  *         return field_names             # <<<<<<<<<<<<<<
@@ -7801,7 +7929,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   __pyx_r = __pyx_v_field_names;
   goto __pyx_L0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":172
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":184
  * 
  *     @classmethod
  *     def field_names(cls):             # <<<<<<<<<<<<<<
@@ -7823,7 +7951,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   return __pyx_r;
 }
 
-/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":181
+/* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":193
  *         return field_names
  * 
  *     cpdef list values(self):             # <<<<<<<<<<<<<<
@@ -7854,7 +7982,7 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
     if (unlikely(!__Pyx_object_dict_version_matches(((PyObject *)__pyx_v_self), __pyx_tp_dict_version, __pyx_obj_dict_version))) {
       PY_UINT64_T __pyx_type_dict_guard = __Pyx_get_tp_dict_version(((PyObject *)__pyx_v_self));
       #endif
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_values); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 181, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_values); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 193, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)(void*)__pyx_pw_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_22values)) {
         __Pyx_XDECREF(__pyx_r);
@@ -7871,10 +7999,10 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
         }
         __pyx_t_2 = (__pyx_t_4) ? __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4) : __Pyx_PyObject_CallNoArg(__pyx_t_3);
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 181, __pyx_L1_error)
+        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 193, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-        if (!(likely(PyList_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_2)->tp_name), 0))) __PYX_ERR(0, 181, __pyx_L1_error)
+        if (!(likely(PyList_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_2)->tp_name), 0))) __PYX_ERR(0, 193, __pyx_L1_error)
         __pyx_r = ((PyObject*)__pyx_t_2);
         __pyx_t_2 = 0;
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -7893,14 +8021,14 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
     #endif
   }
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":182
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":194
  * 
  *     cpdef list values(self):
  *         cdef list values = super(ModelScoreSet, self).values()             # <<<<<<<<<<<<<<
  *         values.append(self.peptide_correlation)
  *         values.append(self.peptide_backbone_count)
  */
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 182, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 194, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet));
   __Pyx_GIVEREF(((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet));
@@ -7908,10 +8036,10 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
   __Pyx_INCREF(((PyObject *)__pyx_v_self));
   __Pyx_GIVEREF(((PyObject *)__pyx_v_self));
   PyTuple_SET_ITEM(__pyx_t_2, 1, ((PyObject *)__pyx_v_self));
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_super, __pyx_t_2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 182, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_super, __pyx_t_2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 194, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_values); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 182, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_values); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 194, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_3 = NULL;
@@ -7926,14 +8054,14 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
   }
   __pyx_t_1 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 182, __pyx_L1_error)
+  if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 194, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (!(likely(PyList_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_1)->tp_name), 0))) __PYX_ERR(0, 182, __pyx_L1_error)
+  if (!(likely(PyList_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_1)->tp_name), 0))) __PYX_ERR(0, 194, __pyx_L1_error)
   __pyx_v_values = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":183
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":195
  *     cpdef list values(self):
  *         cdef list values = super(ModelScoreSet, self).values()
  *         values.append(self.peptide_correlation)             # <<<<<<<<<<<<<<
@@ -7942,14 +8070,14 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
  */
   if (unlikely(__pyx_v_values == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "append");
-    __PYX_ERR(0, 183, __pyx_L1_error)
+    __PYX_ERR(0, 195, __pyx_L1_error)
   }
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->peptide_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 183, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->peptide_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 195, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_5 = __Pyx_PyList_Append(__pyx_v_values, __pyx_t_1); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 183, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyList_Append(__pyx_v_values, __pyx_t_1); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 195, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":184
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":196
  *         cdef list values = super(ModelScoreSet, self).values()
  *         values.append(self.peptide_correlation)
  *         values.append(self.peptide_backbone_count)             # <<<<<<<<<<<<<<
@@ -7958,14 +8086,14 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
  */
   if (unlikely(__pyx_v_values == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "append");
-    __PYX_ERR(0, 184, __pyx_L1_error)
+    __PYX_ERR(0, 196, __pyx_L1_error)
   }
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->peptide_backbone_count); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 184, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->peptide_backbone_count); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 196, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_5 = __Pyx_PyList_Append(__pyx_v_values, __pyx_t_1); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 184, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyList_Append(__pyx_v_values, __pyx_t_1); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 196, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":185
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":197
  *         values.append(self.peptide_correlation)
  *         values.append(self.peptide_backbone_count)
  *         values.append(self.glycan_correlation)             # <<<<<<<<<<<<<<
@@ -7973,14 +8101,14 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
  */
   if (unlikely(__pyx_v_values == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "append");
-    __PYX_ERR(0, 185, __pyx_L1_error)
+    __PYX_ERR(0, 197, __pyx_L1_error)
   }
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->glycan_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 185, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->glycan_correlation); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 197, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_5 = __Pyx_PyList_Append(__pyx_v_values, __pyx_t_1); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 185, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyList_Append(__pyx_v_values, __pyx_t_1); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 197, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":186
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":198
  *         values.append(self.peptide_backbone_count)
  *         values.append(self.glycan_correlation)
  *         return values             # <<<<<<<<<<<<<<
@@ -7990,7 +8118,7 @@ static PyObject *__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set
   __pyx_r = __pyx_v_values;
   goto __pyx_L0;
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":181
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":193
  *         return field_names
  * 
  *     cpdef list values(self):             # <<<<<<<<<<<<<<
@@ -8036,7 +8164,7 @@ static PyObject *__pyx_pf_29glycopeptide_feature_learning_7scoring_2_c_9score_se
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("values", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_values(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 181, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_values(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 193, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -9316,7 +9444,7 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
   return __pyx_r;
 }
 
-/* "glycan_profiling/_c/tandem/spectrum_match.pxd":71
+/* "glycan_profiling/_c/tandem/spectrum_match.pxd":72
  * 
  *     @staticmethod
  *     cdef inline PeakFoundRecord _create(DeconvolutedPeak peak, bint checked):             # <<<<<<<<<<<<<<
@@ -9334,20 +9462,20 @@ static CYTHON_INLINE struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_create", 0);
 
-  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":72
+  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":73
  *     @staticmethod
  *     cdef inline PeakFoundRecord _create(DeconvolutedPeak peak, bint checked):
  *         cdef PeakFoundRecord self = PeakFoundRecord.__new__(PeakFoundRecord)             # <<<<<<<<<<<<<<
  *         self.peak = peak
  *         self.checked = checked
  */
-  __pyx_t_1 = __Pyx_tp_new(((PyObject *)__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord), __pyx_empty_tuple); if (unlikely(!__pyx_t_1)) __PYX_ERR(3, 72, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_tp_new(((PyObject *)__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord), __pyx_empty_tuple); if (unlikely(!__pyx_t_1)) __PYX_ERR(3, 73, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (!(likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord)))) __PYX_ERR(3, 72, __pyx_L1_error)
+  if (!(likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord)))) __PYX_ERR(3, 73, __pyx_L1_error)
   __pyx_v_self = ((struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":73
+  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":74
  *     cdef inline PeakFoundRecord _create(DeconvolutedPeak peak, bint checked):
  *         cdef PeakFoundRecord self = PeakFoundRecord.__new__(PeakFoundRecord)
  *         self.peak = peak             # <<<<<<<<<<<<<<
@@ -9360,7 +9488,7 @@ static CYTHON_INLINE struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_
   __Pyx_DECREF(((PyObject *)__pyx_v_self->peak));
   __pyx_v_self->peak = __pyx_v_peak;
 
-  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":74
+  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":75
  *         cdef PeakFoundRecord self = PeakFoundRecord.__new__(PeakFoundRecord)
  *         self.peak = peak
  *         self.checked = checked             # <<<<<<<<<<<<<<
@@ -9369,7 +9497,7 @@ static CYTHON_INLINE struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_
  */
   __pyx_v_self->checked = __pyx_v_checked;
 
-  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":75
+  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":76
  *         self.peak = peak
  *         self.checked = checked
  *         return self             # <<<<<<<<<<<<<<
@@ -9381,7 +9509,7 @@ static CYTHON_INLINE struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_
   __pyx_r = __pyx_v_self;
   goto __pyx_L0;
 
-  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":71
+  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":72
  * 
  *     @staticmethod
  *     cdef inline PeakFoundRecord _create(DeconvolutedPeak peak, bint checked):             # <<<<<<<<<<<<<<
@@ -9536,7 +9664,7 @@ static PyTypeObject __pyx_type_29glycopeptide_feature_learning_7scoring_2_c_9sco
   0, /*tp_setattro*/
   0, /*tp_as_buffer*/
   Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE, /*tp_flags*/
-  "ModelScoreSet(glycopeptide_score=0., peptide_score=0., glycan_score=0., glycan_coverage=0., stub_glycopeptide_intensity_utilization=0., oxonium_ion_intensity_utilization=0., n_stub_glycopeptide_matches=0, peptide_coverage=0.0, peptide_correlation=0.0, peptide_backbone_count=0, glycan_correlation=0.0)", /*tp_doc*/
+  "ModelScoreSet(glycopeptide_score=0., peptide_score=0., glycan_score=0., glycan_coverage=0., stub_glycopeptide_intensity_utilization=0., oxonium_ion_intensity_utilization=0., n_stub_glycopeptide_matches=0, peptide_coverage=0.0, total_signal_utilization=0.0, peptide_correlation=0.0, peptide_backbone_count=0, glycan_correlation=0.0)", /*tp_doc*/
   0, /*tp_traverse*/
   0, /*tp_clear*/
   0, /*tp_richcompare*/
@@ -9778,14 +9906,15 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_temp, __pyx_k_temp, sizeof(__pyx_k_temp), 0, 0, 1, 1},
   {&__pyx_n_s_test, __pyx_k_test, sizeof(__pyx_k_test), 0, 0, 1, 1},
   {&__pyx_n_s_throw, __pyx_k_throw, sizeof(__pyx_k_throw), 0, 0, 1, 1},
+  {&__pyx_n_s_total_signal_utilization, __pyx_k_total_signal_utilization, sizeof(__pyx_k_total_signal_utilization), 0, 0, 1, 1},
   {&__pyx_n_s_unpack, __pyx_k_unpack, sizeof(__pyx_k_unpack), 0, 0, 1, 1},
   {&__pyx_n_s_values, __pyx_k_values, sizeof(__pyx_k_values), 0, 0, 1, 1},
   {0, 0, 0, 0, 0, 0, 0}
 };
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_staticmethod = __Pyx_GetBuiltinName(__pyx_n_s_staticmethod); if (!__pyx_builtin_staticmethod) __PYX_ERR(0, 48, __pyx_L1_error)
-  __pyx_builtin_IndexError = __Pyx_GetBuiltinName(__pyx_n_s_IndexError); if (!__pyx_builtin_IndexError) __PYX_ERR(0, 131, __pyx_L1_error)
-  __pyx_builtin_super = __Pyx_GetBuiltinName(__pyx_n_s_super); if (!__pyx_builtin_super) __PYX_ERR(0, 173, __pyx_L1_error)
+  __pyx_builtin_staticmethod = __Pyx_GetBuiltinName(__pyx_n_s_staticmethod); if (!__pyx_builtin_staticmethod) __PYX_ERR(0, 51, __pyx_L1_error)
+  __pyx_builtin_IndexError = __Pyx_GetBuiltinName(__pyx_n_s_IndexError); if (!__pyx_builtin_IndexError) __PYX_ERR(0, 140, __pyx_L1_error)
+  __pyx_builtin_super = __Pyx_GetBuiltinName(__pyx_n_s_super); if (!__pyx_builtin_super) __PYX_ERR(0, 185, __pyx_L1_error)
   __pyx_builtin_ImportError = __Pyx_GetBuiltinName(__pyx_n_s_ImportError); if (!__pyx_builtin_ImportError) __PYX_ERR(2, 945, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
@@ -9818,17 +9947,17 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__2);
   __Pyx_GIVEREF(__pyx_tuple__2);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":49
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":52
  * 
  *     @staticmethod
  *     def unpack(bytearray data):             # <<<<<<<<<<<<<<
  *         cdef:
  *             float* buff
  */
-  __pyx_tuple__3 = PyTuple_Pack(10, __pyx_n_s_data, __pyx_n_s_buff, __pyx_n_s_temp, __pyx_n_s_n_stub_glycopeptide_matches, __pyx_n_s_stub_utilization, __pyx_n_s_oxonium_utilization, __pyx_n_s_peptide_coverage, __pyx_n_s_peptide_correlation, __pyx_n_s_peptide_backbone_count, __pyx_n_s_glycan_correlation); if (unlikely(!__pyx_tuple__3)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __pyx_tuple__3 = PyTuple_Pack(11, __pyx_n_s_data, __pyx_n_s_buff, __pyx_n_s_temp, __pyx_n_s_n_stub_glycopeptide_matches, __pyx_n_s_stub_utilization, __pyx_n_s_oxonium_utilization, __pyx_n_s_peptide_coverage, __pyx_n_s_peptide_correlation, __pyx_n_s_peptide_backbone_count, __pyx_n_s_total_signal_utilization, __pyx_n_s_glycan_correlation); if (unlikely(!__pyx_tuple__3)) __PYX_ERR(0, 52, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__3);
   __Pyx_GIVEREF(__pyx_tuple__3);
-  __pyx_codeobj__4 = (PyObject*)__Pyx_PyCode_New(1, 0, 10, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__3, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_src_glycopeptide_feature_learnin, __pyx_n_s_unpack, 49, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__4)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __pyx_codeobj__4 = (PyObject*)__Pyx_PyCode_New(1, 0, 11, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__3, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_src_glycopeptide_feature_learnin, __pyx_n_s_unpack, 52, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__4)) __PYX_ERR(0, 52, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -9895,7 +10024,7 @@ static int __Pyx_modinit_type_init_code(void) {
   __pyx_vtable_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet.__pyx_base = *__pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet;
   __pyx_vtable_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet.__pyx_base.pack = (PyObject *(*)(struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet *, int __pyx_skip_dispatch))__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_pack;
   __pyx_vtable_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet.__pyx_base.values = (PyObject *(*)(struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet *, int __pyx_skip_dispatch))__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_values;
-  __pyx_vtable_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet._create_model_score_set = (struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *(*)(float, float, float, float, float, float, int, float, float, int, float))__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet__create_model_score_set;
+  __pyx_vtable_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet._create_model_score_set = (struct __pyx_obj_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet *(*)(float, float, float, float, float, float, int, float, float, float, int, float))__pyx_f_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet__create_model_score_set;
   __pyx_type_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet.tp_base = __pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_ScoreSet;
   if (PyType_Ready(&__pyx_type_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet) < 0) __PYX_ERR(0, 12, __pyx_L1_error)
   #if PY_VERSION_HEX < 0x030800B1
@@ -9907,7 +10036,7 @@ static int __Pyx_modinit_type_init_code(void) {
   if (__Pyx_SetVtable(__pyx_type_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet.tp_dict, __pyx_vtabptr_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet) < 0) __PYX_ERR(0, 12, __pyx_L1_error)
   if (PyObject_SetAttr(__pyx_m, __pyx_n_s_ModelScoreSet, (PyObject *)&__pyx_type_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet) < 0) __PYX_ERR(0, 12, __pyx_L1_error)
   __pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet = &__pyx_type_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet;
-  if (PyType_Ready(&__pyx_type_29glycopeptide_feature_learning_7scoring_2_c_9score_set___pyx_scope_struct____iter__) < 0) __PYX_ERR(0, 133, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_29glycopeptide_feature_learning_7scoring_2_c_9score_set___pyx_scope_struct____iter__) < 0) __PYX_ERR(0, 142, __pyx_L1_error)
   #if PY_VERSION_HEX < 0x030800B1
   __pyx_type_29glycopeptide_feature_learning_7scoring_2_c_9score_set___pyx_scope_struct____iter__.tp_print = 0;
   #endif
@@ -10193,14 +10322,14 @@ static int __Pyx_modinit_type_import_code(void) {
   __pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_SpectrumMatcherBase = __Pyx_ImportType(__pyx_t_1, "glycan_profiling._c.tandem.spectrum_match", "SpectrumMatcherBase", sizeof(struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_SpectrumMatcherBase), __Pyx_ImportType_CheckSize_Warn);
    if (!__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_SpectrumMatcherBase) __PYX_ERR(3, 16, __pyx_L1_error)
   __pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet = __Pyx_ImportType(__pyx_t_1, "glycan_profiling._c.tandem.spectrum_match", "FDRSet", sizeof(struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet) __PYX_ERR(3, 47, __pyx_L1_error)
-  __pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet = (struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet*)__Pyx_GetVtable(__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet->tp_dict); if (unlikely(!__pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet)) __PYX_ERR(3, 47, __pyx_L1_error)
+   if (!__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet) __PYX_ERR(3, 48, __pyx_L1_error)
+  __pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet = (struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet*)__Pyx_GetVtable(__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet->tp_dict); if (unlikely(!__pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_FDRSet)) __PYX_ERR(3, 48, __pyx_L1_error)
   __pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord = __Pyx_ImportType(__pyx_t_1, "glycan_profiling._c.tandem.spectrum_match", "PeakFoundRecord", sizeof(struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord) __PYX_ERR(3, 65, __pyx_L1_error)
-  __pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord = (struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord*)__Pyx_GetVtable(__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord->tp_dict); if (unlikely(!__pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord)) __PYX_ERR(3, 65, __pyx_L1_error)
+   if (!__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord) __PYX_ERR(3, 66, __pyx_L1_error)
+  __pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord = (struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord*)__Pyx_GetVtable(__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord->tp_dict); if (unlikely(!__pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakFoundRecord)) __PYX_ERR(3, 66, __pyx_L1_error)
   __pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap = __Pyx_ImportType(__pyx_t_1, "glycan_profiling._c.tandem.spectrum_match", "PeakLabelMap", sizeof(struct __pyx_obj_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap) __PYX_ERR(3, 79, __pyx_L1_error)
-  __pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap = (struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap*)__Pyx_GetVtable(__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap->tp_dict); if (unlikely(!__pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap)) __PYX_ERR(3, 79, __pyx_L1_error)
+   if (!__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap) __PYX_ERR(3, 80, __pyx_L1_error)
+  __pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap = (struct __pyx_vtabstruct_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap*)__Pyx_GetVtable(__pyx_ptype_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap->tp_dict); if (unlikely(!__pyx_vtabptr_16glycan_profiling_2_c_6tandem_14spectrum_match_PeakLabelMap)) __PYX_ERR(3, 80, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_RefNannyFinishContext();
   return 0;
@@ -10474,80 +10603,80 @@ if (!__Pyx_RefNanny) {
   if (__Pyx_patch_abc() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":49
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":52
  * 
  *     @staticmethod
  *     def unpack(bytearray data):             # <<<<<<<<<<<<<<
  *         cdef:
  *             float* buff
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_5unpack, NULL, __pyx_n_s_glycopeptide_feature_learning_sc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_29glycopeptide_feature_learning_7scoring_2_c_9score_set_13ModelScoreSet_5unpack, NULL, __pyx_n_s_glycopeptide_feature_learning_sc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 52, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet->tp_dict, __pyx_n_s_unpack, __pyx_t_1) < 0) __PYX_ERR(0, 49, __pyx_L1_error)
+  if (PyDict_SetItem((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet->tp_dict, __pyx_n_s_unpack, __pyx_t_1) < 0) __PYX_ERR(0, 52, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   PyType_Modified(__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":48
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":51
  *         return ((<char*>data)[:sizeof(float) * NUM_SCORES])
  * 
  *     @staticmethod             # <<<<<<<<<<<<<<
  *     def unpack(bytearray data):
  *         cdef:
  */
-  __Pyx_GetNameInClass(__pyx_t_1, (PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet, __pyx_n_s_unpack); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_GetNameInClass(__pyx_t_1, (PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet, __pyx_n_s_unpack); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 52, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_builtin_staticmethod, __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 48, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_builtin_staticmethod, __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 51, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  if (PyDict_SetItem((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet->tp_dict, __pyx_n_s_unpack, __pyx_t_2) < 0) __PYX_ERR(0, 49, __pyx_L1_error)
+  if (PyDict_SetItem((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet->tp_dict, __pyx_n_s_unpack, __pyx_t_2) < 0) __PYX_ERR(0, 52, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   PyType_Modified(__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":154
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":165
  * 
  *     @classmethod
  *     def from_spectrum_matcher(cls, match):             # <<<<<<<<<<<<<<
- *         stub_utilization, stub_count, peptide_count = match.count_peptide_Y_ion_utilization()
+ *         stub_utilization, stub_count, peptide_count, total_signal_utilization = match.count_peptide_Y_ion_utilization()
  *         oxonium_utilization = match.oxonium_ion_utilization()
  */
-  __Pyx_GetNameInClass(__pyx_t_2, (PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet, __pyx_n_s_from_spectrum_matcher); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 154, __pyx_L1_error)
+  __Pyx_GetNameInClass(__pyx_t_2, (PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet, __pyx_n_s_from_spectrum_matcher); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 165, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":153
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":164
  *                                 self.glycan_correlation)
  * 
  *     @classmethod             # <<<<<<<<<<<<<<
  *     def from_spectrum_matcher(cls, match):
- *         stub_utilization, stub_count, peptide_count = match.count_peptide_Y_ion_utilization()
+ *         stub_utilization, stub_count, peptide_count, total_signal_utilization = match.count_peptide_Y_ion_utilization()
  */
-  __pyx_t_1 = __Pyx_Method_ClassMethod(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 153, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_Method_ClassMethod(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 164, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (PyDict_SetItem((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet->tp_dict, __pyx_n_s_from_spectrum_matcher, __pyx_t_1) < 0) __PYX_ERR(0, 154, __pyx_L1_error)
+  if (PyDict_SetItem((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet->tp_dict, __pyx_n_s_from_spectrum_matcher, __pyx_t_1) < 0) __PYX_ERR(0, 165, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   PyType_Modified(__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":172
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":184
  * 
  *     @classmethod
  *     def field_names(cls):             # <<<<<<<<<<<<<<
  *         cdef list field_names = super(ModelScoreSet, cls).field_names()
  *         field_names.extend([
  */
-  __Pyx_GetNameInClass(__pyx_t_1, (PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet, __pyx_n_s_field_names); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 172, __pyx_L1_error)
+  __Pyx_GetNameInClass(__pyx_t_1, (PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet, __pyx_n_s_field_names); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 184, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
 
-  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":171
+  /* "glycopeptide_feature_learning/scoring/_c/score_set.pyx":183
  *         )
  * 
  *     @classmethod             # <<<<<<<<<<<<<<
  *     def field_names(cls):
  *         cdef list field_names = super(ModelScoreSet, cls).field_names()
  */
-  __pyx_t_2 = __Pyx_Method_ClassMethod(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 171, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_Method_ClassMethod(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 183, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  if (PyDict_SetItem((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet->tp_dict, __pyx_n_s_field_names, __pyx_t_2) < 0) __PYX_ERR(0, 172, __pyx_L1_error)
+  if (PyDict_SetItem((PyObject *)__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet->tp_dict, __pyx_n_s_field_names, __pyx_t_2) < 0) __PYX_ERR(0, 184, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   PyType_Modified(__pyx_ptype_29glycopeptide_feature_learning_7scoring_2_c_9score_set_ModelScoreSet);
 
@@ -10561,7 +10690,7 @@ if (!__Pyx_RefNanny) {
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_test, __pyx_t_2) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":71
+  /* "glycan_profiling/_c/tandem/spectrum_match.pxd":72
  * 
  *     @staticmethod
  *     cdef inline PeakFoundRecord _create(DeconvolutedPeak peak, bint checked):             # <<<<<<<<<<<<<<
