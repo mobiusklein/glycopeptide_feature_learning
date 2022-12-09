@@ -174,10 +174,10 @@ cdef class ModelScoreSet(ScoreSet):
             oxonium_utilization,
             stub_count,
             match.peptide_coverage(),
+            total_signal_utilization,
             match.peptide_correlation(),
             peptide_count,
             match.glycan_correlation(),
-            total_signal_utilization
         )
 
     @classmethod
