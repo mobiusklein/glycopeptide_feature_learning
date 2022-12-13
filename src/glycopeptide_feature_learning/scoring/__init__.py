@@ -9,6 +9,12 @@ from glycopeptide_feature_learning.scoring.predicate import (
     GlycanTypeCountPredicate, PredicateTreeBase)
 
 from glycopeptide_feature_learning.scoring.scorer import (
-    PredicateTree, PartitionTree, MultinomialRegressionScorer,
-    ShortPeptideMultinomialRegressionScorer, PartialSplitScorer,
-    PartialSplitScorerTree, SplitScorer, SplitScorerTree, PartitionedPredicateTree)
+    PredicateTree,
+    PartitionTree,
+    PartialSplitScorer,
+    PartialSplitScorerTree,
+    SplitScorer,
+    SplitScorerTree,
+    PartitionedPredicateTree,
+    NoGlycosylatedPeptidePartitionedPartialSplitScorer,
+    NoGlycosylatedPeptidePartitionedPredicateTree)

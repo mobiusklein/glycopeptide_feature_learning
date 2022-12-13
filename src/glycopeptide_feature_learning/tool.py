@@ -28,7 +28,7 @@ from glycopeptide_feature_learning import (
 from glycopeptide_feature_learning.scoring import (
     PartialSplitScorerTree, SplitScorerTree, PartitionedPredicateTree)
 
-from glycopeptide_feature_learning.scoring.scorer import NaivePartialSplitScorerTree, NoGlycosylatedPeptidePartitionedPredicateTree
+from glycopeptide_feature_learning.scoring.scorer import NoGlycosylatedPeptidePartitionedPredicateTree
 
 import glypy
 from glycopeptidepy.structure.fragment import IonSeries
@@ -530,7 +530,6 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
     model_cls = {
         "partial-peptide": PartialSplitScorerTree,
         "full": SplitScorerTree,
-        "naive-partial-peptide": NaivePartialSplitScorerTree,
         "partitioned-glycan": PartitionedPredicateTree,
         "no-glycosylated-partitioned-glycan": NoGlycosylatedPeptidePartitionedPredicateTree
     }[model_type]

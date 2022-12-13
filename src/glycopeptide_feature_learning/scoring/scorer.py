@@ -594,43 +594,6 @@ class PredicateTree(PredicateTreeBase):
 
 PartitionTree = PredicateTree
 
-
-class NaiveScorer(MultinomialRegressionScorer):
-
-    def _get_predicted_intensities(self):
-        c, intens, t, yhat = super(NaiveScorer, self)._get_predicted_intensities()
-        yhat *= np.nan
-        return c, intens, t, yhat
-
-
-class ShortPeptideNaiveScorer(NaiveScorer):
-    stub_weight = 0.65
-
-
-class NaivePredicateTree(PredicateTreeBase):
-    _scorer_type = NaiveScorer
-    _short_peptide_scorer_type = ShortPeptideNaiveScorer
-
-    @classmethod
-    def _bind_model_scorer(cls, scorer_type, models, partition=None):
-        return ModelBindingScorer(scorer_type, model_fit=models[0], partition=partition)
-
-
-class NaiveScorerWithoutReliability(NaiveScorer):
-    def _get_reliabilities(self, fragment_match_features, base_reliability=0.5):
-        rel = np.ones(len(fragment_match_features), dtype=float)
-        return rel
-
-
-class ShortPeptideNaiveScorerWithoutReliability(NaiveScorer):
-    stub_weight = 0.65
-
-
-class NaivePredicateTreeWithoutReliability(NaivePredicateTree):
-    _scorer_type = NaiveScorerWithoutReliability
-    _short_peptide_scorer_type = ShortPeptideNaiveScorerWithoutReliability
-
-
 class SplitScorer(HelperMethods, MultinomialRegressionScorerBase, SignatureAwareCoverageScorer):
 
     _glycan_score = None
@@ -950,16 +913,6 @@ class MixturePartialSplitScorer(_ModelMixtureBase, PartialSplitScorer):
 class PartialSplitScorerTree(PredicateTree):
     _scorer_type = MixturePartialSplitScorer
     _short_peptide_scorer_type = MixturePartialSplitScorer
-
-
-class NaiveMixturePartialSplitScorer(MixturePartialSplitScorer):
-    def _get_reliabilities(self, fragment_match_features, base_reliability=0.5):
-        return np.ones(len(fragment_match_features))
-
-
-class NaivePartialSplitScorerTree(PredicateTree):
-    _scorer_type = NaiveMixturePartialSplitScorer
-    _short_peptide_scorer_type = NaiveMixturePartialSplitScorer
 
 
 class PartitionedPartialSplitScorer(_MultiModelCache, PartialSplitScorer):
