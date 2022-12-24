@@ -27,6 +27,9 @@ from glycopeptidepy.structure.sequence_composition import AminoAcidSequenceBuild
 from collections import defaultdict
 
 
+cdef object _AminoAcidSequenceBuildingBlock = AminoAcidSequenceBuildingBlock
+
+
 cdef str NOISE = "noise"
 cdef int OUT_OF_RANGE_INT = 999
 
@@ -77,9 +80,22 @@ cpdef set get_peak_index(FragmentMatchMap self):
     return result
 
 
+@cython.freelist(100)
+cdef class TargetProperties:
+
+    @staticmethod
+    cdef TargetProperties from_glycopeptide(_PeptideSequenceCore glycopeptide):
+        cdef:
+            TargetProperties self
+
+        self = TargetProperties.__new__(TargetProperties)
+        self.peptide_backbone_mass = glycopeptide.get_peptide_backbone_mass()
+        return self
+
+
 cdef class FeatureBase(object):
 
-    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None):
+    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None, TargetProperties props=None):
         raise NotImplementedError()
 
     def __init__(self, tolerance=2e-5, name=None, intensity_ratio=OUT_OF_RANGE_INT,
@@ -200,8 +216,11 @@ cdef class FeatureBase(object):
 
 cdef class MassOffsetFeature(FeatureBase):
 
-    @cython.cdivision(True)
     cpdef bint test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2):
+        return self._test(peak1, peak2)
+
+    @cython.cdivision(True)
+    cdef inline bint _test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2):
         if (self.intensity_ratio == OUT_OF_RANGE_INT or
             intensity_ratio_function(peak1, peak2) == self.intensity_ratio) and\
            ((self.from_charge == OUT_OF_RANGE_INT and self.to_charge == OUT_OF_RANGE_INT) or
@@ -210,7 +229,7 @@ cdef class MassOffsetFeature(FeatureBase):
             return fabs((peak1.neutral_mass + self.offset - peak2.neutral_mass) / peak2.neutral_mass) <= self.tolerance
         return False
 
-    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None):
+    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None, TargetProperties props=None):
         cdef:
             list matches
             tuple peaks_in_range
@@ -220,7 +239,7 @@ cdef class MassOffsetFeature(FeatureBase):
         n = PyTuple_GET_SIZE(peaks_in_range)
         for i in range(n):
             peak2 = <DeconvolutedPeak>PyTuple_GET_ITEM(peaks_in_range, i)
-            if peak is not peak2 and self.test(peak, peak2):
+            if peak is not peak2 and self._test(peak, peak2):
                 matches.append(peak2)
         return matches
 
@@ -278,8 +297,8 @@ cdef class MassOffsetFeature(FeatureBase):
     def __hash__(self):
         return self._hash
 
-    def __call__(self, peak1, peak2, structure=None):
-        return self.test(peak1, peak2)
+    def __call__(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2, structure=None):
+        return self._test(peak1, peak2)
 
     def specialize(self, from_charge, to_charge, intensity_ratio):
         return self.__class__(
@@ -334,7 +353,8 @@ cdef class MassOffsetFeature(FeatureBase):
 
 
 @cython.binding(True)
-cpdef list ComplementFeature_find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None):
+@cython.cdivision(True)
+cpdef list ComplementFeature_find_matches(MassOffsetFeature self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None, TargetProperties props=None):
     cdef:
         list matches
         tuple peaks_in_range
@@ -342,7 +362,12 @@ cpdef list ComplementFeature_find_matches(self, DeconvolutedPeak peak, Deconvolu
         size_t i, n
 
     matches = []
-    reference_mass = structure.peptide_backbone_mass
+    if props is not None:
+        reference_mass = props.peptide_backbone_mass
+    elif isinstance(structure, _PeptideSequenceCore):
+        reference_mass = (<_PeptideSequenceCore>structure).get_peptide_backbone_mass()
+    else:
+        reference_mass = structure.peptide_backbone_mass
     reference_mass += self.offset
     delta_mass = reference_mass - peak.neutral_mass
 
@@ -373,16 +398,18 @@ cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak f
         return False
     matched_fragments = solution_map.by_peak.getitem(from_peak)
     validated_aa = False
+
+    if isinstance(self.amino_acid, _AminoAcidSequenceBuildingBlock):
+        residue = self.amino_acid.residue
+    else:
+        residue = self.amino_acid
+
     n = PyList_GET_SIZE(matched_fragments)
     for i in range(n):
         frag = <FragmentBase>PyList_GET_ITEM(matched_fragments, i)
         if not isinstance(frag, PeptideFragment):
             continue
         flanking_amino_acids = (<PeptideFragment>frag).flanking_amino_acids
-        try:
-            residue = self.amino_acid.residue
-        except AttributeError:
-            residue = self.amino_acid
         for j in range(2):
             if abs(residue.mass - (<AminoAcidResidueBase>PyList_GetItem(flanking_amino_acids, j)).mass) < 1e-5:
                 validated_aa = True
@@ -397,8 +424,8 @@ cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak f
 
 cdef class FittedFeatureBase(object):
 
-    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=None):
-        result = self.feature.find_matches(peak, peak_list, structure)
+    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=None, TargetProperties props=None):
+        result = self.feature.find_matches(peak, peak_list, structure, props)
         return result
 
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
@@ -421,11 +448,20 @@ cdef class FeatureFunctionEstimatorBase(object):
             bint is_on_series, is_match_expected
             PeakRelation pr
             FragmentBase k
+            TargetProperties props
+            set peak_index_set
+            _PeptideSequenceCore structure
+
+        related = []
 
         n_peaks = peaks.get_size()
-        related = []
+
         solution_map = gpsm.solution_map
         structure = gpsm.structure
+
+        props = TargetProperties.from_glycopeptide(structure)
+        peak_index_set = get_peak_index(solution_map)
+
         for i_peaks in range(n_peaks):
             peak = peaks.getitem(i_peaks)
 
@@ -434,21 +470,25 @@ cdef class FeatureFunctionEstimatorBase(object):
             is_on_series = False
             for i_fragments in range(n_fragments):
                 k = <FragmentBase>PyList_GET_ITEM(fragments, i_fragments)
-                if k.get_series() == self.series:
+                if k.get_series().int_code == self.series.int_code:
                     is_on_series = True
                     break
 
-            matches = self.feature_function.find_matches(peak, peaks, structure)
+            matches = self.feature_function.find_matches(peak, peaks, structure, props)
             n_matches = PyList_GET_SIZE(matches)
             for i_matches in range(n_matches):
                 match = <DeconvolutedPeak>PyList_GET_ITEM(matches, i_matches)
                 if peak is match:
                     continue
+
                 pr = None
                 if self.track_relations:
-                    pr = PeakRelation(peak, match, self.feature_function, intensity_ratio_function(peak, match))
+                    pr = PeakRelation._create(peak, match, self.feature_function, None)
                     related.append(pr)
-                is_match_expected = self.feature_function.is_valid_match(peak, match, solution_map, structure)
+
+                is_match_expected = self.feature_function.is_valid_match(
+                    peak, match, solution_map, structure, peak_index_set
+                )
                 if is_on_series and is_match_expected:
                     self.total_on_series_satisfied += 1
                     if self.track_relations:
@@ -467,23 +507,28 @@ cdef class FeatureFunctionEstimatorBase(object):
 
 cdef class FragmentationFeatureBase(object):
 
-    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=None):
+    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=None, TargetProperties props=None):
         cdef:
             list matches, pairs
             DeconvolutedPeak match
+            tuple key
             size_t i, n
+            PyObject* ptemp
+            FeatureBase fit
 
-        matches = self.feature.find_matches(peak, peak_list, structure)
+        matches = self.feature.find_matches(peak, peak_list, structure, props)
         pairs = []
         n = PyList_GET_SIZE(matches)
         for i in range(n):
             match = <DeconvolutedPeak>PyList_GET_ITEM(matches, i)
-            try:
-                rel = PeakRelation._create(peak, match, None, self.series)
-                rel.feature = self.fits[rel.intensity_ratio, rel.from_charge, rel.to_charge]
+            rel = PeakRelation._create(peak, match, None, self.series)
+            key = (rel.intensity_ratio, rel.from_charge, rel.to_charge)
+            ptemp = PyDict_GetItem(self.fits, key)
+            if ptemp != NULL:
+                fit = <FeatureBase>ptemp
+                rel.feature = fit
                 pairs.append(rel)
-            except KeyError:
-                continue
+
         return pairs
 
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
@@ -496,7 +541,7 @@ cdef class FragmentationModelBase(object):
     cdef size_t get_size(self):
         return PyList_GET_SIZE(self.feature_table)
 
-    cpdef find_matches(self, scan, FragmentMatchMap solution_map, structure):
+    cpdef find_matches(self, scan, FragmentMatchMap solution_map, structure, TargetProperties props=None):
         cdef:
             object matches_to_features
             DeconvolutedPeakSet deconvoluted_peak_set
@@ -520,7 +565,7 @@ cdef class FragmentationModelBase(object):
                 continue
             for i in range(n):
                 feature = <FragmentationFeatureBase>PyList_GET_ITEM(self.feature_table, i)
-                rels = feature.find_matches(peak, deconvoluted_peak_set, structure)
+                rels = feature.find_matches(peak, deconvoluted_peak_set, structure, props)
                 k = PyList_GET_SIZE(rels)
                 for j in range(k):
                     rel = <PeakRelation>PyList_GET_ITEM(rels, j)
@@ -601,7 +646,7 @@ cdef list get_item_default_list(dict d, object key):
 
 cdef class FragmentationModelCollectionBase(object):
 
-    cpdef dict find_matches(self, scan, FragmentMatchMap solution_map, structure):
+    cpdef dict find_matches(self, scan, FragmentMatchMap solution_map, structure, TargetProperties props=None):
         cdef:
             dict match_to_features, models
             set peak_index_set
@@ -641,7 +686,7 @@ cdef class FragmentationModelCollectionBase(object):
             n = model.get_size()
             for i in range(n):
                 feature = <FragmentationFeatureBase>PyList_GET_ITEM(model.feature_table, i)
-                rels = feature.find_matches(peak, deconvoluted_peak_set, structure)
+                rels = feature.find_matches(peak, deconvoluted_peak_set, structure, props)
                 k = PyList_GET_SIZE(rels)
                 for j in range(k):
                     rel = <PeakRelation>PyList_GET_ITEM(rels, j)
@@ -660,6 +705,7 @@ cdef class FragmentationModelCollectionBase(object):
 
             PeakFragmentPair peak_fragment
             PeakRelation rel
+            TargetProperties props
 
             DeconvolutedPeak peak
             FragmentBase fragment
@@ -675,7 +721,8 @@ cdef class FragmentationModelCollectionBase(object):
             PyObject* ptemp
             size_t i, n, j, k
         models = self.models
-        match_to_features = self.find_matches(scan, solution_map, structure)
+        props = TargetProperties.from_glycopeptide(structure)
+        match_to_features = self.find_matches(scan, solution_map, structure, props)
         fragment_probabilities = {}
         for obj in solution_map.members:
             peak_fragment = <PeakFragmentPair>obj

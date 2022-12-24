@@ -4,12 +4,21 @@ cimport cython
 from ms_deisotope._c.peak_set cimport DeconvolutedPeak, DeconvolutedPeakSet
 
 from glycopeptidepy._c.structure.base cimport (AminoAcidResidueBase, ModificationBase)
+from glycopeptidepy._c.structure.sequence_methods cimport _PeptideSequenceCore
 from glycopeptidepy._c.structure.fragment cimport (FragmentBase, PeptideFragment, IonSeriesBase)
 
 from glycan_profiling._c.structure.fragment_match_map cimport (PeakFragmentPair, FragmentMatchMap)
 
 
 cpdef set get_peak_index(FragmentMatchMap self)
+
+
+cdef class TargetProperties:
+    cdef:
+        public double peptide_backbone_mass
+
+    @staticmethod
+    cdef TargetProperties from_glycopeptide(_PeptideSequenceCore glycopeptide)
 
 
 cdef class FeatureBase(object):
@@ -22,7 +31,7 @@ cdef class FeatureBase(object):
         public object feature_type
         public object terminal
 
-    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=*)
+    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=*, TargetProperties props=*)
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
                               FragmentMatchMap solution_map, structure=*, set peak_indices=*)
 
@@ -34,10 +43,11 @@ cdef class MassOffsetFeature(FeatureBase):
         public Py_hash_t _hash
 
     cpdef bint test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2)
+    cdef inline bint _test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2)
 
 
 
-cpdef list ComplementFeature_find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=*)
+cpdef list ComplementFeature_find_matches(MassOffsetFeature self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=*, TargetProperties props=*)
 cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
                                       FragmentMatchMap solution_map, structure=*, set peak_indices=*) except *
 
@@ -73,7 +83,7 @@ cdef class FittedFeatureBase(object):
         public list relations
 
 
-    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=*)
+    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=*, TargetProperties props=*)
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
                               FragmentMatchMap solution_map, structure=*, set peak_indices=*)
     cpdef double _feature_probability(self, double p=*)
@@ -85,7 +95,7 @@ cdef class FragmentationFeatureBase(object):
         public IonSeriesBase series
         public dict fits
 
-    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=*)
+    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=*, TargetProperties props=*)
     cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
                               FragmentMatchMap solution_map, structure=*, set peak_indices=*)
 
@@ -102,7 +112,7 @@ cdef class FragmentationModelBase(object):
         public double offset_probability
 
     cdef size_t get_size(self)
-    cpdef find_matches(self, scan, FragmentMatchMap solution_map, structure)
+    cpdef find_matches(self, scan, FragmentMatchMap solution_map, structure, TargetProperties props=*)
     cpdef double _score_peak(self, DeconvolutedPeak peak, list matched_features, FragmentMatchMap solution_map, structure)
 
 
@@ -110,7 +120,7 @@ cdef class FragmentationModelCollectionBase(object):
     cdef:
         public dict models
 
-    cpdef dict find_matches(self, scan, FragmentMatchMap solution_map, structure)
+    cpdef dict find_matches(self, scan, FragmentMatchMap solution_map, structure, TargetProperties props=*)
     cpdef dict score(self, scan, FragmentMatchMap solution_map, structure)
 
 
