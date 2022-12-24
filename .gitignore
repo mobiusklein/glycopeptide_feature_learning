@@ -2,10 +2,10 @@
 *.pyd
 *.so
 *.nfs*
-glycopeptide_feature_learning/_c/*.c
-glycopeptide_feature_learning/_c/*.html
-glycopeptide_feature_learning/scoring/_c/*.c
-glycopeptide_feature_learning/scoring/_c/*.html
+src/glycopeptide_feature_learning/_c/*.c
+src/glycopeptide_feature_learning/_c/*.html
+src/glycopeptide_feature_learning/scoring/_c/*.c
+src/glycopeptide_feature_learning/scoring/_c/*.html
 /data/
 ext/
 ref/
