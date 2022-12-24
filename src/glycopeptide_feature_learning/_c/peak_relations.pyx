@@ -870,7 +870,8 @@ cdef class PeakRelation(object):
         self.to_charge = to_peak.charge
 
         if series is None:
-            series = NOISE
-        self.series = series
+            self.series = NOISE
+        else:
+            self.series = series
 
         return self
