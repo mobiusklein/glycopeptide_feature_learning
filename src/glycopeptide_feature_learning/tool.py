@@ -4,7 +4,7 @@ import sys
 import glob
 import json
 import logging
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Dict, List, Optional, Tuple, Type, Union, Deque
 import warnings
 import array
 import pickle
@@ -44,13 +44,14 @@ logger.addHandler(logging.NullHandler())
 DEFAULT_MODEL_TYPE = multinomial_regression.LabileMonosaccharideAwareModel
 
 
-def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: float=50.0, min_q_value: float=1.0) -> List[data_source.AnnotatedScan]:
+def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: float = 50.0, min_q_value: float = 1.0) -> Deque[data_source.AnnotatedScan]:
     training_files = []
     for path in paths:
         training_files.extend(glob.glob(path))
     if len(training_files) == 0:
         raise click.ClickException("No spectrum match files found for patterns {}".format(', '.join(paths)))
-    training_instances = []
+
+    training_instances: Deque[data_source.AnnotatedScan] = Deque()
     if blacklist_path is not None:
         with open(blacklist_path) as fh:
             blacklist = {line.strip() for line in fh}
@@ -96,7 +97,7 @@ def match_spectra(matches, error_tolerance):
     return matches
 
 
-def partition_training_data(training_instances: List[data_source.AnnotatedScan], omit_labile=False,
+def partition_training_data(training_instances: Deque[data_source.AnnotatedScan], omit_labile=False,
                             fit_partitioned=False) -> partitions.PartitionMap:
     if fit_partitioned:
         partition_rules = partitions.build_partition_rules_from_bins(glycan_size_ranges=[(1, 25)])
