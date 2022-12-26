@@ -174,11 +174,11 @@ cdef class FeatureBase(object):
     def __ne__(self, other):
         return not (self == other)
 
-    cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
+    cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
                               FragmentMatchMap solution_map, structure=None, set peak_indices=None):
         if peak_indices is not None:
-            return to_peak._index.neutral_mass in peak_indices
-        return solution_map.by_peak_index.has_key(to_peak._index.neutral_mass)
+            return to_peak in peak_indices
+        return solution_map.by_peak_index.has_key(to_peak)
 
     def specialize(self, from_charge, to_charge, intensity_ratio):
         raise NotImplementedError()
@@ -365,16 +365,16 @@ cpdef list get_amino_acids_around(_PeptideSequenceCore peptide, int position, Io
     result = []
     if series.direction > 0:
         if position > 0:
-            result.append(peptide[position - 1].amino_acid)
-        result.append(peptide[position].amino_acid)
+            result.append(peptide.get(position - 1).amino_acid)
+        result.append(peptide.get(position).amino_acid)
         if position < length - 2:
-            result.append(peptide[position + 1].amino_acid)
+            result.append(peptide.get(position + 1).amino_acid)
     elif series.direction < 0:
         if position > 1:
-            result.append(peptide[length - (position - 1)].amino_acid)
-        result.append(peptide[length - position].amino_acid)
-        if position < len(peptide) - 2:
-            result.append(peptide[length - (position + 1)].amino_acid)
+            result.append(peptide.get(length - (position - 1)).amino_acid)
+        result.append(peptide.get(length - position).amino_acid)
+        if position < length - 2:
+            result.append(peptide.get(length - (position + 1)).amino_acid)
     return result
 
 
@@ -473,8 +473,9 @@ cdef class LinkFeature(MassOffsetFeature):
     cpdef bint amino_acid_in_fragment(self, PeptideFragment fragment):
         return self._amino_acid_in_fragment(fragment)
 
-    cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                              FragmentMatchMap solution_map, structure=None, set peak_indices=None):
+    cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
+                              FragmentMatchMap solution_map, structure=None,
+                              set peak_indices=None):
         cdef:
             bint validated_aa
             list matched_fragments, flanking_amino_acids
@@ -482,7 +483,17 @@ cdef class LinkFeature(MassOffsetFeature):
             FragmentBase frag
             AminoAcidResidueBase residue
 
-        matched_fragments = solution_map.by_peak_index.getitem(from_peak._index.neutral_mass)
+
+        if peak_indices is not None:
+            is_peak_expected = to_peak in peak_indices
+        else:
+            is_peak_expected = solution_map.by_peak_index.has_key(to_peak)
+
+        if not is_peak_expected:
+            return False
+
+        matched_fragments = solution_map.by_peak_index.getitem(from_peak)
+
         validated_aa = False
 
         residue = self._amino_acid_residue
@@ -551,7 +562,7 @@ cdef class FittedFeatureBase(object):
         result = self.feature.find_matches(peak, peak_list, structure, props)
         return result
 
-    cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
+    cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
                               FragmentMatchMap solution_map, structure=None, set peak_indices=None):
         return self.feature.is_valid_match(from_peak, to_peak, solution_map, structure, peak_indices)
 
@@ -610,7 +621,11 @@ cdef class FeatureFunctionEstimatorBase(object):
                     related.append(pr)
 
                 is_match_expected = self.feature_function.is_valid_match(
-                    peak, match, solution_map, structure, peak_index_set
+                    peak._index.neutral_mass,
+                    match._index.neutral_mass,
+                    solution_map,
+                    structure,
+                    peak_index_set
                 )
                 if is_on_series and is_match_expected:
                     self.total_on_series_satisfied += 1
@@ -654,7 +669,7 @@ cdef class FragmentationFeatureBase(object):
 
         return pairs
 
-    cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
+    cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
                               FragmentMatchMap solution_map, structure=None, set peak_indices=None):
         return self.feature.is_valid_match(from_peak, to_peak, solution_map, structure, peak_indices)
 
@@ -692,9 +707,9 @@ cdef class FragmentationModelBase(object):
                 k = PyList_GET_SIZE(rels)
                 for j in range(k):
                     rel = <PeakRelation>PyList_GET_ITEM(rels, j)
-                    if feature.is_valid_match(rel.from_peak, rel.to_peak, solution_map, structure):
-                        matches_to_features[rel.from_peak].append(rel)
-                        matches_to_features[rel.to_peak].append(rel)
+                    if feature.is_valid_match(rel.from_peak._index.neutral_mass, rel.to_peak._index.neutral_mass, solution_map, structure):
+                        matches_to_features[rel.from_peak._index.neutral_mass].append(rel)
+                        matches_to_features[rel.to_peak._index.neutral_mass].append(rel)
         return matches_to_features
 
     @cython.cdivision(True)
@@ -772,19 +787,20 @@ cdef class FragmentationModelCollectionBase(object):
     cpdef dict find_matches(self, scan, FragmentMatchMap solution_map, structure, TargetProperties props=None):
         cdef:
             dict match_to_features, models
+
             set peak_index_set
             DeconvolutedPeakSet deconvoluted_peak_set
-            bint is_peptide_fragment
-            PeakFragmentPair peak_fragment
-            PeakRelation rel
-
             DeconvolutedPeak peak
-            FragmentBase fragment
 
-            FragmentationFeatureBase feature
+            bint is_peptide_fragment, is_link
+            PeakFragmentPair peak_fragment
+            FragmentBase fragment
+            IonSeriesBase fragment_series
 
             FragmentationModelBase model
+            FragmentationFeatureBase feature
 
+            PeakRelation rel
             list rels, surrounding_aas
 
             PyObject* ptemp
@@ -800,21 +816,23 @@ cdef class FragmentationModelCollectionBase(object):
             peak_fragment = <PeakFragmentPair>obj
             peak = peak_fragment.peak
             fragment = peak_fragment.fragment
+            fragment_series = fragment.get_series()
             is_peptide_fragment = isinstance(fragment, PeptideFragment)
             surrounding_aas = None
-            ptemp = PyDict_GetItem(models, fragment.get_series())
+            ptemp = PyDict_GetItem(models, fragment_series)
             if ptemp == NULL:
                 continue
             model = <FragmentationModelBase>ptemp
             n = model.get_size()
             for i in range(n):
                 feature = <FragmentationFeatureBase>PyList_GET_ITEM(model.feature_table, i)
-                if isinstance(feature.feature, LinkFeature) and is_peptide_fragment:
+                is_link = isinstance(feature.feature, LinkFeature)
+                if is_link and is_peptide_fragment:
                     if surrounding_aas is None:
                         surrounding_aas = get_amino_acids_around(
                             <_PeptideSequenceCore>structure,
                             (<PeptideFragment>peak_fragment.fragment).position,
-                            (<PeptideFragment>peak_fragment.fragment).series
+                            fragment_series
                         )
 
                     if not (<LinkFeature>feature.feature)._amino_acid_in_list(surrounding_aas):
@@ -824,7 +842,8 @@ cdef class FragmentationModelCollectionBase(object):
                 k = PyList_GET_SIZE(rels)
                 for j in range(k):
                     rel = <PeakRelation>PyList_GET_ITEM(rels, j)
-                    if feature.is_valid_match(rel.from_peak, rel.to_peak, solution_map, structure, peak_index_set):
+                    if feature.is_valid_match(rel.from_peak._index.neutral_mass, rel.to_peak._index.neutral_mass,
+                                              solution_map, structure, peak_index_set):
                         PyList_Append(
                             get_item_default_list(match_to_features, rel.from_peak._index.neutral_mass),
                             rel)

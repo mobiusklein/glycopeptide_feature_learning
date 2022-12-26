@@ -315,7 +315,7 @@ cdef class _FragmentType(object):
 
 @cython.binding(True)
 @cython.boundscheck(False)
-cpdef np.ndarray[feature_dtype_t, ndim=2] encode_classification(cls, list classification):
+cpdef np.ndarray[feature_dtype_t, ndim=2, ] encode_classification(cls, list classification):
     cdef:
         size_t i, n, j, k
         _FragmentType row

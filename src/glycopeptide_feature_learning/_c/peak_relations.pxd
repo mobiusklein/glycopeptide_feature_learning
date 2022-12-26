@@ -32,7 +32,7 @@ cdef class FeatureBase(object):
         public object terminal
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=*, TargetProperties props=*)
-    cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
+    cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
                               FragmentMatchMap solution_map, structure=*, set peak_indices=*)
 
 
@@ -55,7 +55,8 @@ cdef class LinkFeature(MassOffsetFeature):
     cdef inline bint _amino_acid_in_list(self, list aas)
 
     cpdef bint amino_acid_in_fragment(self, PeptideFragment fragment)
-
+    cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
+                              FragmentMatchMap solution_map, structure=*, set peak_indices=*)
 
 cdef class ComplementFeature(MassOffsetFeature):
     pass
@@ -93,7 +94,7 @@ cdef class FittedFeatureBase(object):
 
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=*, TargetProperties props=*)
-    cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
+    cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
                               FragmentMatchMap solution_map, structure=*, set peak_indices=*)
     cpdef double _feature_probability(self, double p=*)
 
@@ -105,7 +106,7 @@ cdef class FragmentationFeatureBase(object):
         public dict fits
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=*, TargetProperties props=*)
-    cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
+    cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
                               FragmentMatchMap solution_map, structure=*, set peak_indices=*)
 
 
