@@ -1,4 +1,5 @@
 from collections import defaultdict
+from contextlib import contextmanager
 import math
 from typing import Dict, List, Union
 
@@ -941,6 +942,18 @@ class PartitionedPartialSplitScorer(_MultiModelCache, PartialSplitScorer):
             *args, **kwargs)
         self.model_fit = None
         return value
+
+    @contextmanager
+    def with_peptide_model(self):
+        self.model_fit = self.model_selectors.get_peptide_model(self)
+        yield self
+        self.model_fit = None
+
+    @contextmanager
+    def with_glycan_model(self):
+        self.model_fit = self.model_selectors.get_glycan_model(self)
+        yield self
+        self.model_fit = None
 
     def calculate_glycan_score(self, error_tolerance=2e-5, use_reliability=True, base_reliability=0.5, core_weight=0.4,
                                coverage_weight=0.5, fragile_fucose=False, **kwargs):
