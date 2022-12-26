@@ -46,10 +46,19 @@ cdef class MassOffsetFeature(FeatureBase):
     cdef inline bint _test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2)
 
 
+cdef class LinkFeature(MassOffsetFeature):
+    cdef:
+        public object _amino_acid
+        public AminoAcidResidueBase _amino_acid_residue
 
-cpdef list ComplementFeature_find_matches(MassOffsetFeature self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=*, TargetProperties props=*)
-cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                                      FragmentMatchMap solution_map, structure=*, set peak_indices=*) except *
+    cdef inline bint _amino_acid_in_fragment(self, PeptideFragment fragment)
+    cdef inline bint _amino_acid_in_list(self, list aas)
+
+    cpdef bint amino_acid_in_fragment(self, PeptideFragment fragment)
+
+
+cdef class ComplementFeature(MassOffsetFeature):
+    pass
 
 
 cdef class FeatureFunctionEstimatorBase(object):

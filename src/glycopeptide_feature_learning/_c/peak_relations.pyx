@@ -206,15 +206,19 @@ cdef class FeatureBase(object):
 
     @classmethod
     def from_json(cls, d):
-        # feature_type = d['feature_type']
-        # if feature_type == LinkFeature.feature_type:
-        #     return LinkFeature.from_json(d)
-        # else:
-        #     return MassOffsetFeature.from_json(d)
-        raise NotImplementedError()
+        feature_type = d['feature_type']
+        if feature_type == LinkFeature.get_feature_type():
+            return LinkFeature.from_json(d)
+        elif feature_type == ComplementFeature.get_feature_type():
+            return ComplementFeature.from_json(d)
+        else:
+            return MassOffsetFeature.from_json(d)
 
 
 cdef class MassOffsetFeature(FeatureBase):
+    @classmethod
+    def get_feature_type(cls):
+        return ''
 
     cpdef bint test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2):
         return self._test(peak1, peak2)
@@ -352,75 +356,193 @@ cdef class MassOffsetFeature(FeatureBase):
         return inst
 
 
-@cython.binding(True)
-@cython.cdivision(True)
-cpdef list ComplementFeature_find_matches(MassOffsetFeature self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None, TargetProperties props=None):
+cpdef list get_amino_acids_around(_PeptideSequenceCore peptide, int position, IonSeriesBase series):
     cdef:
-        list matches
-        tuple peaks_in_range
-        double reference_mass, delta_mass
-        size_t i, n
+        int length
+        list result
 
-    matches = []
-    if props is not None:
-        reference_mass = props.peptide_backbone_mass
-    elif isinstance(structure, _PeptideSequenceCore):
-        reference_mass = (<_PeptideSequenceCore>structure).get_peptide_backbone_mass()
-    else:
-        reference_mass = structure.peptide_backbone_mass
-    reference_mass += self.offset
-    delta_mass = reference_mass - peak.neutral_mass
-
-    peaks_in_range = peak_list.all_peaks_for(delta_mass, 2 * self.tolerance)
-    n = PyTuple_GET_SIZE(peaks_in_range)
-    for i in range(n):
-        peak2 = <DeconvolutedPeak>PyTuple_GET_ITEM(peaks_in_range, i)
-        if peak is not peak2 and abs((peak2.neutral_mass + peak.neutral_mass) - reference_mass) / reference_mass < self.tolerance:
-            matches.append(peak2)
-    return matches
+    length = peptide.get_size()
+    result = []
+    if series.direction > 0:
+        if position > 0:
+            result.append(peptide[position - 1].amino_acid)
+        result.append(peptide[position].amino_acid)
+        if position < length - 2:
+            result.append(peptide[position + 1].amino_acid)
+    elif series.direction < 0:
+        if position > 1:
+            result.append(peptide[length - (position - 1)].amino_acid)
+        result.append(peptide[length - position].amino_acid)
+        if position < len(peptide) - 2:
+            result.append(peptide[length - (position + 1)].amino_acid)
+    return result
 
 
-@cython.binding(True)
-cpdef bint LinkFeature_is_valid_match(MassOffsetFeature self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
-                                      FragmentMatchMap solution_map, structure=None, set peak_indices=None) except *:
-    cdef:
-        bint is_peak_expected, validated_aa
-        list matched_fragments, flanking_amino_acids
-        size_t i, n, j
-        FragmentBase frag
-        double err
-        AminoAcidResidueBase residue
-    if peak_indices is not None:
-        is_peak_expected = to_peak._index.neutral_mass in peak_indices
-    else:
-        is_peak_expected = solution_map.by_peak_index.has_key(to_peak._index.neutral_mass)
-    if not is_peak_expected:
-        return False
+@cython.final
+cdef class LinkFeature(MassOffsetFeature):
+    @classmethod
+    def get_feature_type(cls):
+        return 'link'
 
-    matched_fragments = solution_map.by_peak_index.getitem(from_peak._index.neutral_mass)
-    validated_aa = False
+    def __init__(self, amino_acid, tolerance=2e-5, name=None, intensity_ratio=OUT_OF_RANGE_INT,
+                 from_charge=OUT_OF_RANGE_INT, to_charge=OUT_OF_RANGE_INT, feature_type=None,
+                 terminal=''):
+        if feature_type is None:
+            feature_type = LinkFeature.get_feature_type()
+        offset = amino_acid.mass
+        if name is None:
+            name = str(amino_acid)
+        super(LinkFeature, self).__init__(
+            offset, tolerance, name, intensity_ratio, from_charge, to_charge, feature_type)
+        self.amino_acid = amino_acid
 
-    if isinstance(self.amino_acid, _AminoAcidSequenceBuildingBlock):
-        residue = self.amino_acid.residue
-    else:
-        residue = self.amino_acid
+    @property
+    def amino_acid(self):
+        return self._amino_acid
 
-    n = PyList_GET_SIZE(matched_fragments)
-    for i in range(n):
-        frag = <FragmentBase>PyList_GET_ITEM(matched_fragments, i)
-        if not isinstance(frag, PeptideFragment):
-            continue
-        flanking_amino_acids = (<PeptideFragment>frag).flanking_amino_acids
+    @amino_acid.setter
+    def amino_acid(self, value):
+        self._amino_acid = value
+        if isinstance(value, AminoAcidResidueBase):
+            self._amino_acid_residue = value
+        else:
+            self._amino_acid_residue = value.residue
+
+    def specialize(self, from_charge, to_charge, intensity_ratio):
+        return self.__class__(
+            self.amino_acid, self.tolerance, self.name, intensity_ratio, from_charge,
+            to_charge, self.feature_type, self.terminal)
+
+    def unspecialize(self):
+        return self.__class__(
+            self.amino_acid, self.tolerance, self.name, OUT_OF_RANGE_INT, OUT_OF_RANGE_INT,
+            OUT_OF_RANGE_INT, self.feature_type, self.terminal)
+
+    def to_json(self):
+        d = super(LinkFeature, self).to_json()
+        try:
+            d['amino_acid_residue'] = self.amino_acid.residue.symbol
+            d['amino_acid_modification'] = [m.name for m in self.amino_acid.modifications]
+        except AttributeError:
+            d['amino_acid_residue'] = self.amino_acid.symbol
+            d['amino_acid_modification'] = []
+        return d
+
+    @classmethod
+    def from_json(cls, d):
+        res = d['amino_acid_residue']
+        mods = d['amino_acid_modification']
+        res = AminoAcidResidue(res)
+        mods = [Modification(m) for m in mods]
+        amino_acid = AminoAcidSequenceBuildingBlock(res, mods)
+        inst = cls(
+            amino_acid, d['tolerance'], d['name'], d['intensity_ratio'],
+            d['from_charge'], d['to_charge'], d['terminal'])
+        return inst
+
+    def __reduce__(self):
+        return self.__class__, (self.amino_acid, self.tolerance, self.name, self.intensity_ratio,
+                                self.from_charge, self.to_charge, self.feature_type, self.terminal)
+
+    cdef bint _amino_acid_in_fragment(self, PeptideFragment fragment):
+        cdef:
+            bint validated_aa
+            list flanking_amino_acids
+            size_t j
+        validated_aa = False
+        flanking_amino_acids = fragment.flanking_amino_acids
         for j in range(2):
-            if abs(residue.mass - (<AminoAcidResidueBase>PyList_GetItem(flanking_amino_acids, j)).mass) < 1e-5:
+            if abs(self._amino_acid_residue.mass - (<AminoAcidResidueBase>PyList_GET_ITEM(flanking_amino_acids, j)).mass) < 1e-5:
                 validated_aa = True
                 break
-        if validated_aa:
-            break
-        # if residue in flanking_amino_acids:
-        #     validated_aa = True
-        #     break
-    return validated_aa
+        return validated_aa
+
+    cdef inline bint _amino_acid_in_list(self, list aas):
+        cdef:
+            bint validated_aa
+            list flanking_amino_acids
+            size_t j, n
+        validated_aa = False
+        n = PyList_GET_SIZE(aas)
+        for j in range(n):
+            if abs(self._amino_acid_residue.mass - (<AminoAcidResidueBase>PyList_GET_ITEM(aas, j)).mass) < 1e-5:
+                validated_aa = True
+                break
+        return validated_aa
+
+    cpdef bint amino_acid_in_fragment(self, PeptideFragment fragment):
+        return self._amino_acid_in_fragment(fragment)
+
+    cpdef bint is_valid_match(self, DeconvolutedPeak from_peak, DeconvolutedPeak to_peak,
+                              FragmentMatchMap solution_map, structure=None, set peak_indices=None):
+        cdef:
+            bint validated_aa
+            list matched_fragments, flanking_amino_acids
+            size_t i, n, j
+            FragmentBase frag
+            AminoAcidResidueBase residue
+
+        matched_fragments = solution_map.by_peak_index.getitem(from_peak._index.neutral_mass)
+        validated_aa = False
+
+        residue = self._amino_acid_residue
+
+        n = PyList_GET_SIZE(matched_fragments)
+        for i in range(n):
+            frag = <FragmentBase>PyList_GET_ITEM(matched_fragments, i)
+            if not isinstance(frag, PeptideFragment):
+                continue
+            validated_aa = self._amino_acid_in_fragment(<PeptideFragment>frag)
+            if validated_aa:
+                break
+        return validated_aa
+
+
+@cython.final
+cdef class ComplementFeature(MassOffsetFeature):
+
+    @classmethod
+    def get_feature_type(cls):
+        return "complement"
+
+    def __init__(self, offset, tolerance=2e-5, name=None, intensity_ratio=OUT_OF_RANGE_INT,
+                 from_charge=OUT_OF_RANGE_INT, to_charge=OUT_OF_RANGE_INT, feature_type=None,
+                 terminal=''):
+
+        if not feature_type:
+            feature_type = ComplementFeature.feature_type
+        if name is None:
+            name = "Complement:" + str(offset)
+
+        super(ComplementFeature, self).__init__(
+            offset, tolerance, name, intensity_ratio, from_charge, to_charge,
+            feature_type, terminal)
+
+    @cython.cdivision(True)
+    cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None, TargetProperties props=None):
+        cdef:
+            list matches
+            tuple peaks_in_range
+            double reference_mass, delta_mass
+            size_t i, n
+
+        matches = []
+        if props is not None:
+            reference_mass = props.peptide_backbone_mass
+        elif isinstance(structure, _PeptideSequenceCore):
+            reference_mass = (<_PeptideSequenceCore>structure).get_peptide_backbone_mass()
+        else:
+            reference_mass = structure.peptide_backbone_mass
+        reference_mass += self.offset
+        delta_mass = reference_mass - peak.neutral_mass
+
+        peaks_in_range = peak_list.all_peaks_for(delta_mass, 2 * self.tolerance)
+        n = PyTuple_GET_SIZE(peaks_in_range)
+        for i in range(n):
+            peak2 = <DeconvolutedPeak>PyTuple_GET_ITEM(peaks_in_range, i)
+            if peak is not peak2 and abs((peak2.neutral_mass + peak.neutral_mass) - reference_mass) / reference_mass < self.tolerance:
+                matches.append(peak2)
+        return matches
 
 
 cdef class FittedFeatureBase(object):
@@ -652,7 +774,7 @@ cdef class FragmentationModelCollectionBase(object):
             dict match_to_features, models
             set peak_index_set
             DeconvolutedPeakSet deconvoluted_peak_set
-
+            bint is_peptide_fragment
             PeakFragmentPair peak_fragment
             PeakRelation rel
 
@@ -663,12 +785,11 @@ cdef class FragmentationModelCollectionBase(object):
 
             FragmentationModelBase model
 
-            list rels
+            list rels, surrounding_aas
 
             PyObject* ptemp
             size_t i, n, j, k
 
-        # match_to_features = defaultdict(list)
         match_to_features = dict()
         deconvoluted_peak_set = scan.deconvoluted_peak_set
         models = self.models
@@ -679,7 +800,8 @@ cdef class FragmentationModelCollectionBase(object):
             peak_fragment = <PeakFragmentPair>obj
             peak = peak_fragment.peak
             fragment = peak_fragment.fragment
-
+            is_peptide_fragment = isinstance(fragment, PeptideFragment)
+            surrounding_aas = None
             ptemp = PyDict_GetItem(models, fragment.get_series())
             if ptemp == NULL:
                 continue
@@ -687,16 +809,27 @@ cdef class FragmentationModelCollectionBase(object):
             n = model.get_size()
             for i in range(n):
                 feature = <FragmentationFeatureBase>PyList_GET_ITEM(model.feature_table, i)
+                if isinstance(feature.feature, LinkFeature) and is_peptide_fragment:
+                    if surrounding_aas is None:
+                        surrounding_aas = get_amino_acids_around(
+                            <_PeptideSequenceCore>structure,
+                            (<PeptideFragment>peak_fragment.fragment).position,
+                            (<PeptideFragment>peak_fragment.fragment).series
+                        )
+
+                    if not (<LinkFeature>feature.feature)._amino_acid_in_list(surrounding_aas):
+                        continue
+
                 rels = feature.find_matches(peak, deconvoluted_peak_set, structure, props)
                 k = PyList_GET_SIZE(rels)
                 for j in range(k):
                     rel = <PeakRelation>PyList_GET_ITEM(rels, j)
                     if feature.is_valid_match(rel.from_peak, rel.to_peak, solution_map, structure, peak_index_set):
                         PyList_Append(
-                            get_item_default_list(match_to_features, rel.from_peak),
+                            get_item_default_list(match_to_features, rel.from_peak._index.neutral_mass),
                             rel)
                         PyList_Append(
-                            get_item_default_list(match_to_features, rel.to_peak),
+                            get_item_default_list(match_to_features, rel.to_peak._index.neutral_mass),
                             rel)
         return match_to_features
 
@@ -735,7 +868,7 @@ cdef class FragmentationModelCollectionBase(object):
                 continue
             model = <FragmentationModelBase>ptemp
 
-            ptemp = PyDict_GetItem(match_to_features, peak)
+            ptemp = PyDict_GetItem(match_to_features, peak._index.neutral_mass)
             if ptemp == NULL:
                 features = EMPTY_LIST
             else:

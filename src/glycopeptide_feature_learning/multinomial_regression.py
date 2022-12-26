@@ -120,7 +120,7 @@ class _FragmentType(_FragmentTypeBase):
     def _allocate_feature_array(self):
         return np.zeros(self.feature_count, dtype=np.uint8)
 
-    def build_feature_vector(self, X, offset):
+    def build_feature_vector(self, X, offset, context=None):
         k_ftypes = (FragmentTypeClassification_max + 1)
         k_series = (FragmentSeriesClassification_max + 1)
         k_unassigned = 1
@@ -456,7 +456,7 @@ class ProlineSpecializingModel(FragmentType):
         offset += k_glycosylated_proline
         return X, offset
 
-    def build_feature_vector(self, X, offset):
+    def build_feature_vector(self, X, offset, context=None):
         X, offset = super(ProlineSpecializingModel, self).build_feature_vector(X, offset)
         X, offset = self.specialize_proline(X, offset)
         return X, offset
@@ -498,7 +498,7 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
         offset += k_sequence_composition_stubs
         return X, offset
 
-    def build_feature_vector(self, X, offset):
+    def build_feature_vector(self, X, offset, context=None):
         X, offset = super(StubGlycopeptideCompositionModel, self).build_feature_vector(X, offset)
         X, offset = self.encode_stub_information(X, offset)
         return X, offset
@@ -546,9 +546,9 @@ class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
         offset += k_fucose_x_charge
         return X, offset
 
-
-    def build_feature_vector(self, X, offset):
-        X, offset = super(StubGlycopeptideFucosylationModel, self).build_feature_vector(X, offset)
+    def build_feature_vector(self, X, offset, context=None):
+        X, offset = super(StubGlycopeptideFucosylationModel,
+                          self).build_feature_vector(X, offset)
         X, offset = self.encode_stub_fucosylation(X, offset)
         return X, offset
 
@@ -613,7 +613,7 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
             offset += (k_ftypes * self.bond_offset_depth * 2)
         return X, offset
 
-    def build_feature_vector(self, X, offset):
+    def build_feature_vector(self, X, offset, context=None):
         X, offset = super(NeighboringAminoAcidsModel, self).build_feature_vector(X, offset)
         X, offset = self.encode_neighboring_residues(X, offset)
         return X, offset
@@ -679,7 +679,7 @@ class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth2):
         offset += (k_distance * k_series)
         return X, offset
 
-    def build_feature_vector(self, X, offset):
+    def build_feature_vector(self, X, offset, context=None):
         X, offset = super(CleavageSiteCenterDistanceModel, self).build_feature_vector(X, offset)
         X, offset = self.encode_cleavage_site_distance_from_center(X, offset)
         return X, offset
@@ -733,7 +733,7 @@ class StubChargeModel(NeighboringAminoAcidsModelDepth2):
                 names.append("stub glycopeptide:charge %d:glycan loss %d" % (i + 1, j))
         return names
 
-    def build_feature_vector(self, X, offset):
+    def build_feature_vector(self, X, offset, context=None):
         # X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
         # X, offset = self.encode_stub_charge(X, offset)
 
@@ -759,7 +759,7 @@ except ImportError as err:
 
 
 class StubChargeModelApproximate(StubChargeModel):
-    def build_feature_vector(self, X, offset):
+    def build_feature_vector(self, X, offset, context=None):
         # X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
         # X, offset = self.encode_stub_charge(X, offset)
 
@@ -794,6 +794,13 @@ class StubChargeModelApproximate(StubChargeModel):
         return X, offset
 
 
+try:
+    from glycopeptide_feature_learning._c.model_types import StubChargeModelApproximate_build_feature_vector, encode_stub_charge_approximate
+    StubChargeModelApproximate.encode_stub_charge_approximate = encode_stub_charge_approximate
+    StubChargeModelApproximate.build_feature_vector = StubChargeModelApproximate_build_feature_vector
+except ImportError:
+    pass
+
 _NEUAC = FrozenMonosaccharideResidue.from_iupac_lite("NeuAc")
 _NEUGC = FrozenMonosaccharideResidue.from_iupac_lite("NeuGc")
 
@@ -818,14 +825,21 @@ class LabileMonosaccharideAwareModel(StubChargeModel):
                     "stub glycopeptide:charge %d:labile monosaccharides %d" % (i + 1, j))
         return names
 
-    def encode_labile_monosaccharides_charge(self, X, offset):
+    def encode_labile_monosaccharides_charge(self, X, offset, context=None):
         k_labile_monosaccharides = (StubFragment_max_labile_monosaccharides) + 1
         k_stub_charges = FragmentCharge_max + 1
         k_labile_monosaccharides_x_charge = (k_labile_monosaccharides * k_stub_charges)
 
         if self.is_stub_glycopeptide():
-            loss_size = count_labile_monosaccharides(
-                self.sequence.glycan_composition)
+            if context is not None:
+                if "count_labile_monosaccharides" in context:
+                    loss_size = context['count_labile_monosaccharides']
+                else:
+                    loss_size = context['count_labile_monosaccharides'] = count_labile_monosaccharides(
+                        self.sequence.glycan_composition)
+            else:
+                loss_size = count_labile_monosaccharides(self.sequence.glycan_composition)
+
             if loss_size >= k_labile_monosaccharides:
                 loss_size = k_labile_monosaccharides - 1
             d = k_labile_monosaccharides * (self.charge - 1) + loss_size
@@ -833,23 +847,24 @@ class LabileMonosaccharideAwareModel(StubChargeModel):
         offset += k_labile_monosaccharides_x_charge
         return X, offset
 
-    def build_feature_vector(self, X, offset):
+    def build_feature_vector(self, X, offset, context=None):
         # X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
         # X, offset = self.encode_stub_charge(X, offset)
 
         # Directly invoke feature vector construction because super() costs too much
         # in a tight loop
-        X, offset = FragmentType.build_feature_vector(self, X, offset)
-        X, offset = ProlineSpecializingModel.specialize_proline(
-            self, X, offset)
-        X, offset = StubGlycopeptideCompositionModel.encode_stub_information(
-            self, X, offset)
-        X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(
-            self, X, offset)
-        X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(
-            self, X, offset)
-        X, offset = StubChargeModel.encode_stub_charge(self, X, offset)
-        X, offset = LabileMonosaccharideAwareModel.encode_labile_monosaccharides_charge(self, X, offset)
+        # X, offset = FragmentType.build_feature_vector(self, X, offset, context)
+        # X, offset = ProlineSpecializingModel.specialize_proline(
+        #     self, X, offset, context)
+        # X, offset = StubGlycopeptideCompositionModel.encode_stub_information(
+        #     self, X, offset, context)
+        # X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(
+        #     self, X, offset, context)
+        # X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(
+        #     self, X, offset, context)
+        # X, offset = StubChargeModel.encode_stub_charge(self, X, offset, context)
+        X, offset = StubChargeModel.build_feature_vector(self, X, offset, context)
+        X, offset = LabileMonosaccharideAwareModel.encode_labile_monosaccharides_charge(self, X, offset, context)
         return X, offset
 
 
@@ -885,18 +900,19 @@ class LabileMonosaccharideAwareModelApproximate(StubChargeModelApproximate):
         offset += k_labile_monosaccharides_x_charge
         return X, offset
 
-    def build_feature_vector(self, X, offset):
-        X, offset = FragmentType.build_feature_vector(self, X, offset)
-        X, offset = ProlineSpecializingModel.specialize_proline(
-            self, X, offset)
-        X, offset = StubGlycopeptideCompositionModel.encode_stub_information(
-            self, X, offset)
-        X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(
-            self, X, offset)
-        X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(
-            self, X, offset)
-        X, offset = StubChargeModelApproximate.encode_stub_charge(
-            self, X, offset)
+    def build_feature_vector(self, X, offset, context=None):
+        # X, offset = FragmentType.build_feature_vector(self, X, offset)
+        # X, offset = ProlineSpecializingModel.specialize_proline(
+        #     self, X, offset)
+        # X, offset = StubGlycopeptideCompositionModel.encode_stub_information(
+        #     self, X, offset)
+        # X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(
+        #     self, X, offset)
+        # X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(
+        #     self, X, offset)
+        # X, offset = StubChargeModelApproximate.encode_stub_charge(
+        #     self, X, offset)
+        X, offset = StubChargeModelApproximate.build_feature_vector(self, X, offset)
         X, offset = LabileMonosaccharideAwareModelApproximate.encode_labile_monosaccharides_charge(
             self, X, offset)
         return X, offset

@@ -40,5 +40,5 @@ def distcorr(X, Y, pval=False, nruns=500):
     return dcor
 
 
-def spectral_angle(X, Y):
+def cosine_similarity(X, Y):
     return X.dot(Y) / (np.sqrt(X.dot(X)) * np.sqrt(Y.dot(Y)))

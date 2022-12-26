@@ -39,6 +39,9 @@ cdef class _FragmentType(object):
         public bint _is_stub_glycopeptide
 
 
+    @staticmethod
+    cdef _FragmentType _create(type fragment_type, EnumValue nterm, EnumValue cterm, EnumValue series, int glycosylated, int charge, PeakFragmentPair peak_pair, _PeptideSequenceCore sequence)
+
     cdef DeconvolutedPeak get_peak(self)
     cdef FragmentBase get_fragment(self)
 
@@ -47,9 +50,9 @@ cdef class _FragmentType(object):
     cpdef bint is_stub_glycopeptide(self)
 
     cdef long get_feature_count(self)
-    cpdef np.ndarray[feature_dtype_t, ndim=1] _allocate_feature_array(self)
-    cpdef np.ndarray[feature_dtype_t, ndim=1] as_feature_vector(self)
-    cpdef build_feature_vector(self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset)
+    cpdef np.ndarray[feature_dtype_t, ndim=1, mode='c'] _allocate_feature_array(self)
+    cpdef np.ndarray[feature_dtype_t, ndim=1, mode='c'] as_feature_vector(self, dict context=*)
+    cpdef build_feature_vector(self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=*)
 
 cpdef np.ndarray[feature_dtype_t, ndim=2] encode_classification(cls, list classification)
 
@@ -60,6 +63,15 @@ cpdef EnumValue get_cterm_neighbor(_FragmentType self, int offset=*)
 
 cpdef int get_cleavage_site_distance_from_center(_FragmentType self)
 
+cpdef specialize_proline(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=*)
+cpdef encode_stub_information(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=*)
+cpdef encode_stub_fucosylation(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=*)
+cpdef encode_neighboring_residues(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=*)
+cpdef encode_stub_charge(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=*)
+cpdef encode_stub_charge_loss_approximate(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=*)
+
+cpdef StubChargeModel_build_feature_vector(_FragmentType self, X, Py_ssize_t offset, dict context=*)
+cpdef StubChargeModelApproximate_build_feature_vector(_FragmentType self, X, Py_ssize_t offset, dict context=*)
 
 cpdef list classify_sequence_by_residues(_PeptideSequenceCore sequence)
 

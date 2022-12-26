@@ -8,6 +8,24 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 
 
+def has_option(name):
+    try:
+        sys.argv.remove('--%s' % name)
+        return True
+    except ValueError:
+        pass
+    # allow passing all cmd line options also as environment variables
+    env_val = os.getenv(name.upper().replace('-', '_'), 'false').lower()
+    if env_val == "true":
+        return True
+    return False
+
+
+include_diagnostics = has_option("include-diagnostics")
+force_cythonize = has_option("force-cythonize")
+
+
+
 def make_extensions():
     try:
         import numpy
@@ -27,7 +45,7 @@ def make_extensions():
     from Cython.Build import cythonize
     cython_directives = {
         'embedsignature': True,
-        "profile": False
+        "profile": include_diagnostics
     }
     extensions = cythonize([
         Extension(name='glycopeptide_feature_learning._c.data_source', sources=["src/glycopeptide_feature_learning/_c/data_source.pyx"],
@@ -49,7 +67,7 @@ def make_extensions():
         Extension(name='glycopeptide_feature_learning.scoring._c.score_set',
                   sources=["src/glycopeptide_feature_learning/scoring/_c/score_set.pyx"],
                   include_dirs=[numpy.get_include()]),
-    ], compiler_directives=cython_directives)
+    ], compiler_directives=cython_directives, force=force_cythonize)
     return extensions
 
 

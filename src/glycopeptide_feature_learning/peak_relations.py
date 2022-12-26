@@ -316,12 +316,12 @@ class FeatureBase(object):
 
 try:
     _FeatureBase = FeatureBase
-    from glycopeptide_feature_learning._c.peak_relations import FeatureBase as CFeatureBase
+    # from glycopeptide_feature_learning._c.peak_relations import FeatureBase as CFeatureBase
 
-    class FeatureBase(CFeatureBase): # pylint: disable=function-redefined
-        __slots__ = ()
-        from_json = classmethod(_load_feature_from_json)
-
+    # class FeatureBase(CFeatureBase): # pylint: disable=function-redefined
+    #     __slots__ = ()
+    #     from_json = classmethod(_load_feature_from_json)
+    from glycopeptide_feature_learning._c.peak_relations import FeatureBase
 except ImportError:
     pass
 
@@ -497,8 +497,7 @@ class LinkFeature(MassOffsetFeature):
 
 
 try:
-    from glycopeptide_feature_learning._c.peak_relations import LinkFeature_is_valid_match
-    LinkFeature.is_valid_match = LinkFeature_is_valid_match
+    from glycopeptide_feature_learning._c.peak_relations import LinkFeature
 except ImportError as err:
     print(err)
 
@@ -533,8 +532,7 @@ class ComplementFeature(MassOffsetFeature):
 
 
 try:
-    from glycopeptide_feature_learning._c.peak_relations import ComplementFeature_find_matches
-    ComplementFeature.find_matches = ComplementFeature_find_matches
+    from glycopeptide_feature_learning._c.peak_relations import ComplementFeature
 except ImportError as err:
     print(err)
 

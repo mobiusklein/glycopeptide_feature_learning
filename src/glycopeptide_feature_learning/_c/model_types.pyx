@@ -1,6 +1,7 @@
 # cython: embedsignature=True
 cimport cython
 from cpython cimport PyTuple_GetItem, PyTuple_Size, PyList_GET_ITEM, PyList_GET_SIZE, PySet_Size, PyTuple_GET_ITEM
+from cpython cimport PyDict_GetItem, PyDict_SetItem, PyObject
 from cpython.int cimport PyInt_AsLong
 from libc.stdlib cimport malloc, calloc, free
 from libc.math cimport log10, log, sqrt, exp
@@ -33,10 +34,12 @@ from glycopeptidepy._c.structure.sequence_methods cimport _PeptideSequenceCore
 from glycopeptidepy._c.structure.fragment cimport (
     PeptideFragment, FragmentBase, StubFragment,
     IonSeriesBase, ChemicalShiftBase)
+from glycopeptidepy._c.structure.glycan cimport GlycosylationManager
 
 from glypy.utils.enum import Enum
 from glypy.utils.cenum cimport EnumValue, IntEnumValue, EnumMeta
 from glypy.structure.glycan_composition import FrozenMonosaccharideResidue
+from glypy._c.structure.glycan_composition cimport _CompositionBase
 
 from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
 
@@ -140,6 +143,24 @@ cpdef int get_cterm_index_from_fragment(PeptideFragment fragment, _PeptideSequen
 
 cdef class _FragmentType(object):
 
+    @staticmethod
+    cdef _FragmentType _create(type fragment_type, EnumValue nterm, EnumValue cterm, EnumValue series, int glycosylated, int charge, PeakFragmentPair peak_pair, _PeptideSequenceCore sequence):
+        cdef _FragmentType self = <_FragmentType>fragment_type.__new__(fragment_type)
+        self.nterm = nterm
+        self.cterm = cterm
+        self.series = series
+        self.glycosylated = glycosylated
+        self.charge = charge
+        self.peak_pair = peak_pair
+        self.sequence = sequence
+
+        cdef int series_int = self.series.int_value()
+
+        self._is_assigned = (series_int != FragmentSeriesClassification_unassigned.int_value())
+        self._is_stub_glycopeptide = (self._is_assigned and series_int == FragmentSeriesClassification_stub_glycopeptide.int_value())
+        self._is_backbone = (self._is_assigned and series_int != FragmentSeriesClassification_stub_glycopeptide.int_value())
+        return self
+
     def __init__(self, nterm, cterm, series, glycosylated, charge, peak_pair, sequence):
         self.nterm = nterm
         self.cterm = cterm
@@ -223,7 +244,7 @@ cdef class _FragmentType(object):
     cdef long get_feature_count(self):
         return PyInt_AsLong(type(self).feature_count)
 
-    cpdef np.ndarray[feature_dtype_t, ndim=1] _allocate_feature_array(self):
+    cpdef np.ndarray[feature_dtype_t, ndim=1, mode='c'] _allocate_feature_array(self):
         cdef:
             Py_ssize_t k
             np.npy_intp knd
@@ -232,17 +253,17 @@ cdef class _FragmentType(object):
         knd = k
         return np.PyArray_ZEROS(1, &knd, np.NPY_UINT8, 0)
 
-    cpdef np.ndarray[feature_dtype_t, ndim=1] as_feature_vector(self):
+    cpdef np.ndarray[feature_dtype_t, ndim=1, mode='c'] as_feature_vector(self, dict context=None):
         cdef:
             np.ndarray[feature_dtype_t, ndim=1] X
             size_t offset
         X = self._allocate_feature_array()
         offset = 0
-        self.build_feature_vector(X, offset)
+        self.build_feature_vector(X, offset, context)
         return X
 
     @cython.boundscheck(False)
-    cpdef build_feature_vector(self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+    cpdef build_feature_vector(self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=None):
         cdef:
             Py_ssize_t k_ftypes, k_series, k_unassigned, k_charge
             Py_ssize_t k_charge_series, k_glycosylated, k, index
@@ -301,7 +322,9 @@ cpdef np.ndarray[feature_dtype_t, ndim=2] encode_classification(cls, list classi
         np.npy_intp[2] knd
         np.ndarray[feature_dtype_t, ndim=1] features
         np.ndarray[feature_dtype_t, ndim=2] X
+        dict context_cache
 
+    context_cache = {}
     n = PyList_GET_SIZE(classification)
     if n == 0:
         k = 0
@@ -310,7 +333,7 @@ cpdef np.ndarray[feature_dtype_t, ndim=2] encode_classification(cls, list classi
         return np.PyArray_ZEROS(2, knd, np.NPY_UINT8, 0)
     i = 0
     row = <_FragmentType>PyList_GET_ITEM(classification, i)
-    features = row.as_feature_vector()
+    features = row.as_feature_vector(context_cache)
     k = row.get_feature_count()
     knd[0] = n
     knd[1] = k
@@ -319,7 +342,7 @@ cpdef np.ndarray[feature_dtype_t, ndim=2] encode_classification(cls, list classi
         X[i, j] = features[j]
     for i in range(1, n):
         row = <_FragmentType>PyList_GET_ITEM(classification, i)
-        features = row.as_feature_vector()
+        features = row.as_feature_vector(context_cache)
         for j in range(k):
             X[i, j] = features[j]
     return X
@@ -340,22 +363,27 @@ cpdef from_peak_peptide_fragment_pair(cls, PeakFragmentPair peak_fragment_pair, 
         DeconvolutedPeak peak
         PeptideFragment fragment
         tuple terms
+        EnumValue nterm, cterm
+
     peak = peak_fragment_pair.peak
     fragment = peak_fragment_pair.fragment
     residue = <object>PyList_GET_ITEM(fragment.flanking_amino_acids, 0)
     residue2 = <object>PyList_GET_ITEM(fragment.flanking_amino_acids, 1)
     terms = classify_amide_bond_frank(residue, residue2)
-    nterm = <object>PyTuple_GET_ITEM(terms, 0)
-    cterm = <object>PyTuple_GET_ITEM(terms, 1)
+    nterm = <EnumValue>PyTuple_GET_ITEM(terms, 0)
+    cterm = <EnumValue>PyTuple_GET_ITEM(terms, 1)
     glycosylation = fragment._is_glycosylated()
-    inst = cls(
+
+    inst = _FragmentType._create(
+        <type>cls,
         nterm,
         cterm,
         encode_peptide_fragment_series(fragment.get_series()),
         glycosylation,
         min(peak.charge, FragmentCharge_max + 1),
         peak_fragment_pair,
-        structure)
+        structure
+    )
     return inst
 
 @cython.binding(True)
@@ -400,9 +428,9 @@ cpdef build_fragment_intensity_matches(cls, gpsm, bint include_unassigned_sum=Tr
         peak = peak_fragment_pair.peak
         fragment = peak_fragment_pair.fragment
 
-        if peak not in counted:
+        if peak._index.neutral_mass not in counted:
             matched_total += peak.intensity
-            counted.add(peak)
+            counted.add(peak._index.neutral_mass)
 
         series = fragment.get_series()
         if series.int_code == IonSeries_oxonium.int_code:
@@ -411,13 +439,19 @@ cpdef build_fragment_intensity_matches(cls, gpsm, bint include_unassigned_sum=Tr
         double_vector_append(intensities_acc, peak.intensity)
         # intensities_acc.append(peak)
         if series.int_code == IonSeries_stub_glycopeptide.int_code:
-            glycosylation_size = PyInt_AsLong((<StubFragment>fragment).get_glycosylation_size())
+            glycosylation_size = (<StubFragment>fragment).get_glycosylation_size()
             fragment_classification.append(
-                cls(
-                    None, None, FragmentSeriesClassification_stub_glycopeptide,
+                _FragmentType._create(
+                    <type>cls,
+                    None,
+                    None,
+                    FragmentSeriesClassification_stub_glycopeptide,
                     min(glycosylation_size, StubFragment_max_glycosylation_size),
                     min(peak.charge, FragmentCharge_max + 1),
-                    peak_fragment_pair, structure))
+                    peak_fragment_pair,
+                    structure
+                )
+            )
         else:
             inst = from_peak_peptide_fragment_pair(cls, peak_fragment_pair, structure)
             fragment_classification.append(inst)
@@ -492,39 +526,42 @@ cpdef EnumValue get_cterm_neighbor(_FragmentType self, int offset=1):
         residue = self.sequence.get(index).amino_acid
         return classify_residue_frank(residue)
 
+
 @cython.binding(True)
 @cython.boundscheck(False)
-def encode_neighboring_residues(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+cpdef encode_neighboring_residues(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=None):
     cdef:
         Py_ssize_t k_ftypes, k, i
         long bond_offset_depth, index
         EnumValue nterm, cterm
+        PeptideFragment fragment
 
     bond_offset_depth = PyInt_AsLong(self.bond_offset_depth)
     k_ftypes = (FragmentTypeClassification_max + 1)
     k = (k_ftypes * 2) * bond_offset_depth
 
     if self._is_backbone:
-        index = index = get_nterm_index_from_fragment(<PeptideFragment>self.get_fragment(), self.sequence)
+        fragment = <PeptideFragment>self.get_fragment()
+        index = get_nterm_index_from_fragment(fragment, self.sequence)
         for i in range(1, bond_offset_depth + 1):
             nterm = _get_nterm_neighbor_fast(self, i, index)
             if nterm is not None:
                 X[offset + nterm.int_value()] = 1
             offset += k_ftypes
-        index = index = get_cterm_index_from_fragment(<PeptideFragment>self.get_fragment(), self.sequence)
+        index = get_cterm_index_from_fragment(fragment, self.sequence)
         for i in range(1, bond_offset_depth + 1):
             cterm = _get_cterm_neighbor_fast(self, i, index)
             if cterm is not None:
                 X[offset + cterm.int_value()] = 1
             offset += k_ftypes
     else:
-        offset += (k_ftypes * self.bond_offset_depth * 2)
+        offset += k
     return X, offset
 
 
 @cython.binding(True)
 @cython.boundscheck(False)
-def specialize_proline(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+cpdef specialize_proline(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=None):
     cdef:
         Py_ssize_t k_charge_cterm_pro, k_series_cterm_pro, k_glycosylated_proline
         Py_ssize_t k
@@ -536,8 +573,7 @@ def specialize_proline(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X
 
     k = (k_charge_cterm_pro + k_series_cterm_pro + k_glycosylated_proline)
 
-
-    if self.cterm == FragmentTypeClassification_pro:
+    if self._is_backbone and self.cterm.int_value() == FragmentTypeClassification_pro.int_value():
         index = (self.charge - 1)
         X[offset + index] = 1
         offset += k_charge_cterm_pro
@@ -552,7 +588,7 @@ def specialize_proline(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X
 
 @cython.binding(True)
 @cython.boundscheck(False)
-def encode_stub_information(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+cpdef encode_stub_information(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=None):
     cdef:
         Py_ssize_t k_glycosylated_stubs, k_sequence_composition_stubs
         Py_ssize_t k, i, n
@@ -560,6 +596,7 @@ def encode_stub_information(_FragmentType self, np.ndarray[feature_dtype_t, ndim
         tuple tp_c
         list ctr
         EnumValue tp
+        PyObject* ptemp
 
     k_glycosylated_stubs = StubFragment_max_glycosylation_size + 1
     k_sequence_composition_stubs = FragmentTypeClassification_max + 1
@@ -570,7 +607,15 @@ def encode_stub_information(_FragmentType self, np.ndarray[feature_dtype_t, ndim
         X[offset + (self.glycosylated)] = 1
         offset += k_glycosylated_stubs
 
-        ctr = classify_sequence_by_residues(self.sequence)
+        if context is not None:
+            ptemp = PyDict_GetItem(context, "classify_sequence_by_residues")
+            if ptemp == NULL:
+                ctr = classify_sequence_by_residues(self.sequence)
+                PyDict_SetItem(context, "classify_sequence_by_residues", ctr)
+            else:
+                ctr = <list>ptemp
+        else:
+            ctr = classify_sequence_by_residues(self.sequence)
         n = PyList_GET_SIZE(ctr)
         for i in range(n):
             tp_c = <tuple>PyList_GET_ITEM(ctr, i)
@@ -587,21 +632,23 @@ cdef object _FUC = FrozenMonosaccharideResidue.from_iupac_lite("Fuc")
 cdef int StubFragment_max_fucose = 6
 @cython.boundscheck(False)
 @cython.binding(True)
-def encode_stub_fucosylation(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+cpdef encode_stub_fucosylation(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=None):
     cdef:
-        # int k, i
         int k_fucose, k_stub_charges, k_fucose_x_charge, loss_size, d
-    # k = 2
-    # if self._is_stub_glycopeptide:
-    #     i = PyInt_AsLong(self.peak_pair.fragment.glycosylation._getitem_fast(_FUC)) > 0
-    #     X[offset + i] = 1
-    # offset += k
+        StubFragment frag
+        _CompositionBase gc
+
     k_fucose = (StubFragment_max_fucose) + 1
     k_stub_charges = FragmentCharge_max + 1
     k_fucose_x_charge = (k_fucose * k_stub_charges)
 
-    if self.is_stub_glycopeptide():
-        loss_size = self.peak_pair.fragment.glycosylation._getitem_fast(_FUC)
+    if self._is_stub_glycopeptide:
+        frag = <StubFragment>self.peak_pair.fragment
+        if isinstance(frag.glycosylation, _CompositionBase):
+            gc = <_CompositionBase>frag.glycosylation
+            loss_size = PyInt_AsLong(_CompositionBase._getitem_fast(gc, _FUC))
+        else:
+            loss_size = frag.glycosylation._getitem_fast(_FUC)
         if loss_size >= k_fucose:
             loss_size = k_fucose - 1
         d = k_fucose * (self.charge - 1) + loss_size
@@ -624,7 +671,7 @@ cpdef int get_cleavage_site_distance_from_center(_FragmentType self):
 
 @cython.binding(True)
 @cython.boundscheck(False)
-def encode_cleavage_site_distance_from_center(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+def encode_cleavage_site_distance_from_center(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=None):
     cdef:
         Py_ssize_t k_distance, k_series, k
         long max_distance, series_offset, distance
@@ -644,7 +691,7 @@ def encode_cleavage_site_distance_from_center(_FragmentType self, np.ndarray[fea
 
 @cython.binding(True)
 @cython.boundscheck(False)
-def encode_stub_charge(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+cpdef encode_stub_charge(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=None):
     cdef:
         Py_ssize_t k_glycosylated_stubs, k_stub_charges, k_glycosylated_stubs_x_charge
         Py_ssize_t k
@@ -659,7 +706,7 @@ def encode_stub_charge(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X
         # TODO: Using the approximation provides a mildly better model fit on mixed sialylated/non-sialylated data
         # but requires a full re-analysis. Save for the future.
         # loss_size = PyInt_AsLong(approximate_internal_size_of_glycan(self.sequence.glycan)) - self.glycosylated
-        loss_size = PyInt_AsLong(self.sequence.total_glycosylation_size) - self.glycosylated
+        loss_size = ((<GlycosylationManager>self.sequence._glycosylation_manager).get_total_glycosylation_size()) - self.glycosylated
         if loss_size >= k_glycosylated_stubs:
             loss_size = k_glycosylated_stubs - 1
         d = k_glycosylated_stubs * (self.charge - 1) + loss_size
@@ -670,7 +717,7 @@ def encode_stub_charge(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X
 
 @cython.binding(True)
 @cython.boundscheck(False)
-def encode_stub_charge_loss_approximate(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1] X, Py_ssize_t offset):
+cpdef encode_stub_charge_loss_approximate(_FragmentType self, np.ndarray[feature_dtype_t, ndim=1, mode='c'] X, Py_ssize_t offset, dict context=None):
     cdef:
         Py_ssize_t k_glycosylated_stubs, k_stub_charges, k_glycosylated_stubs_x_charge
         Py_ssize_t k
@@ -685,7 +732,6 @@ def encode_stub_charge_loss_approximate(_FragmentType self, np.ndarray[feature_d
         # TODO: Using the approximation provides a mildly better model fit on mixed sialylated/non-sialylated data
         # but requires a full re-analysis. Save for the future.
         loss_size = PyInt_AsLong(approximate_internal_size_of_glycan(self.sequence.glycan)) - self.glycosylated
-        # loss_size = PyInt_AsLong(self.sequence.total_glycosylation_size) - self.glycosylated
         if loss_size >= k_glycosylated_stubs:
             loss_size = k_glycosylated_stubs - 1
         d = k_glycosylated_stubs * (self.charge - 1) + loss_size
@@ -701,11 +747,12 @@ cdef:
     object _encode_neighboring_residues = encode_neighboring_residues
     object _encode_cleavage_site_distance_from_center = encode_cleavage_site_distance_from_center
     object _encode_stub_charge = encode_stub_charge
+    object _encode_stub_charge_loss_approximate = encode_stub_charge_loss_approximate
 
 
 @cython.binding(True)
 @cython.boundscheck(False)
-def StubChargeModel_build_feature_vector(_FragmentType self, X, offset):
+cpdef StubChargeModel_build_feature_vector(_FragmentType self, X, Py_ssize_t offset, dict context=None):
     # X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
     # X, offset = self.encode_stub_charge(X, offset)
 
@@ -713,33 +760,62 @@ def StubChargeModel_build_feature_vector(_FragmentType self, X, offset):
     # in a tight loop
     cdef:
         tuple out
-    out = <tuple>_FragmentType.build_feature_vector(self, X, offset)
-    X = <object>PyTuple_GetItem(out, 0)
-    offset = <object>PyTuple_GetItem(out, 1)
+    out = <tuple>_FragmentType.build_feature_vector(self, X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
 
-    out = <tuple>_specialize_proline(self, X, offset)
-    X = <object>PyTuple_GetItem(out, 0)
-    offset = <object>PyTuple_GetItem(out, 1)
+    out = <tuple>specialize_proline(self, <np.ndarray>X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
 
-    out = <tuple>_encode_stub_information(self, X, offset)
-    X = <object>PyTuple_GetItem(out, 0)
-    offset = <object>PyTuple_GetItem(out, 1)
+    out = <tuple>encode_stub_information(self, <np.ndarray>X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
 
-    out = <tuple>_encode_stub_fucosylation(self, X, offset)
-    X = <object>PyTuple_GetItem(out, 0)
-    offset = <object>PyTuple_GetItem(out, 1)
+    out = <tuple>encode_stub_fucosylation(self, <np.ndarray>X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
 
-    out = <tuple>_encode_neighboring_residues(self, X, offset)
-    X = <object>PyTuple_GetItem(out, 0)
-    offset = <object>PyTuple_GetItem(out, 1)
+    out = <tuple>encode_neighboring_residues(self, <np.ndarray>X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
 
-    # out = <tuple>_encode_cleavage_site_distance_from_center(self, X, offset)
-    # X = <object>PyTuple_GetItem(out, 0)
-    # offset = <object>PyTuple_GetItem(out, 1)
+    out = <tuple>encode_stub_charge(self, <np.ndarray>X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
+    return X, offset
 
-    out = <tuple>_encode_stub_charge(self, X, offset)
-    X = <object>PyTuple_GetItem(out, 0)
-    offset = <object>PyTuple_GetItem(out, 1)
+
+@cython.binding(True)
+@cython.boundscheck(False)
+cpdef StubChargeModelApproximate_build_feature_vector(_FragmentType self, X, Py_ssize_t offset, dict context=None):
+    # Directly invoke feature vector construction because super() costs too much
+    # in a tight loop
+    cdef:
+        tuple out
+    out = <tuple>_FragmentType.build_feature_vector(self, X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
+
+    out = <tuple>specialize_proline(self, <np.ndarray>X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
+
+    out = <tuple>encode_stub_information(self, <np.ndarray>X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
+
+    out = <tuple>encode_stub_fucosylation(self, <np.ndarray>X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
+
+    out = <tuple>encode_neighboring_residues(self, <np.ndarray>X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
+
+    out = <tuple>encode_stub_charge_loss_approximate(self, <np.ndarray>X, offset, context)
+    X = <object>PyTuple_GET_ITEM(out, 0)
+    offset = <object>PyTuple_GET_ITEM(out, 1)
     return X, offset
 
 
