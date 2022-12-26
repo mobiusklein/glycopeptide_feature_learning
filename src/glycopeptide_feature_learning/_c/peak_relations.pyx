@@ -473,6 +473,7 @@ cdef class LinkFeature(MassOffsetFeature):
     cpdef bint amino_acid_in_fragment(self, PeptideFragment fragment):
         return self._amino_acid_in_fragment(fragment)
 
+    # NOTE: Overridden at inference time!
     cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
                               FragmentMatchMap solution_map, structure=None,
                               set peak_indices=None):
@@ -792,7 +793,7 @@ cdef class FragmentationModelCollectionBase(object):
             DeconvolutedPeakSet deconvoluted_peak_set
             DeconvolutedPeak peak
 
-            bint is_peptide_fragment, is_link
+            bint is_peptide_fragment, is_link, is_valid
             PeakFragmentPair peak_fragment
             FragmentBase fragment
             IonSeriesBase fragment_series
@@ -842,8 +843,24 @@ cdef class FragmentationModelCollectionBase(object):
                 k = PyList_GET_SIZE(rels)
                 for j in range(k):
                     rel = <PeakRelation>PyList_GET_ITEM(rels, j)
-                    if feature.is_valid_match(rel.from_peak._index.neutral_mass, rel.to_peak._index.neutral_mass,
-                                              solution_map, structure, peak_index_set):
+                    if is_link:
+                        is_valid = MassOffsetFeature.is_valid_match(
+                            feature.feature,
+                            rel.from_peak._index.neutral_mass,
+                            rel.to_peak._index.neutral_mass,
+                            solution_map,
+                            structure,
+                            peak_index_set
+                        )
+                    else:
+                        is_valid = feature.feature.is_valid_match(
+                            rel.from_peak._index.neutral_mass,
+                            rel.to_peak._index.neutral_mass,
+                            solution_map,
+                            structure,
+                            peak_index_set
+                        )
+                    if is_valid:
                         PyList_Append(
                             get_item_default_list(match_to_features, rel.from_peak._index.neutral_mass),
                             rel)
