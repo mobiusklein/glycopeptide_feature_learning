@@ -1,22 +1,29 @@
-import numpy as np
-from itertools import chain
+import logging
+from typing import Mapping, Counter, DefaultDict, List, Tuple, Optional
 
-from collections import Counter, defaultdict, namedtuple
-from collections import Mapping
+from itertools import chain
+from collections import defaultdict, namedtuple
+
+import numpy as np
 
 from glycopeptidepy.utils import collectiontools
-from glycopeptidepy.structure.sequence import (
-    PeptideSequence)
+from glycopeptidepy.structure import (
+    PeptideSequence, AminoAcidResidue, SequencePosition)
 from glycopeptidepy.structure.fragment import (PeptideFragment, IonSeries)
 from glycopeptidepy.structure.sequence_composition import (
     AminoAcidSequenceBuildingBlock, AminoAcidResidue, Modification)
+
+from ms_deisotope import DeconvolutedPeakSet
+
+from .data_source import AnnotatedScan, RankedPeak
 
 from .common import (
     OUT_OF_RANGE_INT, ppm_error,
     intensity_ratio_function, intensity_rank)
 
 
-from ms_deisotope import DeconvolutedPeakSet
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 # Lacking a reasonable definition of the "space between fragmentation sites"
@@ -116,16 +123,16 @@ def prior_fragment_probability(gsms, series=IonSeries.b):
 # END REFERENCE Estimation
 
 
-def estimate_fragment_sparsity(sequence, series=IonSeries.b):
+def estimate_fragment_sparsity(sequence: PeptideSequence, series=IonSeries.b) -> float:
     return sequence.mass / SMALLEST_UNIT
 
 
-def mass_accuracy_sparsity(sequence, series=IonSeries.b, tolerance=2e-5):
+def mass_accuracy_sparsity(sequence: PeptideSequence, series: IonSeries=IonSeries.b, tolerance: float=2e-5) -> float:
     mass_space, fragment_space = mass_dimensions(sequence, series, tolerance)
     return mass_space - fragment_space
 
 
-def mass_dimensions(sequence, series=IonSeries.b, tolerance=2e-5):
+def mass_dimensions(sequence: PeptideSequence, series: IonSeries=IonSeries.b, tolerance: float=2e-5) -> Tuple[float, float]:
     mass_space = sequence.mass
     fragment_space = 0.
     for frag in chain_iterable(sequence.get_fragments(series)):
@@ -134,7 +141,11 @@ def mass_dimensions(sequence, series=IonSeries.b, tolerance=2e-5):
     return mass_space, fragment_space
 
 
-def estimate_offset_parameters(gpsms, series=IonSeries.b, mass_accuracy=2e-5, charge=None, prematched=False):
+def estimate_offset_parameters(gpsms: List[AnnotatedScan],
+                               series: IonSeries=IonSeries.b,
+                               mass_accuracy: float=2e-5,
+                               charge: Optional[int]=None,
+                               prematched: bool=False) -> Tuple[float, float, float]:
     total_sites = 0
     total_explained = 0
     total_sparsity = 0
@@ -186,7 +197,7 @@ def estimate_offset_parameters(gpsms, series=IonSeries.b, mass_accuracy=2e-5, ch
     return alpha, beta, prior_probability_of_match
 
 
-def probability_of_peak_explained(offset_frequency, unknown_peak_rate, prior_probability_of_match):
+def probability_of_peak_explained(offset_frequency: float, unknown_peak_rate: float, prior_probability_of_match: float) -> float:
     a = (prior_probability_of_match * offset_frequency)
     b = (1 - prior_probability_of_match) * unknown_peak_rate
     return a / (a + b)
@@ -614,6 +625,22 @@ except ImportError:
 
 
 class FeatureFunctionEstimator(FeatureFunctionEstimatorBase):
+    feature_function: FeatureBase
+    series: IonSeries
+    tolerance: float
+    preranked: bool
+    track_relations: bool
+    verbose: bool
+
+    total_on_series_satisfied: float
+    total_off_series_satisfied: float
+
+    total_on_series: float
+    total_off_series: float
+
+    peak_relations: List[PeakRelation]
+
+
     def __init__(self, feature_function, series, tolerance=2e-5, preranked=True,
                  track_relations=True, verbose=False):
         self.feature_function = feature_function
@@ -629,35 +656,22 @@ class FeatureFunctionEstimator(FeatureFunctionEstimatorBase):
         self.total_off_series = 0.0
         self.peak_relations = []
 
-    def preprocess_spectrum(self, gpsm):
-        peaks = gpsm.deconvoluted_peak_set
-        try:
-            if gpsm.matcher is None:
-                gpsm.match(error_tolerance=self.tolerance)
-        except Exception:
-            return None
-        if not self.preranked:
-            intensity_rank(peaks)
-            peaks = DeconvolutedPeakSet([p for p in peaks if p.rank > 0])
-            peaks.reindex()
-            gpsm.annotations['ranked_peaks'] = peaks
-        else:
-            try:
-                peaks = gpsm.annotations['ranked_peaks']
-            except KeyError:
-                intensity_rank(peaks)
-                peaks = DeconvolutedPeakSet([p for p in peaks if p.rank > 0])
-                peaks.reindex()
-                gpsm.annotations['ranked_peaks'] = peaks
-        return peaks
-
-    def fit_spectra(self, gpsms):
+    def fit_spectra(self, gpsms: List[AnnotatedScan]) -> 'FittedFeature':
+        n_scan = len(gpsms)
         for i_scan, gpsm in enumerate(gpsms):
             if self.verbose and i_scan % 1000 == 0:
-                print(i_scan, gpsm)
-            peaks = self.preprocess_spectrum(gpsm)
-            if peaks is None:
+                logger.info(
+                    "... Fitting @ %s %r %d/%d (%0.2f%%)",
+                    self.series,
+                    self.feature_function,
+                    i_scan,
+                    n_scan,
+                    i_scan / n_scan * 100.0)
+            peaks = gpsm.deconvoluted_peak_set
+            if not peaks:
                 continue
+            if not isinstance(peaks[0], RankedPeak):
+                raise TypeError(f"The peak set for {gpsm.title} has not been ranked!")
             self.match_peaks(gpsm, peaks)
         total_on_series_satisfied_normalized = self.total_on_series_satisfied / \
             max(self.total_on_series, 1)

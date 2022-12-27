@@ -4,15 +4,10 @@ import sys
 import glob
 import json
 import logging
-from typing import Dict, List, Optional, Tuple, Type, Union, Deque
+from typing import Dict, List, Optional, Tuple, Type, Union, Deque, Iterable
 import warnings
 import array
 import pickle
-
-try:
-    from collections import Iterable
-except ImportError:
-    from collections.abc import Iterable
 
 from six import string_types as basestring
 
@@ -84,12 +79,13 @@ def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: 
     return training_instances
 
 
-def match_spectra(matches, error_tolerance):
+def match_spectra(matches: Iterable[data_source.AnnotatedScan], error_tolerance):
     progbar = click.progressbar(
         enumerate(matches), length=len(matches), show_eta=True, label='Matching Peaks',
         item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '')
     with progbar:
         for i, match in progbar:
+            match.deconvoluted_peak_set = match.rank()
             match.match(error_tolerance=error_tolerance, extended_glycan_search=True)
             if progbar.is_hidden and i % 1000 == 0 and i != 0:
                 logger.info("%d Spectra Matched" % (i,))

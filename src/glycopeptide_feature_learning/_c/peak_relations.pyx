@@ -399,7 +399,13 @@ cdef class LinkFeature(MassOffsetFeature):
         if name is None:
             name = str(amino_acid)
         super(LinkFeature, self).__init__(
-            offset, tolerance, name, intensity_ratio, from_charge, to_charge, feature_type)
+            offset,
+            tolerance,
+            name,
+            intensity_ratio,
+            from_charge,
+            to_charge,
+            feature_type=feature_type)
         self.amino_acid = amino_acid
 
     @property
@@ -533,13 +539,19 @@ cdef class ComplementFeature(MassOffsetFeature):
                  terminal=''):
 
         if not feature_type:
-            feature_type = ComplementFeature.feature_type
+            feature_type = ComplementFeature.get_feature_type()
         if name is None:
             name = "Complement:" + str(offset)
 
         super(ComplementFeature, self).__init__(
-            offset, tolerance, name, intensity_ratio, from_charge, to_charge,
-            feature_type, terminal)
+            offset,
+            tolerance,
+            name,
+            intensity_ratio,
+            from_charge,
+            to_charge,
+            feature_type=feature_type,
+            terminal=terminal)
 
     @cython.cdivision(True)
     cdef inline bint _test_relative(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2, double reference_mass) nogil:
