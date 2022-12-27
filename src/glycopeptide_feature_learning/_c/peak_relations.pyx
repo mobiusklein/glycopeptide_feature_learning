@@ -41,7 +41,7 @@ cdef bint isclose(double x, double y, double rtol=1.e-5, double atol=1.e-8) nogi
 
 
 @cython.cdivision(True)
-cdef int intensity_ratio_function(DeconvolutedPeak peak1, DeconvolutedPeak peak2):
+cdef int intensity_ratio_function(DeconvolutedPeak peak1, DeconvolutedPeak peak2) nogil:
     cdef double ratio
     ratio = peak1.intensity / (peak2.intensity)
     if ratio >= 5:
@@ -224,11 +224,17 @@ cdef class MassOffsetFeature(FeatureBase):
         return self._test(peak1, peak2)
 
     @cython.cdivision(True)
-    cdef inline bint _test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2):
-        if (self.intensity_ratio == OUT_OF_RANGE_INT or
-            intensity_ratio_function(peak1, peak2) == self.intensity_ratio) and\
-           ((self.from_charge == OUT_OF_RANGE_INT and self.to_charge == OUT_OF_RANGE_INT) or
-                (self.from_charge == peak1.charge and self.to_charge == peak2.charge)):
+    cdef inline bint _test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2) nogil:
+        cdef:
+            double intensity_ratio
+            int from_charge, to_charge
+        intensity_ratio = self.intensity_ratio
+        from_charge = self.from_charge
+        to_charge = self.to_charge
+        if (intensity_ratio == OUT_OF_RANGE_INT or
+            intensity_ratio_function(peak1, peak2) == intensity_ratio) and\
+           ((from_charge == OUT_OF_RANGE_INT and to_charge == OUT_OF_RANGE_INT) or
+                (from_charge == peak1.charge and to_charge == peak2.charge)):
 
             return fabs((peak1.neutral_mass + self.offset - peak2.neutral_mass) / peak2.neutral_mass) <= self.tolerance
         return False
@@ -510,6 +516,11 @@ cdef class LinkFeature(MassOffsetFeature):
         return validated_aa
 
 
+@cython.cdivision(True)
+cdef inline double ppm_error(double x, double y) nogil:
+    return fabs(x - y) / y
+
+
 @cython.final
 cdef class ComplementFeature(MassOffsetFeature):
 
@@ -531,13 +542,30 @@ cdef class ComplementFeature(MassOffsetFeature):
             feature_type, terminal)
 
     @cython.cdivision(True)
+    cdef inline bint _test_relative(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2, double reference_mass) nogil:
+        cdef:
+            double intensity_ratio
+            int from_charge, to_charge
+        intensity_ratio = self.intensity_ratio
+        from_charge = self.from_charge
+        to_charge = self.to_charge
+        if (intensity_ratio == OUT_OF_RANGE_INT or
+            intensity_ratio_function(peak1, peak2) == intensity_ratio) and\
+           ((from_charge == OUT_OF_RANGE_INT and to_charge == OUT_OF_RANGE_INT) or
+                (from_charge == peak1.charge and to_charge == peak2.charge)):
+
+            return ppm_error(peak2.neutral_mass + peak1.neutral_mass, reference_mass) < self.tolerance
+        return False
+
+    @cython.cdivision(True)
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=None, TargetProperties props=None):
         cdef:
             list matches
             tuple peaks_in_range
-            double reference_mass, delta_mass
+            double reference_mass, delta_mass, tolerance
             size_t i, n
 
+        tolerance = self.tolerance
         matches = []
         if props is not None:
             reference_mass = props.peptide_backbone_mass
@@ -548,11 +576,11 @@ cdef class ComplementFeature(MassOffsetFeature):
         reference_mass += self.offset
         delta_mass = reference_mass - peak.neutral_mass
 
-        peaks_in_range = peak_list.all_peaks_for(delta_mass, 2 * self.tolerance)
+        peaks_in_range = peak_list.all_peaks_for(delta_mass, 2 * tolerance)
         n = PyTuple_GET_SIZE(peaks_in_range)
         for i in range(n):
             peak2 = <DeconvolutedPeak>PyTuple_GET_ITEM(peaks_in_range, i)
-            if peak is not peak2 and abs((peak2.neutral_mass + peak.neutral_mass) - reference_mass) / reference_mass < self.tolerance:
+            if peak is not peak2 and self._test_relative(peak, peak2, reference_mass):
                 matches.append(peak2)
         return matches
 
@@ -948,10 +976,10 @@ cdef class PeakRelation(object):
             bint v
         if other is None:
             return False
-        v = self.from_peak == other.from_peak
+        v = self.from_peak._eq(other.from_peak)
         if not v:
             return v
-        v = self.to_peak == other.to_peak
+        v = self.to_peak._eq(other.to_peak)
         if not v:
             return v
         v = self.feature == other.feature

@@ -43,7 +43,7 @@ cdef class MassOffsetFeature(FeatureBase):
         public Py_hash_t _hash
 
     cpdef bint test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2)
-    cdef inline bint _test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2)
+    cdef inline bint _test(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2) nogil
 
 
 cdef class LinkFeature(MassOffsetFeature):
@@ -59,7 +59,7 @@ cdef class LinkFeature(MassOffsetFeature):
                               FragmentMatchMap solution_map, structure=*, set peak_indices=*)
 
 cdef class ComplementFeature(MassOffsetFeature):
-    pass
+    cdef inline bint _test_relative(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2, double reference_mass) nogil
 
 
 cdef class FeatureFunctionEstimatorBase(object):
