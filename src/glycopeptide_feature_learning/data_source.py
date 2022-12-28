@@ -2,7 +2,7 @@ import os
 
 from ms_deisotope import DeconvolutedPeak, DeconvolutedPeakSet, neutral_mass
 from ms_deisotope.data_source import ProcessedScan, ActivationInformation
-from ms_deisotope.output.mgf import ProcessedMGFDeserializer, pymgf
+from ms_deisotope.output.mgf import ProcessedMGFDeserializer
 
 from glycan_profiling.structure import FragmentCachingGlycopeptide, DecoyFragmentCachingGlycopeptide
 from glycan_profiling import symbolic_expression
@@ -11,7 +11,7 @@ from glycan_profiling.chromatogram_tree.mass_shift import (
     MassShift, mass_shift_index, MassShiftCollection, Unmodified,
     Ammonium, Sodium, Potassium)
 
-from glycopeptidepy.algorithm import reverse_preserve_sequon, reverse_sequence
+from glycopeptidepy.algorithm import reverse_sequence
 from glycopeptidepy.utils import memoize
 from glypy.utils import opener
 
@@ -128,11 +128,10 @@ class AnnotatedScan(ProcessedScan):
         art.draw()
         return art
 
-    def rank(self, cache=True):
+    def rank(self, cache=True) -> DeconvolutedPeakSet:
         if 'ranked_peaks' not in self.annotations or not cache:
             peaks = self.deconvoluted_peak_set
             intensity_rank(peaks)
-            peaks = DeconvolutedPeakSet([p for p in peaks if p.rank > 0])
             peaks.reindex()
             if cache:
                 self.annotations['ranked_peaks'] = peaks

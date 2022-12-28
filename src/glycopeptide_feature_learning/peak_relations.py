@@ -1178,8 +1178,6 @@ class FragmentationModel(FragmentationModelBase):
                     continue
                 if not preranked:
                     intensity_rank(peaks)
-                    peaks = DeconvolutedPeakSet([p for p in peaks if p.rank > 0])
-                    peaks.reindex()
                     gpsm.annotations['ranked_peaks'] = peaks
         fit = feature_function_estimator(gpsms, feature, series=self.series, preranked=True, track_relations=True)
         specializations = filter(specialize_filter, fit.specialize())
