@@ -592,7 +592,8 @@ cdef class ComplementFeature(MassOffsetFeature):
         n = PyTuple_GET_SIZE(peaks_in_range)
         for i in range(n):
             peak2 = <DeconvolutedPeak>PyTuple_GET_ITEM(peaks_in_range, i)
-            if peak is not peak2 and self._test_relative(peak, peak2, reference_mass):
+            # if peak is not peak2 and self._test_relative(peak, peak2, reference_mass):
+            if peak is not peak2 and ppm_error(peak2.neutral_mass + peak.neutral_mass, reference_mass) < self.tolerance:
                 matches.append(peak2)
         return matches
 
