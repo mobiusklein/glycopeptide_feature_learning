@@ -13,9 +13,6 @@ from ms_peak_picker._c.peak_set cimport PeakBase
 
 
 cdef class RankedPeak(DeconvolutedPeak):
-    cdef:
-        public int rank
-
     def __init__(self, neutral_mass, intensity, charge, signal_to_noise, index,
                  rank=-1):
         DeconvolutedPeak.__init__(

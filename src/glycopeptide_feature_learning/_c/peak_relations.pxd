@@ -9,6 +9,8 @@ from glycopeptidepy._c.structure.fragment cimport (FragmentBase, PeptideFragment
 
 from glycan_profiling._c.structure.fragment_match_map cimport (PeakFragmentPair, FragmentMatchMap)
 
+from numpy cimport npy_uint32 as uint32_t, npy_uint16 as uint16_t, npy_int16 as int16_t, npy_int8 as int8_t
+
 
 cpdef set get_peak_index(FragmentMatchMap self)
 
@@ -76,7 +78,7 @@ cdef class FeatureFunctionEstimatorBase(object):
         public double total_off_series
         public list peak_relations
 
-    cpdef match_peaks(self, gpsm, DeconvolutedPeakSet peaks)
+    cpdef match_peaks(self, gpsm, DeconvolutedPeakSet peaks, int min_rank=*)
 
 
 cdef class FittedFeatureBase(object):
@@ -148,3 +150,54 @@ cdef class PeakRelation(object):
 
     @staticmethod
     cdef PeakRelation _create(DeconvolutedPeak from_peak, DeconvolutedPeak to_peak, feature, IonSeriesBase series)
+
+
+cdef struct partition_t:
+    int16_t from_charge
+    int16_t to_charge
+    int intensity_ratio
+
+
+cdef struct feature_fit_t:
+    partition_t partition
+
+    uint32_t on_count
+    uint32_t off_count
+
+    double on_series
+    double off_series
+
+
+cdef struct peak_relation_t:
+    size_t from_peak
+    size_t to_peak
+
+    int8_t series
+    feature_fit_t* feature
+
+
+cdef struct feature_table_t:
+    feature_fit_t* features
+    size_t size
+
+
+cdef struct partitioned_peak_relation_t:
+    size_t from_peak
+    size_t to_peak
+
+    int8_t series
+    feature_fit_t* feature
+
+    partition_t partition
+
+
+cdef struct partitioned_fit_table_t:
+    feature_fit_t* fits
+    uint16_t p1_charge_max
+    uint16_t p2_charge_max
+    size_t size
+
+
+cdef int create_partitioned_fit_table(uint16_t p1_charge_max, uint16_t p2_charge_max, partitioned_fit_table_t* destination) nogil
+cdef size_t compute_partition_offset(partitioned_fit_table_t* self, uint16_t from_charge, uint16_t to_charge, int16_t intensity_ratio) nogil
+cdef feature_fit_t* partitioned_fit_table_get(partitioned_fit_table_t* self, uint16_t from_charge, uint16_t to_charge, int16_t intensity_ratio) nogil

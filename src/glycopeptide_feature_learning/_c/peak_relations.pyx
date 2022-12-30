@@ -4,6 +4,7 @@ cimport cython
 import numpy as np
 cimport numpy as np
 
+from libc.stdlib cimport malloc, realloc, free
 from libc.math cimport fabs
 
 from cpython.object cimport PyObject
@@ -26,6 +27,8 @@ from glycopeptidepy.structure.sequence_composition import AminoAcidSequenceBuild
 
 from collections import defaultdict
 
+from glycopeptide_feature_learning._c.data_source cimport RankedPeak
+
 
 cdef object _AminoAcidSequenceBuildingBlock = AminoAcidSequenceBuildingBlock
 
@@ -38,6 +41,11 @@ cdef int OUT_OF_RANGE_INT = 999
 @cython.cdivision(True)
 cdef bint isclose(double x, double y, double rtol=1.e-5, double atol=1.e-8) nogil:
     return fabs(x-y) <= (atol + rtol * fabs(y))
+
+
+DEF INTENSITY_RATIO_MIN = -4
+DEF INTENSITY_RATIO_MAX = 5
+DEF INTENSITY_RATIO_SIZE = abs(INTENSITY_RATIO_MIN) + INTENSITY_RATIO_MAX + 1
 
 
 @cython.cdivision(True)
@@ -615,11 +623,12 @@ cdef class FittedFeatureBase(object):
 
 
 cdef class FeatureFunctionEstimatorBase(object):
-    cpdef match_peaks(self, gpsm, DeconvolutedPeakSet peaks):
+    cpdef match_peaks(self, gpsm, DeconvolutedPeakSet peaks, int min_rank=1):
         cdef:
             list related, matches, fragments
             FragmentMatchMap solution_map
-            DeconvolutedPeak peak, match
+            RankedPeak peak, match
+
             size_t i_peaks, n_peaks, i_fragments, n_fragments, i_matches, n_matches
             bint is_on_series, is_match_expected
             PeakRelation pr
@@ -638,8 +647,15 @@ cdef class FeatureFunctionEstimatorBase(object):
         props = TargetProperties.from_glycopeptide(structure)
         peak_index_set = get_peak_index(solution_map)
 
+        if n_peaks == 0:
+            return
+        elif not isinstance(peaks.getitem(0), RankedPeak):
+            raise TypeError("Must provide RankedPeak instances")
+
         for i_peaks in range(n_peaks):
-            peak = peaks.getitem(i_peaks)
+            peak = <RankedPeak>peaks.getitem(i_peaks)
+            if peak.rank < min_rank:
+                continue
 
             fragments = solution_map.by_peak_index.getitem(peak._index.neutral_mass)
             n_fragments = PyList_GET_SIZE(fragments)
@@ -653,8 +669,8 @@ cdef class FeatureFunctionEstimatorBase(object):
             matches = self.feature_function.find_matches(peak, peaks, structure, props)
             n_matches = PyList_GET_SIZE(matches)
             for i_matches in range(n_matches):
-                match = <DeconvolutedPeak>PyList_GET_ITEM(matches, i_matches)
-                if peak is match:
+                match = <RankedPeak>PyList_GET_ITEM(matches, i_matches)
+                if peak is match or match.rank < min_rank:
                     continue
 
                 pr = None
@@ -1086,3 +1102,77 @@ cdef class PeakRelation(object):
             self.series = series
 
         return self
+
+
+cdef int create_partitioned_fit_table(uint16_t p1_charge_max, uint16_t p2_charge_max, partitioned_fit_table_t* destination) nogil:
+    cdef:
+        size_t size_total, p1_i, p2_i
+        size_t step_1, step_2
+        int16_t ir_i
+        feature_fit_t* fit_state
+
+    size_total = (<size_t>p1_charge_max) * (<size_t>p2_charge_max) * (<size_t>INTENSITY_RATIO_SIZE)
+    destination.p1_charge_max = p1_charge_max
+    destination.p2_charge_max = p2_charge_max
+    destination.size = size_total
+    destination.fits = <feature_fit_t*>malloc(size_total * sizeof(feature_fit_t))
+    if destination.fits == NULL:
+        return 1
+    step_1 = (<size_t>p2_charge_max) * INTENSITY_RATIO_SIZE
+    step_2 = INTENSITY_RATIO_SIZE
+    for p1_i in range(p1_charge_max):
+        for p2_i in range(p2_charge_max):
+            for ir_i in range(INTENSITY_RATIO_SIZE):
+                fit_state = &destination.fits[p1_i * step_1 + p2_i * step_2 + ir_i]
+                fit_state.partition.from_charge = p1_i + 1 # Looping starting at 0, but labeling starting from 1
+                fit_state.partition.to_charge = p2_i + 1
+                fit_state.partition.intensity_ratio = ir_i + INTENSITY_RATIO_MIN # Addition of a negative
+                fit_state.on_count = 0
+                fit_state.off_count = 0
+                fit_state.on_series = 0.0
+                fit_state.off_series = 0.0
+    return 0
+
+
+cdef size_t compute_partition_offset(partitioned_fit_table_t* self, uint16_t from_charge, uint16_t to_charge, int16_t intensity_ratio) nogil:
+    cdef:
+        size_t i, step_1, step_2
+    if intensity_ratio == OUT_OF_RANGE_INT:
+        intensity_ratio = INTENSITY_RATIO_MIN
+    step_1 = (<size_t>self.p2_charge_max) * INTENSITY_RATIO_SIZE
+    step_2 = INTENSITY_RATIO_SIZE
+    i = step_1 * <size_t>(from_charge - 1) # Indexing starting at 0, but labeling starting from 1
+    i += step_2 * <size_t>(to_charge - 1)
+    i += intensity_ratio - INTENSITY_RATIO_MIN # Subtraction of a negative
+    return i
+
+
+cdef feature_fit_t* partitioned_fit_table_get(partitioned_fit_table_t* self, uint16_t from_charge, uint16_t to_charge, int16_t intensity_ratio) nogil:
+    cdef:
+        size_t i
+    i = compute_partition_offset(self, from_charge, to_charge, intensity_ratio)
+    if i >= self.size:
+        return NULL
+    return &self.fits[i]
+
+
+def _test_partition_table():
+    cdef:
+        uint16_t from_charge, to_charge
+        size_t size_total, p1_i, p2_i
+        int16_t ir_i
+        size_t step_1, step_2
+        feature_fit_t* fit_state
+        partitioned_fit_table_t self
+    from_charge = 5
+    to_charge = 5
+    assert create_partitioned_fit_table(from_charge, to_charge, &self) == 0
+
+    for p1_i in range(1, from_charge + 1):
+        for p2_i in range(1, to_charge + 1):
+            for ir_i in range(INTENSITY_RATIO_MIN, INTENSITY_RATIO_MAX + 1):
+                fit_state = partitioned_fit_table_get(&self, p1_i, p2_i, ir_i)
+                assert fit_state != NULL
+                assert fit_state.partition.from_charge == p1_i
+                assert fit_state.partition.to_charge == p2_i
+                assert fit_state.partition.intensity_ratio == ir_i

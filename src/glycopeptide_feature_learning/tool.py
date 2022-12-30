@@ -102,7 +102,6 @@ def partition_training_data(training_instances: Deque[data_source.AnnotatedScan]
 
     partition_map = partitions.partition_observations(
         training_instances,
-        exclusive=True,
         partition_specifications=partition_rules,
         omit_labile=omit_labile)
     return partition_map

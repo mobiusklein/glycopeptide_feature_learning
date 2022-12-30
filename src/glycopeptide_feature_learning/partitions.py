@@ -240,7 +240,7 @@ class PartitionMap(OrderedDict):
         return self
 
 
-def partition_observations(gpsms, exclusive=True, partition_specifications=None, omit_labile=False):
+def partition_observations(gpsms, partition_specifications=None, omit_labile=False):
     # Consider re-organizing to move PredicateFilter to partitions
     from glycopeptide_feature_learning.scoring.predicate import PredicateFilter
     if partition_specifications is None:
@@ -249,7 +249,7 @@ def partition_observations(gpsms, exclusive=True, partition_specifications=None,
     forward_map = PredicateFilter.from_spec_list(
         partition_specifications, omit_labile=omit_labile)
     for i, gpsm in enumerate(gpsms):
-        if i % 1000 == 0 and i:
+        if i % 5000 == 0 and i:
             logger.info("Partitioned %d GPSMs" % (i, ))
         pair = forward_map[gpsm, gpsm.target]
         # Ensure that the GPSM actually belongs to the partition spec and isn't a nearest
