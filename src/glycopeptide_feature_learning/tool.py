@@ -1,13 +1,13 @@
-from collections import defaultdict
 import os
 import sys
 import glob
 import json
 import logging
-from typing import Dict, List, Optional, Tuple, Type, Union, Deque, Iterable
 import warnings
 import array
 import pickle
+
+from typing import Dict, List, Optional, Tuple, Type, Union, Deque, Iterable, DefaultDict
 
 from six import string_types as basestring
 
@@ -15,25 +15,28 @@ import click
 
 import numpy as np
 
+import glypy
+
+from glycopeptidepy.structure.fragment import IonSeries
+
+from ms_deisotope.data_source import get_opener
+
+from glycan_profiling.cli.validators import RelativeMassErrorParam
+
 from glycopeptide_feature_learning import (
     data_source, peak_relations,
     common_features, partitions,
     multinomial_regression)
 
 from glycopeptide_feature_learning.scoring import (
-    PartialSplitScorerTree, SplitScorerTree, PartitionedPredicateTree)
+    PredicateTree,
+    PartialSplitScorerTree,
+    SplitScorerTree,
+    PartitionedPredicateTree)
 
-from glycopeptide_feature_learning.scoring.scorer import NoGlycosylatedPeptidePartitionedPredicateTree
+from glycopeptide_feature_learning.scoring.scorer import NoGlycosylatedPeptidePartitionedPredicateTree, MultinomialRegressionScorerBase
+from glycopeptide_feature_learning.utils import logger
 
-import glypy
-from glycopeptidepy.structure.fragment import IonSeries
-
-from glycan_profiling.cli.validators import RelativeMassErrorParam
-
-
-logger = logging.getLogger(
-    "glycopeptide_feature_learning")
-logger.addHandler(logging.NullHandler())
 
 
 DEFAULT_MODEL_TYPE = multinomial_regression.LabileMonosaccharideAwareModel
@@ -60,7 +63,8 @@ def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: 
         item_show_func=lambda x: f"{os.path.basename(x)} ({len(training_instances)} spectra read)" if x is not None else '')
     with progbar:
         for train_file in progbar:
-            reader = data_source.AnnotatedMGFDeserializer(open(train_file, 'rb'))
+            reader = data_source.AnnotatedMGFDeserializer(
+                get_opener(train_file, 'rb'))
             if progbar.is_hidden:
                 logger.info("Reading %s (%d spectra read)", os.path.basename(train_file), len(training_instances))
             for instance in reader:
@@ -87,7 +91,7 @@ def match_spectra(matches: Iterable[data_source.AnnotatedScan], error_tolerance)
         for i, match in progbar:
             match.deconvoluted_peak_set = match.rank()
             match.match(error_tolerance=error_tolerance, extended_glycan_search=True)
-            if progbar.is_hidden and i % 1000 == 0 and i != 0:
+            if progbar.is_hidden and i % 5000 == 0 and i != 0:
                 logger.info("%d Spectra Matched" % (i,))
     logger.info("%d Spectra Matched" % (len(matches),))
     return matches
@@ -171,7 +175,7 @@ def get_peak_relation_features():
     return features, stub_features, link_features
 
 
-def fit_peak_relation_features(partition_map: partitions.PartitionMap) -> Dict[partitions.partition_cell_spec, peak_relations.FragmentationModelCollection]:
+def fit_peak_relation_features(partition_map: partitions.PartitionMap):
     features, stub_features, link_features = get_peak_relation_features()
     group_to_fit = {}
     cell_sequence = [
@@ -180,7 +184,8 @@ def fit_peak_relation_features(partition_map: partitions.PartitionMap) -> Dict[p
     progressbar = click.progressbar(
         cell_sequence, label="Fitting Peak Relationships",
         width=15, show_percent=True, show_eta=False,
-        item_show_func=lambda x: "%s" % (x[0].compact(' '),) if x is not None else '')
+        item_show_func=lambda x: ("%s (%d spectra)" % (x[0].compact(' '), len(x[2])) if x is not None else '')
+    )
     with progressbar:
         for spec, cell, subset in progressbar:
             key = frozenset([gpsm.title for gpsm in subset])
@@ -211,7 +216,6 @@ def fit_peak_relation_features(partition_map: partitions.PartitionMap) -> Dict[p
                     fm.features.extend(fits)
                 cell.fit[series] = fm
             group_to_fit[key] = cell.fit
-    return group_to_fit
 
 
 def fit_regression_model(partition_map: partitions.PartitionMap, regression_model:Optional[Type[multinomial_regression.FragmentType]]=None,
@@ -355,10 +359,10 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
         partitions.classify_ascending_abundance_peptide_Y(match)
         for match in cell.subset])
 
-    kmeans = partitions.KMeans.fit(ascending_scores, 2)
+    kmeans = partitions.KMeans.fit(ascending_scores, 2, initial_mus=np.array([0.1, 0.9]))
     cluster_labels = kmeans.predict(ascending_scores)
 
-    clustered_groups = defaultdict(list)
+    clustered_groups = DefaultDict(list)
     for i, match in enumerate(cell.subset):
         clustered_groups[cluster_labels[i]].append(match)
 
@@ -440,7 +444,7 @@ def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_pat
         model_type = multinomial_regression.FragmentType.get_model_by_name(model_type)
     if model_type is None:
         model_type = DEFAULT_MODEL_TYPE
-    logger.info("Model Type: %r", model_type)
+    logger.info("Model Type: %r", model_type.__name__)
     logger.info("Fit Partitioned: %r", fit_partitioned)
     logger.info("Minimum Score: %0.3f, Minimum FDR: %0.3f", threshold, min_q_value)
     logger.info("Mass Error Tolerance: %0.3e", error_tolerance)
@@ -523,7 +527,7 @@ def strip_model_arrays(inpath, outpath):
     "partitioned-glycan", "no-glycosylated-partitioned-glycan"
 ]), default="no-glycosylated-partitioned-glycan")
 def compile_model(inpath, outpath, model_type="partial-peptide"):
-    model_cls = {
+    model_cls: Type[PredicateTree] = {
         "partial-peptide": PartialSplitScorerTree,
         "full": SplitScorerTree,
         "partitioned-glycan": PartitionedPredicateTree,
@@ -557,12 +561,14 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
     with open(model_path, 'rb') as fh:
         model_tree = pickle.load(fh)
 
-    correlations = array.array('d')
-    glycan_correlations = array.array('d')
-    peptide_correlations = array.array('d')
-    scan_ids = []
-    data_files = []
-    glycopeptides = []
+    correlations = Deque()
+    glycan_correlations = Deque()
+    peptide_correlations = Deque()
+    scan_ids = Deque()
+    data_files = Deque()
+    glycopeptides = Deque()
+    peptide_reliabilities = Deque()
+    glycan_reliabilities = Deque()
 
     progbar = click.progressbar(
         enumerate(test_instances), length=len(test_instances), show_eta=True, label='Matching Peaks',
@@ -571,8 +577,13 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
     assert len(test_instances) > 0
     with progbar:
         for i, scan in progbar:
-            match = model_tree.evaluate(scan, scan.structure, error_tolerance=error_tolerance,
-                                        extended_glycan_search=True)
+            match: MultinomialRegressionScorerBase = model_tree.evaluate(
+                scan,
+                scan.structure,
+                error_tolerance=error_tolerance,
+                extended_glycan_search=True,
+                mass_shift=scan.mass_shift,
+            )
             if progbar.is_hidden and i % 1000 == 0 and i != 0:
                 logger.info("%d Spectra Matched" % (i,))
 
@@ -582,12 +593,17 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             scan_ids.append(scan.id)
             data_files.append(scan.title)
             glycopeptides.append(str(scan.target))
+            peptide_reliabilities.append(match.get_predicted_intensities_series(
+                (IonSeries.b, IonSeries.y))[4].sum())
+            glycan_reliabilities.append(match.get_predicted_intensities_series(
+                (IonSeries.stub_glycopeptide, ))[4].sum())
 
-    logger.info("%d Spectra Matched" % (i,))
-
-    logger.info("Median Correlation: %03f" % np.nanmedian(correlations))
-    logger.info("Median Glycan Correlation: %03f" % np.nanmedian(glycan_correlations))
-    logger.info("Median Peptide Correlation: %03f" % np.nanmedian(peptide_correlations))
+    logger.info("%d Spectra Matched", i)
+    logger.info("Median Correlation: %03f", np.nanmedian(correlations))
+    logger.info("Median Glycan Correlation: %03f", np.nanmedian(glycan_correlations))
+    logger.info("Median Peptide Correlation: %03f", np.nanmedian(peptide_correlations))
+    logger.info("Median Glycan Reliability Sum: %03f", np.nanmedian(glycan_reliabilities))
+    logger.info("Median Peptide Reliability Sum: %03f", np.nanmedian(peptide_reliabilities))
 
     with open(outpath, 'wb') as fh:
         pickle.dump({
@@ -595,6 +611,8 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             "correlation": np.array(correlations),
             "peptide_correlation": np.array(peptide_correlations),
             "glycan_correlation": np.array(glycan_correlations),
+            "glycan_reliabilities": np.array(glycan_reliabilities),
+            "peptide_reliabilities": np.array(peptide_reliabilities),
             "data_file": np.array(data_files),
             "glycopeptide": np.array(glycopeptides)
         }, fh)

@@ -48,6 +48,47 @@ DEF INTENSITY_RATIO_MAX = 5
 DEF INTENSITY_RATIO_SIZE = abs(INTENSITY_RATIO_MIN) + INTENSITY_RATIO_MAX + 1
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef int8_t[::1] make_index(match):
+    cdef:
+        DeconvolutedPeakSet peaks
+        DeconvolutedPeak peak
+        FragmentMatchMap solution_map
+        ByPeakIndexIndex index
+        PeakFragmentPair pfp
+        object obj
+        dict annotations
+        PyObject* ptmp
+        Py_ssize_t k
+        np.npy_intp knd
+
+        size_t i, n
+        np.ndarray[int8_t, ndim=1, mode='c'] acc
+        int8_t* cacc
+
+    annotations = match.annotations
+    ptmp = PyDict_GetItem(annotations, "fragmodel_peak_match_index")
+    if ptmp != NULL:
+        return <object>ptmp
+
+    peaks = match.deconvoluted_peak_set
+    solution_map = match.solution_map
+
+    k = n = peaks.get_size()
+    knd = k
+    acc = np.PyArray_ZEROS(1, &knd, np.NPY_INT8, 0)
+    cacc = &acc[0]
+
+    for obj in solution_map.members:
+        pfp = <PeakFragmentPair>obj
+        cacc[pfp.peak._index.neutral_mass] = 1
+
+    PyDict_SetItem(annotations, "fragmodel_peak_match_index", acc)
+    return acc
+
+
+
 @cython.cdivision(True)
 cdef int intensity_ratio_function(DeconvolutedPeak peak1, DeconvolutedPeak peak2) nogil:
     cdef double ratio
@@ -1151,6 +1192,14 @@ cdef feature_fit_t* partitioned_fit_table_get(partitioned_fit_table_t* self, uin
     cdef:
         size_t i
     i = compute_partition_offset(self, from_charge, to_charge, intensity_ratio)
+    if i >= self.size:
+        return NULL
+    return &self.fits[i]
+
+cdef feature_fit_t* partitioned_fit_table_get_partition(partitioned_fit_table_t* self, partition_t* partition) nogil:
+    cdef:
+        size_t i
+    i = compute_partition_offset(self, partition.from_charge, partition.to_charge, partition.intensity_ratio)
     if i >= self.size:
         return NULL
     return &self.fits[i]

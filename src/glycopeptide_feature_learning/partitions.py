@@ -22,11 +22,7 @@ from glycan_profiling.tandem.glycopeptide.dynamic_generation.mixture import KMea
 from glycopeptide_feature_learning.multinomial_regression import MultinomialRegressionFit
 
 from .amino_acid_classification import proton_mobility
-
-
-logger = logging.getLogger(
-    "glycopeptide_feature_learning.partitions")
-logger.addHandler(logging.NullHandler())
+from .utils import logger
 
 
 
@@ -411,6 +407,19 @@ class ModelSelectorBase(object):
     def __iter__(self):
         yield from self.model_fits.values()
 
+    def __eq__(self, other: 'ModelSelectorBase'):
+        if other is None:
+            return False
+
+        if self._default_model != other._default_model:
+            return False
+        if set(self.model_fits.values()) != set(other.model_fits.values()):
+            return False
+        return True
+
+    def __ne__(self, other):
+        return not self == other
+
     @classmethod
     def from_json(cls, state) -> 'ModelSelectorBase':
         tp = cls.selector_registry[state['selector_type']]
@@ -441,7 +450,25 @@ class KMeansModelSelector(ModelSelectorBase):
     def __init__(self, model_fits: Dict[int, MultinomialRegressionFit], kmeans_fit: KMeans):
         super().__init__(model_fits)
         self.kmeans_fit = kmeans_fit
-        self._default_model = next(iter(self))
+        self._default_model = self.model_fits[min(self.model_fits.keys())]
+        self._order_kmeans_ascending()
+
+    def _order_kmeans_ascending(self):
+        u = self.kmeans_fit.means
+        is_sorted = np.all(u[:-1] <= u[1:])
+        if not is_sorted:
+            remap = np.argsort(u)
+            new_means = np.zeros_like(u)
+            new_model_fits = {}
+            for i_current, i_remap in enumerate(remap):
+                new_means[i_remap] = u[i_current]
+                try:
+                    new_model_fits[int(i_remap)] = self.model_fits[i_current]
+                except KeyError:
+                    continue
+            self.kmeans_fit.means = new_means
+            self.model_fits = new_model_fits
+            self._default_model = self.model_fits[min(self.model_fits.keys())]
 
     def classify(self, spectrum_match) -> int:
         value = classify_ascending_abundance_peptide_Y(spectrum_match)
@@ -470,6 +497,9 @@ class NullModelSelector(ModelSelectorBase):
 
     def __init__(self, model_fit: MultinomialRegressionFit):
         self._default_model = self.model_fit = model_fit
+
+    def __eq__(self, other: 'NullModelSelector'):
+        return self.model_fit == other.model_fit
 
     def get_model(self, spectrum_match) -> MultinomialRegressionFit:
         return self.model_fit
@@ -500,6 +530,14 @@ class SplitModelFit(object):
     def __init__(self, peptide_models: ModelSelectorBase, glycan_models: ModelSelectorBase):
         self.peptide_models = peptide_models
         self.glycan_models = glycan_models
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        return self.peptide_models == other.peptide_models and self.glycan_models == other.glycan_models
+
+    def __ne__(self, other):
+        return not self == other
 
     def get_peptide_model(self, spectrum_match) -> MultinomialRegressionFit:
         return self.peptide_models.get_model(spectrum_match)

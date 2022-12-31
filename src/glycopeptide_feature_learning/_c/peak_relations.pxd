@@ -14,6 +14,8 @@ from numpy cimport npy_uint32 as uint32_t, npy_uint16 as uint16_t, npy_int16 as 
 
 cpdef set get_peak_index(FragmentMatchMap self)
 
+cpdef int8_t[::1] make_index(match)
+
 
 cdef class TargetProperties:
     cdef:
@@ -201,3 +203,4 @@ cdef struct partitioned_fit_table_t:
 cdef int create_partitioned_fit_table(uint16_t p1_charge_max, uint16_t p2_charge_max, partitioned_fit_table_t* destination) nogil
 cdef size_t compute_partition_offset(partitioned_fit_table_t* self, uint16_t from_charge, uint16_t to_charge, int16_t intensity_ratio) nogil
 cdef feature_fit_t* partitioned_fit_table_get(partitioned_fit_table_t* self, uint16_t from_charge, uint16_t to_charge, int16_t intensity_ratio) nogil
+cdef feature_fit_t* partitioned_fit_table_get_partition(partitioned_fit_table_t* self, partition_t* partition) nogil

@@ -25,9 +25,7 @@ from .amino_acid_classification import (
     AminoAcidClassification, classify_amide_bond_frank, classify_residue_frank)
 from .approximation import PearsonResidualCDF
 from .peak_relations import FragmentationModelCollection
-
-logger = logging.getLogger("glycopeptide_feature_learning.multinomial_regression")
-logger.addHandler(logging.NullHandler())
+from .utils import logger
 
 
 array_dtype = np.dtype("<d")
@@ -1549,7 +1547,7 @@ def load_array(bytestring):
         decoded_string = bytestring.encode("ascii")
     except AttributeError:
         decoded_string = bytestring
-    decoded_string = base64.decodestring(decoded_string)
+    decoded_string = base64.decodebytes(decoded_string)
     buf = io.BytesIO(decoded_string)
     array = np.load(buf)
     return array

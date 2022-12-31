@@ -2,16 +2,13 @@ import math
 import json
 import gzip
 import io
-from typing import Dict, List, Union
+from typing import Dict, Iterator, List, Union, Deque, OrderedDict
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
 
-from collections import defaultdict, deque, OrderedDict, namedtuple
+from collections import defaultdict, deque, namedtuple
 
-from ms_deisotope.data_source import ChargeNotProvided
+from ms_deisotope.data_source import ChargeNotProvided, ProcessedScan
 
 from glycopeptide_feature_learning.partitions import classify_proton_mobility, partition_cell_spec, count_labile_monosaccharides
 from glycopeptide_feature_learning.multinomial_regression import MultinomialRegressionFit
@@ -314,6 +311,10 @@ class PredicateFilterBase(object):
         SialylatedPredicate
     ]
 
+    root: Dict
+    size: int
+    omit_labile: bool
+
     def __init__(self, root, size=None, omit_labile=False):
         self.root = root
         self.size = size
@@ -322,7 +323,7 @@ class PredicateFilterBase(object):
         if self.size is None:
             self.size = self._guess_size()
 
-    def _guess_size(self):
+    def _guess_size(self) -> int:
         n = 0
         work = deque([(self.root, 0)])
         while work:
@@ -334,7 +335,7 @@ class PredicateFilterBase(object):
                     work.append((val, current_depth + 1))
         return n
 
-    def get_model_for(self, scan, structure):
+    def get_model_for(self, scan: ProcessedScan, structure) -> ModelBindingScorer:
         """Locate the appropriate model for the query scan and glycopeptide
 
         Parameters
@@ -386,8 +387,8 @@ class PredicateFilterBase(object):
             return layer
         raise ValueError("Could Not Find Leaf %d" % i)
 
-    def __iter__(self):
-        work = deque()
+    def __iter__(self) -> Iterator[ModelBindingScorer]:
+        work: Deque[dict] = deque()
         work.extend(self.root.values())
         while work:
             item = work.popleft()
@@ -494,11 +495,11 @@ class PredicateTreeBase(PredicateFilterBase, HelperMethods, DummyScorer):
         if self.size is None:
             self.size = self._guess_size()
 
-    def evaluate(self, scan, target, *args, **kwargs):
+    def evaluate(self, scan: ProcessedScan, target, *args, **kwargs):
         model = self.get_model_for(scan, target)
         return model.evaluate(scan, target, *args, **kwargs)
 
-    def __call__(self, scan, target, *args, **kwargs):
+    def __call__(self, scan: ProcessedScan, target, *args, **kwargs):
         model = self.get_model_for(scan, target)
         return model(scan, target, *args, **kwargs)
 

@@ -1,8 +1,11 @@
 import random
-
+import logging
 from scipy.spatial.distance import pdist, squareform
 import numpy as np
 
+
+logger = logging.getLogger("glycopeptide_feature_learning")
+logger.addHandler(logging.NullHandler())
 
 def distcorr(X, Y, pval=False, nruns=500):
     """https://gist.github.com/satra/aa3d19a12b74e9ab7941

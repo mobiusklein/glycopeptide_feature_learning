@@ -21,9 +21,7 @@ from .common import (
     OUT_OF_RANGE_INT, ppm_error,
     intensity_ratio_function, intensity_rank)
 
-
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
+from .utils import logger
 
 
 # Lacking a reasonable definition of the "space between fragmentation sites"
@@ -1180,7 +1178,7 @@ class FragmentationModel(FragmentationModelBase):
                     intensity_rank(peaks)
                     gpsm.annotations['ranked_peaks'] = peaks
         fit = feature_function_estimator(gpsms, feature, series=self.series, preranked=True, track_relations=True)
-        specializations = filter(specialize_filter, fit.specialize())
+        specializations = list(filter(specialize_filter, fit.specialize()))
         fit.pack()
         return specializations
 
