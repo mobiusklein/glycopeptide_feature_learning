@@ -4,7 +4,7 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport PyTuple_GetItem, PyTuple_Size, PyList_GET_ITEM, PyList_GET_SIZE
 from cpython.int cimport PyInt_AsLong
 from libc.stdlib cimport malloc, calloc, free
-from libc.math cimport log10, log, sqrt, exp, erf
+from libc.math cimport log10, log, log2, sqrt, exp, erf
 
 import numpy as np
 cimport numpy as np
@@ -567,8 +567,7 @@ def calculate_partial_glycan_score_no_glycosylated_peptide_coverage(self, double
         corr = -0.5
 
     peptide_coverage = self._calculate_peptide_coverage_no_glycosylated()
-    corr = (1 + corr) / 2
-    corr_score = corr * n_signif_frags + reliability_sum * n_signif_frags
+    corr_score = (((1 + corr) / 2) * n_signif_frags) + (reliability_sum * log2(n_signif_frags) * max(corr, 0.0))
 
     # corr_score *= min(peptide_coverage + 0.75, 1.0)
     # corr_score *= normalized_sigmoid(max(peptide_coverage - 0.03, 0.0) * 42)

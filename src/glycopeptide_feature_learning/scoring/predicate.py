@@ -553,10 +553,11 @@ class PredicateTreeBase(PredicateFilterBase, HelperMethods, DummyScorer):
         else:
             meta = dict()
             omit_labile = False
+        model_key_b = id(d)
         model_key_i = 1
         for spec_d, model_d in d:
             model = MultinomialRegressionFit.from_json(model_d)
-            model.model_key = model_key_i
+            model.model_key = (model_key_b, model_key_i)
             model_key_i += 1
             spec = partition_cell_spec.from_json(spec_d)
             # Ensure that all model specifications have the same number of dimensions for

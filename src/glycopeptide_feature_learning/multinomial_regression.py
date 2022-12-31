@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import six
 import base64
 import io
@@ -1190,7 +1190,7 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
 class MultinomialRegressionFit(object):
     n_observations = 0
 
-    model_key: Optional[Any] = None
+    model_key: Optional[Tuple[Any, Any]] = None
 
     def __init__(self, coef, scaled_y, mu, reliabilities, dispersion, weights, covariance_unscaled,
                  deviance, H, model_type=FragmentType, reliability_model=None, model_key=None, **info):
@@ -1500,7 +1500,10 @@ class MultinomialRegressionFit(object):
 
         if self.model_key is not None:
             if other.model_key is not None:
-                return self.model_key == other.model_key
+                # If we are comparing two model fits from the same collection,
+                # use the fast path comparison
+                if self.model_key[0] == other.model_key[0]:
+                    return self.model_key == other.model_key
 
         if not np.allclose(self.coef, other.coef):
             return False
