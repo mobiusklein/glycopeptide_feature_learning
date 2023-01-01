@@ -19,7 +19,7 @@ from .common import datafile
 @pytest.mark.slow
 def test_fit_model():
     training_data = datafile("MouseBrain-Z-T-5.mgf.gz")
-    reference_model_data = datafile("reference_fit.json")
+    reference_model_data = datafile("reference_fit.json.gz")
 
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -43,7 +43,7 @@ def test_fit_model():
         assert meta['fit_info']['spectrum_count'] == 5523
         assert len(model_fits) == 46
 
-        with open(reference_model_data, 'rt') as fh:
+        with tool.get_opener(reference_model_data, 'rt') as fh:
             reference_fit_state = json.load(fh)
         assert reference_fit_state['metadata'] == meta
 
@@ -67,7 +67,7 @@ def test_fit_model():
 
 
 def test_compile_model():
-    reference_model_data = datafile("reference_fit.json")
+    reference_model_data = datafile("reference_fit.json.gz")
 
     runner = CliRunner()
     with runner.isolated_filesystem():

@@ -534,7 +534,9 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
         "no-glycosylated-partitioned-glycan": NoGlycosylatedPeptidePartitionedPredicateTree
     }[model_type]
     click.echo("Loading Model", err=True)
-    model_tree = model_cls.from_file(inpath)
+    model_tree = model_cls.from_file(
+        get_opener(inpath)
+    )
     click.echo("Packing Model", err=True)
     for node in model_tree:
         node.compact()
