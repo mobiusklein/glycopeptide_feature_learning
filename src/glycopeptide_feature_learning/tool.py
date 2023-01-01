@@ -21,6 +21,7 @@ from glycopeptidepy.structure.fragment import IonSeries
 
 from ms_deisotope.data_source import get_opener
 
+# Also initializes GlycReSoft's logging config
 from glycan_profiling.cli.validators import RelativeMassErrorParam
 
 from glycopeptide_feature_learning import (
@@ -120,7 +121,7 @@ def save_partitions(partition_map, output_directory):
         pass
 
     for partition, cell in partition_map.items():
-        click.echo("%s - %d" % (partition, len(cell.subset)))
+        logger.info("%s - %d" % (partition, len(cell.subset)))
         fields = partition.to_json()
         fields = sorted(fields.items())
 
@@ -501,11 +502,11 @@ def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_pat
 @click.argument('outdir', metavar='OUTDIR', type=click.Path(dir_okay=True, file_okay=False), nargs=1)
 def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, omit_labile=True, output_path=None,
                                          blacklist_path=None, error_tolerance=2e-5):
-    click.echo("Loading data from %s" % (', '.join(paths)))
+    logger.info("Loading data from %s" % (', '.join(paths)))
     training_instances = get_training_data(paths, blacklist_path, threshold)
     if len(training_instances) == 0:
         raise click.Abort("No training examples were found.")
-    click.echo("Partitioning %d instances" % (len(training_instances), ))
+    logger.info("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(training_instances, omit_labile=omit_labile)
     save_partitions(partition_map, outdir)
 
@@ -533,14 +534,14 @@ def compile_model(inpath, outpath, model_type="partial-peptide"):
         "partitioned-glycan": PartitionedPredicateTree,
         "no-glycosylated-partitioned-glycan": NoGlycosylatedPeptidePartitionedPredicateTree
     }[model_type]
-    click.echo("Loading Model", err=True)
+    logger.info("Loading Model")
     model_tree = model_cls.from_file(
         get_opener(inpath)
     )
-    click.echo("Packing Model", err=True)
+    logger.info("Packing Model")
     for node in model_tree:
         node.compact()
-    click.echo("Saving Model", err=True)
+    logger.info("Saving Model")
     stream = click.open_file(outpath, 'wb')
     pickle.dump(model_tree, stream, 2)
     stream.close()
@@ -586,7 +587,7 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
                 extended_glycan_search=True,
                 mass_shift=scan.mass_shift,
             )
-            if progbar.is_hidden and i % 1000 == 0 and i != 0:
+            if progbar.is_hidden and i % 5000 == 0 and i != 0:
                 logger.info("%d Spectra Matched" % (i,))
 
             correlations.append(match.total_correlation())
