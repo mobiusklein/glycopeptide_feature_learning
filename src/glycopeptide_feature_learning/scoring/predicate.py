@@ -606,3 +606,10 @@ class PredicateTreeBase(PredicateFilterBase, HelperMethods, DummyScorer):
 
     def __reduce__(self):
         return compressing_reducer(self)
+
+    def __eq__(self, other: 'PredicateTreeBase'):
+        if other is None:
+            return False
+        if self.size != other.size:
+            return False
+        return self.root == other.root

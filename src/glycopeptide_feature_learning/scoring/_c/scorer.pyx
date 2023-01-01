@@ -102,6 +102,15 @@ cdef scalar_or_array normalized_sigmoid(scalar_or_array x):
         return ((1 / (1 + np.exp(-x))) - 0.5) * 2
 
 
+cpdef double correlation_test(double[::1] x, double[::1] y):
+    cdef:
+        size_t n
+        double result
+
+    n = len(x)
+    result = correlation(&x[0], &y[0], n)
+    return result
+
 
 @cython.boundscheck(False)
 @cython.cdivision(True)
@@ -120,8 +129,10 @@ cdef double correlation(double* x, double* y, size_t n) nogil:
     xmean = xsum / n
     ymean = ysum / n
     cov = 0.
-    varx = 0.
-    vary = 0.
+    # The denominator shouldn't initialize to zero if all elements of x or
+    # y could be equal to their mean, otherwise we get division by zero.
+    varx = 1e-12
+    vary = 1e-12
     for i in range(n):
         cov += (x[i] - xmean) * (y[i] - ymean)
         varx += (x[i] - xmean) ** 2
@@ -566,13 +577,16 @@ def calculate_partial_glycan_score_no_glycosylated_peptide_coverage(self, double
     else:
         corr = -0.5
 
-    peptide_coverage = self._calculate_peptide_coverage_no_glycosylated()
-    corr_score = (((1 + corr) / 2) * n_signif_frags) + (reliability_sum * log2(n_signif_frags) * max(corr, 0.0))
+    if n_signif_frags > 0:
+        peptide_coverage = self._calculate_peptide_coverage_no_glycosylated()
+        corr_score = (((1 + corr) / 2) * n_signif_frags) + (reliability_sum * log2(n_signif_frags) * max(corr, 0.0))
 
-    # corr_score *= min(peptide_coverage + 0.75, 1.0)
-    # corr_score *= normalized_sigmoid(max(peptide_coverage - 0.03, 0.0) * 42)
-    # corr_score *= shifted_normalized_sigmoid_erf(peptide_coverage)
-    corr_score *= min(exp(peptide_coverage * 3) - 1, 1)
+        # corr_score *= min(peptide_coverage + 0.75, 1.0)
+        # corr_score *= normalized_sigmoid(max(peptide_coverage - 0.03, 0.0) * 42)
+        # corr_score *= shifted_normalized_sigmoid_erf(peptide_coverage)
+        corr_score *= min(exp(peptide_coverage * 3) - 1, 1)
+    else:
+        corr_score = 0
 
     glycan_prior = 0.0
     # oxonium_component = self._signature_ion_score()

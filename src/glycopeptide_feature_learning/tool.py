@@ -558,7 +558,7 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
         min_q_value=min_q_value)
     model_tree = None
 
-    with open(model_path, 'rb') as fh:
+    with click.open_file(model_path, 'rb') as fh:
         model_tree = pickle.load(fh)
 
     correlations = Deque()
@@ -593,10 +593,8 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             scan_ids.append(scan.id)
             data_files.append(scan.title)
             glycopeptides.append(str(scan.target))
-            peptide_reliabilities.append(match.get_predicted_intensities_series(
-                (IonSeries.b, IonSeries.y))[4].sum())
-            glycan_reliabilities.append(match.get_predicted_intensities_series(
-                (IonSeries.stub_glycopeptide, ))[4].sum())
+            peptide_reliabilities.append(match.peptide_reliability().sum())
+            glycan_reliabilities.append(match.glycan_reliability().sum())
 
     logger.info("%d Spectra Matched", i)
     logger.info("Median Correlation: %03f", np.nanmedian(correlations))
@@ -605,7 +603,7 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
     logger.info("Median Glycan Reliability Sum: %03f", np.nanmedian(glycan_reliabilities))
     logger.info("Median Peptide Reliability Sum: %03f", np.nanmedian(peptide_reliabilities))
 
-    with open(outpath, 'wb') as fh:
+    with click.open_file(outpath, 'wb') as fh:
         pickle.dump({
             "scan_id": np.array(scan_ids),
             "correlation": np.array(correlations),

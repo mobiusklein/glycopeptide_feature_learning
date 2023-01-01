@@ -250,6 +250,16 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
             ['stub_glycopeptide'], True)
         return np.corrcoef(inten, y)[1, 0]
 
+    def peptide_reliability(self):
+        result = self.get_predicted_intensities_series(
+            (IonSeries.b, IonSeries.y))[4]
+        return result
+
+    def glycan_reliability(self):
+        result = self.get_predicted_intensities_series(
+            (IonSeries.stub_glycopeptide, ))[4]
+        return result
+
     def _get_predicted_points(self, scaled=True):
         c, intens, t, yhat = self.model_fit._get_predicted_intensities(self)
         mz = [ci.peak.mz for ci in c if ci.peak_pair]
@@ -989,6 +999,18 @@ class PartitionedPartialSplitScorer(_MultiModelCache, PartialSplitScorer):
         self.model_fit = None
         self._glycan_correlation = value
         return value
+
+    def peptide_reliability(self):
+        with self.with_peptide_model():
+            result = self.get_predicted_intensities_series(
+                (IonSeries.b, IonSeries.y))[4]
+        return result
+
+    def glycan_reliability(self):
+        with self.with_glycan_model():
+            result = self.get_predicted_intensities_series(
+                (IonSeries.stub_glycopeptide, ))[4]
+        return result
 
     def _get_predicted_peaks(self, use_reliability=False, base_reliability=0.5):
         all_intens = []
