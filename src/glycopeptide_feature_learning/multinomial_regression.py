@@ -1505,7 +1505,7 @@ class MultinomialRegressionFit(object):
                 if self.model_key[0] == other.model_key[0]:
                     return self.model_key == other.model_key
 
-        if not np.allclose(self.coef, other.coef):
+        if not np.allclose(self.coef, other.coef, atol=1e-4):
             return False
         if self.reliability_model != other.reliability_model:
             return False
