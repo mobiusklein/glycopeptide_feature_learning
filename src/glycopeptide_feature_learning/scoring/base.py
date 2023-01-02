@@ -1,4 +1,4 @@
-from typing import Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Type
 
 from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase
 from glycan_profiling.tandem.spectrum_match import Unmodified
@@ -10,6 +10,11 @@ from ._c.score_set import ModelScoreSet
 from .fdr_model import CorrelationPeptideSVMModel
 
 class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
+    partition_key: int
+    tp: Type[GlycopeptideSpectrumMatcherBase]
+    args: tuple
+    kwargs: Dict[str, Any]
+
     def __init__(self, tp, args=None, kwargs=None, *_args, **_kwargs):
         if args is None:
             args = tuple(_args)
@@ -22,6 +27,7 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
         self.tp = tp
         self.args = args
         self.kwargs = kwargs
+        self.partition_key = -1
 
     def __repr__(self):
         return "ModelBindingScorer(%s)" % (repr(self.tp),)
@@ -43,6 +49,7 @@ class ModelBindingScorer(GlycopeptideSpectrumMatcherBase):
         inst = self.tp(scan, target, mass_shift=mass_shift, *self.args, **self.kwargs)
         inst.match(*args, **kwargs)
         inst.calculate_score(*args, **kwargs)
+        inst.partition_key = self.partition_key
         return inst
 
     def __reduce__(self):

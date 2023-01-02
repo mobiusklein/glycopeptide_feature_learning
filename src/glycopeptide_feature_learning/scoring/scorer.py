@@ -1,7 +1,7 @@
 from collections import defaultdict
 from contextlib import contextmanager
 import math
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 
@@ -116,9 +116,11 @@ class _ModelPredictionCachingBase(object):
 
 class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyMixin):
 
-    _glycan_score = None
-    _glycan_coverage = None
-    _peptide_score = None
+    partition_key: Optional[int] = -1
+
+    _glycan_score: Optional[float] = None
+    _glycan_coverage: Optional[float] = None
+    _peptide_score: Optional[float] = None
 
     def _calculate_pearson_residuals(self, use_reliability=True, base_reliability=0.5):
         r"""Calculate the raw Pearson residuals of the Multinomial model

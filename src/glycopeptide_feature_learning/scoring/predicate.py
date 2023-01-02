@@ -281,12 +281,11 @@ def decompressing_reconstructor(cls, data, kwargs=None):
         data = pickle.load(gzip.GzipFile(fileobj=buff))
     inst = cls(data, **kwargs)
     key = id(inst)
-    i = 0
     node: ModelBindingScorer
-    for _j, node in enumerate(inst):
+    for i, node in enumerate(sorted(inst, key=lambda x: x.partition_label)):
         for model in node.itermodels():
             model.model_key = (key, i)
-            i += 1
+        node.partition_key = i
     return inst
 
 

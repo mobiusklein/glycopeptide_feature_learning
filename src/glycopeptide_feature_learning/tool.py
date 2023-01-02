@@ -572,6 +572,7 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
     glycopeptides = Deque()
     peptide_reliabilities = Deque()
     glycan_reliabilities = Deque()
+    partition_keys = Deque()
 
     progbar = click.progressbar(
         enumerate(test_instances), length=len(test_instances), show_eta=True, label='Matching Peaks',
@@ -598,6 +599,7 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             glycopeptides.append(str(scan.target))
             peptide_reliabilities.append(match.peptide_reliability().sum())
             glycan_reliabilities.append(match.glycan_reliability().sum())
+            partition_keys.append(match.partition_key)
 
     logger.info("%d Spectra Matched", i)
     logger.info("Median Correlation: %03f", np.nanmedian(correlations))
@@ -615,7 +617,8 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             "glycan_reliabilities": np.array(glycan_reliabilities),
             "peptide_reliabilities": np.array(peptide_reliabilities),
             "data_file": np.array(data_files),
-            "glycopeptide": np.array(glycopeptides)
+            "glycopeptide": np.array(glycopeptides),
+            "partition_keys": np.array(partition_keys)
         }, fh)
 
 
