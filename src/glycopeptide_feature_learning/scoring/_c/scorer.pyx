@@ -579,7 +579,7 @@ def calculate_partial_glycan_score_no_glycosylated_peptide_coverage(self, double
 
     if n_signif_frags > 0:
         peptide_coverage = self._calculate_peptide_coverage_no_glycosylated()
-        corr_score = (((1 + corr) / 2) * n_signif_frags) + (reliability_sum * log2(n_signif_frags) * max(corr, 0.0))
+        corr_score = (((1 + corr) / 2) * n_signif_frags) + (reliability_sum * (n_signif_frags) * max(corr, 0.25))
 
         # corr_score *= min(peptide_coverage + 0.75, 1.0)
         # corr_score *= normalized_sigmoid(max(peptide_coverage - 0.03, 0.0) * 42)

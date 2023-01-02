@@ -10,7 +10,6 @@ from glycopeptide_feature_learning.scoring.predicate import (
 
 from glycopeptide_feature_learning.scoring.scorer import (
     PredicateTree,
-    PartitionTree,
     PartialSplitScorer,
     PartialSplitScorerTree,
     SplitScorer,
@@ -18,3 +17,22 @@ from glycopeptide_feature_learning.scoring.scorer import (
     PartitionedPredicateTree,
     NoGlycosylatedPeptidePartitionedPartialSplitScorer,
     NoGlycosylatedPeptidePartitionedPredicateTree)
+
+
+__all__ = [
+    'DummyScorer', 'ModelBindingScorer',
+
+    'PredicateBase', 'IntervalPredicate', 'PeptideLengthPredicate',
+    'MappingPredicate', 'ChargeStatePredicate', 'GlycanSizePredicate',
+    'ProtonMobilityPredicate', 'GlycanTypeCountPredicate', 'PredicateTreeBase',
+
+    'PredicateTree',
+
+    'PartialSplitScorer', 'PartialSplitScorerTree',
+
+    'SplitScorer', 'SplitScorerTree',
+
+    'PartitionedPredicateTree',
+
+    'NoGlycosylatedPeptidePartitionedPartialSplitScorer', 'NoGlycosylatedPeptidePartitionedPredicateTree',
+]

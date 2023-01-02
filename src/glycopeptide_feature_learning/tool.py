@@ -32,7 +32,6 @@ from glycopeptide_feature_learning import (
 from glycopeptide_feature_learning.scoring import (
     PredicateTree,
     PartialSplitScorerTree,
-    SplitScorerTree,
     PartitionedPredicateTree)
 
 from glycopeptide_feature_learning.scoring.scorer import NoGlycosylatedPeptidePartitionedPredicateTree, MultinomialRegressionScorerBase
@@ -61,7 +60,8 @@ def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: 
     n_files = len(training_files)
     progbar = click.progressbar(
         training_files, length=n_files, show_eta=True, label='Loading GPSM Data',
-        item_show_func=lambda x: f"{os.path.basename(x)} ({len(training_instances)} spectra read)" if x is not None else '')
+        item_show_func=lambda x: f"{os.path.basename(x)} ({len(training_instances)} spectra read)" if x is not None else '',
+        color=True, fill_char=click.style('-', 'green'))
     with progbar:
         for train_file in progbar:
             reader = data_source.AnnotatedMGFDeserializer(
@@ -87,7 +87,8 @@ def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: 
 def match_spectra(matches: Iterable[data_source.AnnotatedScan], error_tolerance):
     progbar = click.progressbar(
         enumerate(matches), length=len(matches), show_eta=True, label='Matching Peaks',
-        item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '')
+        item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '',
+        color=True, fill_char=click.style('-', 'green'))
     with progbar:
         for i, match in progbar:
             match.deconvoluted_peak_set = match.rank()
@@ -185,7 +186,8 @@ def fit_peak_relation_features(partition_map: partitions.PartitionMap):
     progressbar = click.progressbar(
         cell_sequence, label="Fitting Peak Relationships",
         width=15, show_percent=True, show_eta=False,
-        item_show_func=lambda x: ("%s (%d spectra)" % (x[0].compact(' '), len(x[2])) if x is not None else '')
+        item_show_func=lambda x: ("%s (%d spectra)" % (x[0].compact(' '), len(x[2])) if x is not None else ''),
+        color=True, fill_char=click.style('-', 'green')
     )
     with progressbar:
         for spec, cell, subset in progressbar:
@@ -527,10 +529,9 @@ def strip_model_arrays(inpath, outpath):
 @click.option("-m", "--model-type", type=click.Choice([
     "partitioned-glycan", "no-glycosylated-partitioned-glycan"
 ]), default="no-glycosylated-partitioned-glycan")
-def compile_model(inpath, outpath, model_type="partial-peptide"):
+def compile_model(inpath, outpath, model_type):
     model_cls: Type[PredicateTree] = {
         "partial-peptide": PartialSplitScorerTree,
-        "full": SplitScorerTree,
         "partitioned-glycan": PartitionedPredicateTree,
         "no-glycosylated-partitioned-glycan": NoGlycosylatedPeptidePartitionedPredicateTree
     }[model_type]
@@ -576,7 +577,8 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
 
     progbar = click.progressbar(
         enumerate(test_instances), length=len(test_instances), show_eta=True, label='Matching Peaks',
-        item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '')
+        item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '',
+        color=True, fill_char=click.style('-', 'green'))
 
     assert len(test_instances) > 0
     with progbar:

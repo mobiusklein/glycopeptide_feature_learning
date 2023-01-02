@@ -456,10 +456,6 @@ class MultinomialRegressionScorer(HelperMethods, CoverageWeightedBinomialScorer,
         return self._score
 
 
-class ShortPeptideMultinomialRegressionScorer(MultinomialRegressionScorer):
-    stub_weight = 0.65
-
-
 class _MultiModelCache(object):
 
     def _cache_model_transform(self, model_fit, transform):
@@ -592,20 +588,14 @@ class MultinomialRegressionMixtureScorer(_ModelMixtureBase, MultinomialRegressio
             weighting=weighting, *args, **kwargs)
 
 
-class ShortPeptideMultinomialRegressionMixtureScorer(MultinomialRegressionMixtureScorer):
-    stub_weight = 0.65
-
-
 class PredicateTree(PredicateTreeBase):
     _scorer_type = MultinomialRegressionMixtureScorer
-    _short_peptide_scorer_type = ShortPeptideMultinomialRegressionMixtureScorer
+    _short_peptide_scorer_type = MultinomialRegressionMixtureScorer
 
     @classmethod
     def get_score_set_type(cls):
         return ModelScoreSet
 
-
-PartitionTree = PredicateTree
 
 class SplitScorer(HelperMethods, MultinomialRegressionScorerBase, SignatureAwareCoverageScorer):
 
