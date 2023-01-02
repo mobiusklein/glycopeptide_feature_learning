@@ -609,6 +609,9 @@ class PredicateTreeBase(PredicateFilterBase, HelperMethods, DummyScorer):
     def __eq__(self, other: 'PredicateTreeBase'):
         if other is None:
             return False
-        if self.size != other.size:
+        try:
+            if self.size != other.size:
+                return False
+            return self.root == other.root
+        except AttributeError:
             return False
-        return self.root == other.root
