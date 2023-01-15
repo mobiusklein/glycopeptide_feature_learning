@@ -1,1 +1,4 @@
+glypy
+glycopeptidepy
+ms_deisotope
 git+https://github.com/mobiusklein/glycresoft@master
