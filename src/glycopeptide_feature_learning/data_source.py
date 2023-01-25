@@ -1,4 +1,5 @@
 import os
+from typing import List, DefaultDict, Set, Tuple
 
 from ms_deisotope import DeconvolutedPeak, DeconvolutedPeakSet, neutral_mass
 from ms_deisotope.data_source import ProcessedScan, ActivationInformation
@@ -49,10 +50,10 @@ def parse_sequence(glycopeptide):
 
 
 class AnnotatedScan(ProcessedScan):
-    _structure = None
+    _structure: FragmentCachingGlycopeptide = None
     # if matcher is populated, then pickling will fail due to recursive
     # sharing of the peak set
-    matcher = None
+    matcher: LogIntensityScorer = None
 
     def __reduce__(self):
         return self.__class__, (self.id, self.title, self.precursor_information,
@@ -75,7 +76,7 @@ class AnnotatedScan(ProcessedScan):
         return dup
 
     @property
-    def structure(self):
+    def structure(self) -> FragmentCachingGlycopeptide:
         if self._structure is None:
             self._structure = parse_sequence(self.annotations['structure'])
         return self._structure
@@ -98,7 +99,7 @@ class AnnotatedScan(ProcessedScan):
             return None
 
     @property
-    def mass_shift(self):
+    def mass_shift(self) -> MassShift:
         mass_shift_name = self.annotations.get('mass_shift', "Unmodified")
         if not isinstance(mass_shift_name, str):
             mass_shift_name = mass_shift_name.encode('utf8')
@@ -152,6 +153,8 @@ def build_deconvoluted_peak_set_from_arrays(mz_array, intensity_array, charge_ar
 
 
 class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
+    _cached_basename: str = None
+
     def _build_peaks(self, scan):
         mz_array = scan['m/z array']
         intensity_array = scan["intensity array"]
@@ -198,10 +201,14 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
 
     def _scan_title(self, scan):
         title = super(AnnotatedMGFDeserializer, self)._scan_title(scan)
-        try:
-            fname = os.path.basename(self.source_file)
-        except Exception:
-            fname = os.path.basename(self.source_file.name)
+        if self._cached_basename is None:
+            try:
+                fname = os.path.basename(self.source_file)
+            except Exception:
+                fname = os.path.basename(self.source_file.name)
+            self._cached_basename = fname
+        else:
+            fname = self._cached_basename
         return "%s.%s" % (fname, title)
 
     def _make_scan(self, scan):
@@ -234,3 +241,20 @@ try:
     from glycopeptide_feature_learning._c.data_source import RankedPeak, build_deconvoluted_peak_set_from_arrays
 except ImportError:
     has_c = False
+
+
+def describe_training_observations(annotated_spectra: List[AnnotatedScan]) -> Tuple[DefaultDict[str, Set[str]],
+                                                                                    DefaultDict[str, Set[str]],
+                                                                                    DefaultDict[str, Set[str]]]:
+    by_structure = DefaultDict(set)
+    by_backbone = DefaultDict(set)
+    by_glycan = DefaultDict(set)
+
+    for spectrum in annotated_spectra:
+        by_structure[str(spectrum.structure)].add(spectrum.title)
+        by_backbone[str(spectrum.structure.clone().deglycosylate())].add(
+            spectrum.title)
+        by_glycan[str(spectrum.structure.glycan_composition)
+                  ].add(spectrum.title)
+
+    return by_structure, by_backbone, by_glycan

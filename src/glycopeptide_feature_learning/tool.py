@@ -7,7 +7,7 @@ import warnings
 import array
 import pickle
 
-from typing import Dict, List, Optional, Tuple, Type, Union, Deque, Iterable, DefaultDict
+from typing import List, Optional, Tuple, Type, Union, Deque, Iterable, DefaultDict
 
 from six import string_types as basestring
 
@@ -34,7 +34,8 @@ from glycopeptide_feature_learning.scoring import (
     PartialSplitScorerTree,
     PartitionedPredicateTree)
 
-from glycopeptide_feature_learning.scoring.scorer import NoGlycosylatedPeptidePartitionedPredicateTree, MultinomialRegressionScorerBase
+from glycopeptide_feature_learning.scoring.scorer import (
+    NoGlycosylatedPeptidePartitionedPredicateTree, MultinomialRegressionScorerBase)
 from glycopeptide_feature_learning.utils import logger
 
 
@@ -42,7 +43,10 @@ from glycopeptide_feature_learning.utils import logger
 DEFAULT_MODEL_TYPE = multinomial_regression.LabileMonosaccharideAwareModel
 
 
-def get_training_data(paths: List[os.PathLike], blacklist_path=None, threshold: float = 50.0, min_q_value: float = 1.0) -> Deque[data_source.AnnotatedScan]:
+def get_training_data(paths: List[os.PathLike],
+                      blacklist_path=None,
+                      threshold: float = 50.0,
+                      min_q_value: float = 1.0) -> Deque[data_source.AnnotatedScan]:
     training_files = []
     for path in paths:
         training_files.extend(glob.glob(path))
@@ -94,13 +98,14 @@ def match_spectra(matches: Iterable[data_source.AnnotatedScan], error_tolerance)
             match.deconvoluted_peak_set = match.rank()
             match.match(error_tolerance=error_tolerance, extended_glycan_search=True)
             if progbar.is_hidden and i % 5000 == 0 and i != 0:
-                logger.info("%d Spectra Matched" % (i,))
-    logger.info("%d Spectra Matched" % (len(matches),))
+                logger.info("%d Spectra Matched", i)
+    logger.info("%d Spectra Matched", len(matches))
     return matches
 
 
-def partition_training_data(training_instances: Deque[data_source.AnnotatedScan], omit_labile=False,
-                            fit_partitioned=False) -> partitions.PartitionMap:
+def partition_training_data(training_instances: Deque[data_source.AnnotatedScan],
+                            omit_labile: bool=False,
+                            fit_partitioned: bool=False) -> partitions.PartitionMap:
     if fit_partitioned:
         partition_rules = partitions.build_partition_rules_from_bins(glycan_size_ranges=[(1, 25)])
     else:
@@ -221,8 +226,10 @@ def fit_peak_relation_features(partition_map: partitions.PartitionMap):
             group_to_fit[key] = cell.fit
 
 
-def fit_regression_model(partition_map: partitions.PartitionMap, regression_model:Optional[Type[multinomial_regression.FragmentType]]=None,
-                         use_mixture: bool=True, include_unassigned_sum: bool = True,
+def fit_regression_model(partition_map: partitions.PartitionMap,
+                         regression_model:Optional[Type[multinomial_regression.FragmentType]]=None,
+                         use_mixture: bool=True,
+                         include_unassigned_sum: bool = True,
                          fit_partitioned: bool = False, **kwargs) -> List[Tuple[partitions.partition_cell_spec,
                                                                               Union[partitions.SplitModelFit,
                                                                                     multinomial_regression.MultinomialRegressionFit]]]:
@@ -253,7 +260,14 @@ def task_fn(args):
     return _fit_model_inner(spec, cell, regression_model)
 
 
-def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliability=True, include_unassigned_sum=True, **kwargs):
+def _fit_model_inner(spec: partitions.partition_cell_spec,
+                     cell: partitions.partition_cell,
+                     regression_model: Type[multinomial_regression.FragmentType],
+                     use_mixture: bool=True,
+                     use_reliability: bool=True,
+                     include_unassigned_sum: bool=True,
+                     **kwargs) -> Tuple[partitions.partition_cell_spec,
+                                        List[multinomial_regression.FragmentType]]:
     fm = peak_relations.FragmentationModelCollection(cell.fit)
     try:
         fit = regression_model.fit_regression(
@@ -313,7 +327,8 @@ def _fit_model_inner(spec, cell, regression_model, use_mixture=True, use_reliabi
 
 def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: partitions.partition_cell,
                                  regression_model: Type[multinomial_regression.FragmentType],
-                                 use_mixture: bool=True, use_reliability: bool=True,
+                                 use_mixture: bool=True,
+                                 use_reliability: bool=True,
                                  include_unassigned_sum: bool=True, **kwargs) -> partitions.SplitModelFit:
     fm = peak_relations.FragmentationModelCollection(cell.fit)
     logger.info("... Fitting Peptide Model")
@@ -430,17 +445,21 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
 @click.option('--blacklist-path', type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option('-o', '--output-path', type=click.Path())
 @click.option('-m', '--error-tolerance', type=RelativeMassErrorParam(), default=2e-5)
-@click.option('-M', '--model-type', type=click.Choice(sorted(multinomial_regression.FragmentType.type_cache)), default='LabileMonosaccharideAwareModel')
+@click.option('-M', '--model-type', type=click.Choice(sorted(multinomial_regression.FragmentType.type_cache)),
+              default='LabileMonosaccharideAwareModel')
 @click.option('-F', '--save-fit-statistics', is_flag=True, default=False,
               help=('Include the intermediary results and statistics for each model fit, '
                     'allowing the result to be used to describe the model parameters but at the cost of '
                     'greatly increasing the size of the model output file'))
-@click.option("-b / -nb", "--omit-labile / --include-labile", default=True, is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
+@click.option("-b / -nb", "--omit-labile / --include-labile", default=True, is_flag=True,
+              help="Do not include labile monosaccharides when partitioning glycan compositions")
 @click.option("--debug", is_flag=True, default=False, help='Enable debug logging')
 @click.option("-P/-C", "--fit-partitioned/--fit-combined", is_flag=True, default=True,
               help='Whether to split training the peptide and glycan portions of the model')
-def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_path=None, error_tolerance=2e-5, debug=False, save_fit_statistics=False,
-         omit_labile=False, model_type=None, fit_partitioned=True):
+def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_path=None, error_tolerance=2e-5,
+         debug=False, save_fit_statistics=False,
+         omit_labile=False, model_type=None,
+         fit_partitioned=True):
     if debug:
         logger.setLevel(logging.DEBUG)
     if isinstance(model_type, basestring):
@@ -458,6 +477,19 @@ def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_pat
         paths, blacklist_path, threshold, min_q_value=min_q_value)
     if len(training_instances) == 0:
         raise click.ClickException("No training examples were found.")
+
+    (spectra_by_structure,
+     spectra_by_backbone,
+     spectra_by_glycan_composition) = data_source.describe_training_observations(
+        training_instances)
+
+    logger.info(
+        "%d unique glycopeptides, %d unique peptide backbones and %d unique glycan compositions from %d spectra",
+        len(spectra_by_structure),
+        len(spectra_by_backbone),
+        len(spectra_by_glycan_composition),
+        len(training_instances)
+    )
 
     match_spectra(training_instances, error_tolerance=error_tolerance)
 
@@ -499,7 +531,8 @@ def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_pat
 
 @click.command("partition-glycopeptide-training-data", short_help="Pre-separate training data along partitions")
 @click.option('-t', '--threshold', type=float, default=0.0)
-@click.option("-b / -nb", "--omit-labile / --include-labile", default=True, is_flag=True, help="Do not include labile monosaccharides when partitioning glycan compositions")
+@click.option("-b / -nb", "--omit-labile / --include-labile", default=True, is_flag=True,
+              help="Do not include labile monosaccharides when partitioning glycan compositions")
 @click.argument('paths', metavar='PATH', nargs=-1)
 @click.argument('outdir', metavar='OUTDIR', type=click.Path(dir_okay=True, file_okay=False), nargs=1)
 def partition_glycopeptide_training_data(paths, outdir, threshold=50.0, omit_labile=True, output_path=None,
@@ -562,6 +595,19 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
         min_q_value=min_q_value)
     model_tree = None
 
+    (spectra_by_structure,
+     spectra_by_backbone,
+     spectra_by_glycan_composition) = data_source.describe_training_observations(
+        test_instances)
+
+    logger.info(
+        "%d unique glycopeptides, %d unique peptide backbones and %d unique glycan compositions from %d spectra",
+        len(spectra_by_structure),
+        len(spectra_by_backbone),
+        len(spectra_by_glycan_composition),
+        len(test_instances)
+    )
+
     with click.open_file(model_path, 'rb') as fh:
         model_tree = pickle.load(fh)
 
@@ -604,11 +650,11 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             partition_keys.append(match.partition_key)
 
     logger.info("%d Spectra Matched", i)
-    logger.info("Median Correlation: %03f", np.nanmedian(correlations))
-    logger.info("Median Glycan Correlation: %03f", np.nanmedian(glycan_correlations))
-    logger.info("Median Peptide Correlation: %03f", np.nanmedian(peptide_correlations))
-    logger.info("Median Glycan Reliability Sum: %03f", np.nanmedian(glycan_reliabilities))
-    logger.info("Median Peptide Reliability Sum: %03f", np.nanmedian(peptide_reliabilities))
+    logger.info("Median Correlation: %0.5f", np.nanmedian(correlations))
+    logger.info("Median Glycan Correlation: %0.5f", np.nanmedian(glycan_correlations))
+    logger.info("Median Peptide Correlation: %0.5f", np.nanmedian(peptide_correlations))
+    logger.info("Median Glycan Reliability Sum: %0.5f", np.nanmedian(glycan_reliabilities))
+    logger.info("Median Peptide Reliability Sum: %0.5f", np.nanmedian(peptide_reliabilities))
 
     with click.open_file(outpath, 'wb') as fh:
         pickle.dump({
@@ -644,7 +690,8 @@ def info(type, value, tb):
     if hasattr(sys, 'ps1') or not sys.stderr.isatty():
         sys.__excepthook__(type, value, tb)
     else:
-        import ipdb, traceback
+        import ipdb
+        import traceback
         traceback.print_exception(type, value, tb)
         ipdb.post_mortem(tb)
 
