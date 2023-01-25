@@ -26,8 +26,7 @@ jobs:
         pip install --only-binary=numpy,scipy numpy scipy -U
         pip install glypy glycopeptidepy ms_deisotope
         pip install -v -r requirements.txt --no-build-isolation
-
-        pip install -v .
+        pip install -v . --no-build-isolation
     - name: Test with pytest
       run: |
         make test
