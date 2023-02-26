@@ -111,7 +111,10 @@ cpdef double correlation_test(double[::1] x, double[::1] y):
     result = correlation(&x[0], &y[0], n)
     return result
 
-
+# Consider replacing this with a single pass algorith, preferrably inlined
+# into the calling function:
+# https://en.wikipedia.org/wiki/Pearson_correlation_coefficient#For_a_sample
+# https://stats.stackexchange.com/a/561425/59613
 @cython.boundscheck(False)
 @cython.cdivision(True)
 cdef double correlation(double* x, double* y, size_t n) nogil:
