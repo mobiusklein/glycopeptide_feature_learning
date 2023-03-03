@@ -618,7 +618,9 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
     data_files = Deque()
     glycopeptides = Deque()
     peptide_reliabilities = Deque()
+    peptide_fragments = Deque()
     glycan_reliabilities = Deque()
+    glycan_fragments = Deque()
     partition_keys = Deque()
 
     progbar = click.progressbar(
@@ -645,8 +647,15 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             scan_ids.append(scan.id)
             data_files.append(scan.title)
             glycopeptides.append(str(scan.target))
-            peptide_reliabilities.append(match.peptide_reliability().sum())
-            glycan_reliabilities.append(match.glycan_reliability().sum())
+
+            p = match.peptide_reliability()
+            peptide_reliabilities.append(p.sum())
+            peptide_fragments.append(len(p))
+
+            p = match.glycan_reliability()
+            glycan_reliabilities.append(p.sum())
+            glycan_fragments.append(len(p))
+
             partition_keys.append(match.partition_key)
 
     logger.info("%d Spectra Matched", i)
@@ -664,6 +673,8 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             "glycan_correlation": np.array(glycan_correlations),
             "glycan_reliabilities": np.array(glycan_reliabilities),
             "peptide_reliabilities": np.array(peptide_reliabilities),
+            "peptide_fragment_count": np.array(peptide_fragments),
+            "glycan_fragment_count": np.array(glycan_fragments),
             "data_file": np.array(data_files),
             "glycopeptide": np.array(glycopeptides),
             "partition_keys": np.array(partition_keys)
