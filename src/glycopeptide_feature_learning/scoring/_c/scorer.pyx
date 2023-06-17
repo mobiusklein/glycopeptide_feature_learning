@@ -29,7 +29,7 @@ from glycopeptidepy.structure import IonSeries
 from glycopeptide_feature_learning._c.model_types cimport _FragmentType
 from glycopeptide_feature_learning._c.approximation cimport StepFunction
 
-from glycopeptide_feature_learning.multinomial_regression import (
+from glycopeptide_feature_learning.approximation import (
     PearsonResidualCDF as _PearsonResidualCDF)
 
 cdef StepFunction PearsonResidualCDF = _PearsonResidualCDF

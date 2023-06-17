@@ -1,5 +1,4 @@
 import os
-import sys
 import glob
 import json
 import logging
@@ -8,8 +7,6 @@ import array
 import pickle
 
 from typing import List, Optional, Tuple, Type, Union, Deque, Iterable, DefaultDict
-
-from six import string_types as basestring
 
 import click
 
@@ -60,11 +57,17 @@ def get_training_data(paths: List[os.PathLike],
     else:
         blacklist = set()
 
+    def _item_show_func(x):
+        if x is not None:
+            return f"{os.path.basename(x)} ({len(training_instances)} spectra read)"
+        else:
+            return ''
+
     seen = set()
     n_files = len(training_files)
     progbar = click.progressbar(
         training_files, length=n_files, show_eta=True, label='Loading GPSM Data',
-        item_show_func=lambda x: f"{os.path.basename(x)} ({len(training_instances)} spectra read)" if x is not None else '',
+        item_show_func=_item_show_func,
         color=True, fill_char=click.style('-', 'green'))
     with progbar:
         for train_file in progbar:
@@ -132,7 +135,7 @@ def save_partitions(partition_map, output_directory):
         fields = sorted(fields.items())
 
         def format_field(field):
-            if isinstance(field, basestring):
+            if isinstance(field, str):
                 return field
             elif isinstance(field, Iterable):
                 return '-'.join(map(str, field))
@@ -309,7 +312,7 @@ def _fit_model_inner(spec: partitions.partition_cell_spec,
                         mismatch_fit = regression_model.fit_regression(
                             mismatches, reliability_model=None,
                             include_unassigned_sum=include_unassigned_sum, **kwargs)
-                except ValueError:
+                except ValueError as ex:
                     logger.info(
                         "%r, refitting without per-fragment weights" % (ex, ))
                     mismatch_fit = regression_model.fit_regression(
@@ -462,7 +465,7 @@ def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_pat
          fit_partitioned=True):
     if debug:
         logger.setLevel(logging.DEBUG)
-    if isinstance(model_type, basestring):
+    if isinstance(model_type, str):
         model_type = multinomial_regression.FragmentType.get_model_by_name(model_type)
     if model_type is None:
         model_type = DEFAULT_MODEL_TYPE
@@ -695,19 +698,6 @@ cli.add_command(partition_glycopeptide_training_data, "partition-samples")
 cli.add_command(strip_model_arrays, "strip-model")
 cli.add_command(compile_model, "compile-model")
 cli.add_command(calculate_correlation, 'calculate-correlation')
-
-
-def info(type, value, tb):
-    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
-        sys.__excepthook__(type, value, tb)
-    else:
-        import ipdb
-        import traceback
-        traceback.print_exception(type, value, tb)
-        ipdb.post_mortem(tb)
-
-
-sys.excepthook = info
 
 
 if __name__ == "__main__":

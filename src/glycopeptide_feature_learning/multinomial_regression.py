@@ -17,20 +17,17 @@ from glycopeptidepy.structure.fragment import IonSeries
 
 from ms_deisotope import DeconvolutedPeak
 
-from glycan_profiling.structure.fragment_match_map import PeakFragmentPair, FragmentMatchMap
+from glycan_profiling.structure.fragment_match_map import PeakFragmentPair
 from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
 from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase
 
 from .amino_acid_classification import (
     AminoAcidClassification, classify_amide_bond_frank, classify_residue_frank)
-from .approximation import PearsonResidualCDF
 from .peak_relations import FragmentationModelCollection
 from .utils import logger
 
 
 array_dtype = np.dtype("<d")
-
-PEARSON_BIAS = 3.3
 
 
 def iterenum(enum):
@@ -59,6 +56,7 @@ class FragmentTypeClassification(AminoAcidClassification):
 
 
 try:
+    _FragmentTypeClassification = FragmentTypeClassification
     from glycopeptide_feature_learning._c.model_types import (
         FragmentSeriesClassification,
         FragmentTypeClassification
@@ -354,7 +352,8 @@ class FragmentType(_FragmentType):
             else:
                 reliability = np.zeros_like(y)
                 remaining_reliability = 1 - base_reliability
-                reliability_score_map: Dict[PeakFragmentPair] = reliability_model.score(gpsm, gpsm.solution_map, gpsm.structure)
+                reliability_score_map: Dict[PeakFragmentPair] = reliability_model.score(
+                    gpsm, gpsm.solution_map, gpsm.structure)
                 for i, frag_spec in enumerate(c):
                     peak_pair: Optional[PeakFragmentPair] = frag_spec.peak_pair
                     if peak_pair is None:
@@ -633,6 +632,8 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
 
 
 try:
+    _get_nterm_index_from_fragment = get_nterm_index_from_fragment
+    _get_cterm_index_from_fragment = get_cterm_index_from_fragment
     from glycopeptide_feature_learning._c.model_types import (
         encode_neighboring_residues, get_nterm_neighbor, get_cterm_neighbor,
         get_nterm_index_from_fragment, get_cterm_index_from_fragment
@@ -793,7 +794,8 @@ class StubChargeModelApproximate(StubChargeModel):
 
 
 try:
-    from glycopeptide_feature_learning._c.model_types import StubChargeModelApproximate_build_feature_vector, encode_stub_charge_approximate
+    from glycopeptide_feature_learning._c.model_types import (
+        StubChargeModelApproximate_build_feature_vector, encode_stub_charge_approximate)
     StubChargeModelApproximate.encode_stub_charge_approximate = encode_stub_charge_approximate
     StubChargeModelApproximate.build_feature_vector = StubChargeModelApproximate_build_feature_vector
 except ImportError:
@@ -963,6 +965,7 @@ def classify_sequence_by_residues(sequence):
 
 
 try:
+    _classify_sequence_by_residues = classify_sequence_by_residues
     from glycopeptide_feature_learning._c.model_types import classify_sequence_by_residues
 except ImportError as err:
     print(err)
@@ -985,7 +988,7 @@ def multinomial_control(epsilon=1e-8, maxit=25, nsamples=1000, trace=False):
     return dict(epsilon=epsilon, maxit=maxit, nsamples=nsamples, trace=trace)
 
 
-def deviance(y, mu, wt, reliabilities, unobserved_reliability=1.0):
+def deviance(y, mu, weights, reliabilities, unobserved_reliability=1.0):
     # wt would be the total signal * reliabilities
     ys = np.array(list(map(np.sum, y)))
     ms = np.array(list(map(np.sum, mu)))
@@ -994,15 +997,15 @@ def deviance(y, mu, wt, reliabilities, unobserved_reliability=1.0):
     # when we use reliability, there is an extra wt (not the weight vector) that would be used
     # here to reflect the weight leftover from the unmatched signal (total signal - matched signal)
     # which used to be based upon the total signal in the spectrum.
-    dc = np.where(wt == ys, 0, wt * (1 - ys) * np.log((1 - ys) / (1 - ms + 1e-6)))
+    dc = np.where(weights == ys, 0, weights * (1 - ys) * np.log((1 - ys) / (1 - ms + 1e-6)))
     # is NaN when ys[i] == 1
     dc[np.isnan(dc)] = 0.0
     return np.sum([
         # this inner sum is the squared residuals
-        a.sum() + (2 * dc[i]) for i, a in enumerate(deviance_residuals(y, mu, wt, reliabilities))])
+        a.sum() + (2 * dc[i]) for i, a in enumerate(deviance_residuals(y, mu, weights, reliabilities))])
 
 
-def deviance_residuals(y, mu, wt, reliability=None):
+def deviance_residuals(y, mu, weights, reliability=None):
     # returns the squared residual. The sign is lost? The sign can be regained
     # from (yi - mu[i])
     residuals = []
@@ -1013,7 +1016,7 @@ def deviance_residuals(y, mu, wt, reliability=None):
         # "sub-residual", contributing to the total being the actual residual,
         # but these are not residuals themselves, the sum is, and that must be positive
         ym = np.where(yi == 0, 0, yi * np.log(yi / mu[i]) * reliability[i])
-        residuals.append(2 * wt[i] * ym)
+        residuals.append(2 * weights[i] * ym)
     return residuals
 
 
@@ -1039,7 +1042,13 @@ def _array2string(X):
     return np.array2string(X, max_line_width=80, precision=6, separator=', ')
 
 
-def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_dispersion=True, prior_coef=None, prior_disp=None, **control):
+def multinomial_fit(x, y, weights,
+                    reliabilities=None,
+                    dispersion=1,
+                    adjust_dispersion=True,
+                    prior_coef=None,
+                    prior_disp=None,
+                    **control):
     """Fit a multinomial generalized linear model to bond-type by intensity observations
     of glycopeptide fragmentation.
 
@@ -1120,8 +1129,9 @@ def multinomial_fit(x, y, weights, reliabilities=None, dispersion=1, adjust_disp
     for iter_ in range(control['maxit']):
         z = phi * beta0
         H = phi * np.diag(S_inv0)
-        logger.info(
-            "Iteration %d (%0.2e)", iter_, dev)
+        if iter_ > 0:
+            logger.info(
+                "Iteration %d (%0.2e)", iter_, dev)
         # if tracing:
         #     assert not np.any(np.isnan(H))
         for i in range(len(y)):
@@ -1390,39 +1400,6 @@ class MultinomialRegressionFit(object):
             #
             yhat = yhat_unnormed / (1 + yhat_all.sum())
         return c, intens, t, yhat
-
-    def compound_score(self, gpsm, use_reliability=True, base_reliability=0.0, pearson_bias=PEARSON_BIAS):
-        c, intens, t, yhat = self._get_predicted_intensities(gpsm)
-        W = np.ones_like(intens)
-        # for i, ci in enumerate(c):
-        #     W[i] = series_weights[ci.series]
-        if self.reliability_model is None or not use_reliability:
-            reliability = np.ones_like(yhat)
-        else:
-            reliability = self._calculate_reliability(
-                gpsm, c, base_reliability=base_reliability)
-        # standardize intensity
-        intens = intens / t
-        # remove the unassigned signal term
-        W = W[:-1]
-        intens = intens[:-1]
-        yhat = yhat[:-1]
-
-        delta = (intens - yhat) ** 2
-        mask = intens > yhat
-        # reduce penalty for exceeding predicted intensity
-        delta[mask] = delta[mask] / 2.
-        denom = yhat * (1 - yhat)
-        denom *= (reliability[:-1])  # divide by the reliability
-        pearson_residual_score = delta * (1.0 / denom)
-        lg_inverted_pearson_residual_score = -np.log10(
-            PearsonResidualCDF(pearson_residual_score / pearson_bias) + 1e-6)
-
-        lg_inverted_pearson_residual_score[lg_inverted_pearson_residual_score < 0] = 1e-6
-        if np.any(lg_inverted_pearson_residual_score < 0):
-            raise ValueError("lg_inverted_pearson_residual_score is negative")
-        signal_utilization = intens * 100
-        return (W * signal_utilization * lg_inverted_pearson_residual_score).sum()
 
     def describe(self):
         table = []

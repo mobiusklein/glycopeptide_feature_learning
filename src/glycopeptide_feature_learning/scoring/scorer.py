@@ -13,7 +13,8 @@ from glycan_profiling.tandem.glycopeptide.scoring.simple_score import SignatureA
 from glycan_profiling.tandem.glycopeptide.scoring.precursor_mass_accuracy import MassAccuracyMixin
 
 from glycopeptide_feature_learning.multinomial_regression import (
-    MultinomialRegressionFit, PearsonResidualCDF, least_squares_scale_coefficient)
+    MultinomialRegressionFit, least_squares_scale_coefficient)
+from glycopeptide_feature_learning.approximation import PearsonResidualCDF
 from glycopeptide_feature_learning.partitions import SplitModelFit, partition_cell_spec
 from glycopeptide_feature_learning.scoring.base import HelperMethods
 
@@ -847,7 +848,8 @@ class PartialSplitScorer(SplitScorer):
 
 
 try:
-    from glycopeptide_feature_learning.scoring._c.scorer import calculate_partial_glycan_score as _calculate_partial_glycan_score
+    from glycopeptide_feature_learning.scoring._c.scorer import (
+        calculate_partial_glycan_score as _calculate_partial_glycan_score)
     PartialSplitScorer.calculate_glycan_score = _calculate_partial_glycan_score
 except ImportError:
     pass
@@ -1077,14 +1079,7 @@ class PartitionedPartialSplitScorer(_MultiModelCache, PartialSplitScorer):
             base_reliability=base_reliability
         )
 
-        if use_reliability:
-            c, all_intens, t, all_yhat, reliability = out
-            reliability = self._get_reliabilities(
-                c, base_reliability=base_reliability)[:-1]
-            p = t * p / np.sqrt(t * reliability * p * (1 - p))
-            yhat = t * yhat / np.sqrt(t * reliability * yhat * (1 - yhat))
-        else:
-            c, all_intens, t, all_yhat = out
+        c, all_intens, t, all_yhat = out
         return all_intens, all_yhat
 
 
@@ -1129,7 +1124,9 @@ class PartitionedPredicateTree(PredicateTreeBase):
 
 
 try:
-    from ._c.scorer import calculate_peptide_score_no_glycosylation, calculate_partial_glycan_score_no_glycosylated_peptide_coverage
+    from ._c.scorer import (
+        calculate_peptide_score_no_glycosylation,
+        calculate_partial_glycan_score_no_glycosylated_peptide_coverage)
 except ImportError:
     pass
 
