@@ -249,6 +249,7 @@ def describe_training_observations(annotated_spectra: List[AnnotatedScan]) -> Tu
     by_structure = DefaultDict(set)
     by_backbone = DefaultDict(set)
     by_glycan = DefaultDict(set)
+    by_precursor = DefaultDict(set)
 
     for spectrum in annotated_spectra:
         by_structure[str(spectrum.structure)].add(spectrum.title)
@@ -256,5 +257,7 @@ def describe_training_observations(annotated_spectra: List[AnnotatedScan]) -> Tu
             spectrum.title)
         by_glycan[str(spectrum.structure.glycan_composition)
                   ].add(spectrum.title)
+        by_precursor[str(spectrum.structure), spectrum.precursor_information.charge, spectrum.mass_shift.name].add(
+            spectrum.title)
 
-    return by_structure, by_backbone, by_glycan
+    return by_structure, by_backbone, by_glycan, by_precursor

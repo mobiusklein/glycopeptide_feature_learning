@@ -483,7 +483,8 @@ def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_pat
 
     (spectra_by_structure,
      spectra_by_backbone,
-     spectra_by_glycan_composition) = data_source.describe_training_observations(
+     spectra_by_glycan_composition,
+     spectra_by_precursor) = data_source.describe_training_observations(
         training_instances)
 
     logger.info(
@@ -600,7 +601,8 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
 
     (spectra_by_structure,
      spectra_by_backbone,
-     spectra_by_glycan_composition) = data_source.describe_training_observations(
+     spectra_by_glycan_composition,
+     spectra_by_precursor) = data_source.describe_training_observations(
         test_instances)
 
     logger.info(
