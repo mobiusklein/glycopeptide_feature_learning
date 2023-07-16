@@ -6,7 +6,7 @@ import warnings
 import array
 import pickle
 
-from typing import List, Optional, Tuple, Type, Union, Deque, Iterable, DefaultDict
+from typing import List, Mapping, Optional, Set, Tuple, Type, Union, Deque, Iterable, DefaultDict
 
 import click
 
@@ -95,7 +95,7 @@ def match_spectra(matches: Iterable[data_source.AnnotatedScan], error_tolerance)
     progbar = click.progressbar(
         enumerate(matches), length=len(matches), show_eta=True, label='Matching Peaks',
         item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '',
-        color=True, fill_char=click.style('-', 'green'))
+        color=True, fill_char=click.style('-', 'green'), update_min_steps=10)
     with progbar:
         for i, match in progbar:
             match.deconvoluted_peak_set = match.rank()
@@ -440,6 +440,24 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
     return (spec, fits)
 
 
+def _deduplicate_precursors(precursor_buckets: Mapping[Tuple[str, int, str], Set[str]],
+                            spectra: List[data_source.AnnotatedScan]) -> List[data_source.AnnotatedScan]:
+    spectra_by_title = {
+        s.title: s for s in spectra
+    }
+
+    assert len(spectra) == len(spectra_by_title)
+
+    reduced_spectra = []
+    for _precursor_key, bucket in precursor_buckets.items():
+        spectra = [
+            spectra_by_title[k] for k in bucket
+        ]
+        match = max(spectra, key=lambda x: (x.matcher.score))
+        reduced_spectra.append(match)
+    return reduced_spectra
+
+
 @click.command('fit-glycopeptide-regression-model', short_help="Fit glycopeptide fragmentation model")
 @click.argument('paths', metavar='PATH', #type=click.Path(exists=True, dir_okay=False),
                 nargs=-1)
@@ -459,10 +477,12 @@ def _fit_model_inner_partitioned(spec: partitions.partition_cell_spec, cell: par
 @click.option("--debug", is_flag=True, default=False, help='Enable debug logging')
 @click.option("-P/-C", "--fit-partitioned/--fit-combined", is_flag=True, default=True,
               help='Whether to split training the peptide and glycan portions of the model')
+@click.option("-u", "--unique-precursors", is_flag=True, default=False, help="Train on unique precursors only")
 def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_path=None, error_tolerance=2e-5,
          debug=False, save_fit_statistics=False,
          omit_labile=False, model_type=None,
-         fit_partitioned=True):
+         fit_partitioned=True,
+         unique_precursors=False):
     if debug:
         logger.setLevel(logging.DEBUG)
     if isinstance(model_type, str):
@@ -488,14 +508,20 @@ def main(paths, threshold=50.0, min_q_value=1.0, output_path=None, blacklist_pat
         training_instances)
 
     logger.info(
-        "%d unique glycopeptides, %d unique peptide backbones and %d unique glycan compositions from %d spectra",
+        ("%d unique glycopeptides, %d unique peptide backbones and %d unique glycan "
+         "compositions from %d spectra, %d distinct precursors"),
         len(spectra_by_structure),
         len(spectra_by_backbone),
         len(spectra_by_glycan_composition),
-        len(training_instances)
+        len(training_instances),
+        len(spectra_by_precursor)
     )
 
     match_spectra(training_instances, error_tolerance=error_tolerance)
+
+    if unique_precursors:
+        logger.info("Selecting best precursors")
+        training_instances = _deduplicate_precursors(spectra_by_precursor, training_instances)
 
     logger.info("Partitioning %d instances" % (len(training_instances), ))
     partition_map = partition_training_data(
@@ -631,7 +657,7 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
     progbar = click.progressbar(
         enumerate(test_instances), length=len(test_instances), show_eta=True, label='Matching Peaks',
         item_show_func=lambda x: "%d Spectra Matched" % (x[0],) if x is not None else '',
-        color=True, fill_char=click.style('-', 'green'))
+        color=True, fill_char=click.style('-', 'green'), update_min_steps=10)
 
     assert len(test_instances) > 0
     with progbar:
