@@ -1,5 +1,6 @@
-from unittest import TestCase
+import pickle
 
+from unittest import TestCase
 import numpy as np
 
 from .common import datafile
@@ -66,3 +67,35 @@ class LabileMonosaccharideAwareModelTest(FragmentTypeTest):
 
 class LabileMonosaccharideAwareModelApproximateTest(FragmentTypeTest):
     model_cls = LabileMonosaccharideAwareModelApproximate
+
+
+class FullEncodingMixin(object):
+    test_file = "MouseBrain-Z-T-5.mgf.gz"
+    ref_file_pattern = "reps_{}.pkl"
+
+    model_cls = FragmentType
+
+    def open_reader(self):
+        return read(datafile(self.test_file))
+
+    def load_reps(self):
+        with open(datafile(self.ref_file_pattern.format(self.model_cls.__name__)), 'rb') as fh:
+            return pickle.load(fh)
+
+    def test_encoding(self):
+        reader = self.open_reader()
+        reps = self.load_reps()
+        assert len(reader) == len(reps)
+
+        for scan, (scan_id, rep) in zip(reader, reps):
+            assert scan.id == scan_id
+            gpsm = scan.match()
+            model_insts, _intensities, _total = self.model_cls.build_fragment_intensity_matches(gpsm)
+            X = self.model_cls.encode_classification(
+                sorted(model_insts[:-1],
+                       key=lambda x: (x.fragment.name, x.peak.index.neutral_mass)))
+            assert np.all(X == rep)
+
+
+class LabileMonosaccharideAwareModelFullEncodingTest(TestCase, FullEncodingMixin):
+    model_cls = LabileMonosaccharideAwareModel
