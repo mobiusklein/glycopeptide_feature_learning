@@ -1,5 +1,7 @@
 # cython: embedsignature=True
 cimport cython
+from cython.parallel cimport prange
+
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport PyTuple_GetItem, PyTuple_Size, PyList_GET_ITEM, PyList_GET_SIZE
 from cpython.int cimport PyInt_AsLong
@@ -406,6 +408,50 @@ cpdef double classify_ascending_abundance_peptide_Y(spectrum_match):
     total_size = (<GlycosylationManager?>target._glycosylation_manager).get_total_glycosylation_size()
     ratio = (<double>size) / (<double>total_size)
     return ratio
+
+
+@cython.boundscheck(False)
+@cython.cdivision(True)
+cpdef np.ndarray[np.float64_t, ndim=1, mode='c'] predict_yhat_from_feature_and_coefs(
+                                                    np.ndarray[np.uint8_t, ndim=2, mode='c'] features,
+                                                    np.ndarray[np.float64_t, ndim=1, mode='c'] coefs,
+                                                    long n_threads=1):
+    cdef:
+        Py_ssize_t n, i, num_threads
+        size_t m, k, j
+        np.uint8_t[:, ::1] features_view
+        np.float64_t[::1] coefs_view, out_view
+        np.ndarray[np.float64_t, ndim=1, mode='c'] out
+        double acc, total
+        np.npy_intp knd
+
+
+    n = features.shape[0]
+    m = features.shape[1]
+    k = coefs.shape[0]
+
+    knd = n
+
+    out = <np.ndarray[np.float64_t, ndim=1, mode='c']>np.PyArray_EMPTY(1, &knd, np.NPY_FLOAT64, 0)
+    if n == 0:
+        return out
+    num_threads = n_threads
+    features_view = features
+    coefs_view = coefs
+    out_view = out
+    total = 0
+    with nogil:
+        for i in prange(n, num_threads=num_threads, schedule='static'):
+            acc = 0
+            for j in range(m):
+                acc += features_view[i, j] * coefs_view[j]
+            acc = exp(acc)
+            total += acc
+            out_view[i] = acc
+        total += 1
+        for i in prange(n, num_threads=num_threads, schedule='static'):
+            out_view[i] /= total
+    return out
 
 
 @cython.binding(True)

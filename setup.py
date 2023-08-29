@@ -1,8 +1,9 @@
 import os
 import sys
 import traceback
+import platform
 
-from setuptools import find_packages, Extension, setup
+from setuptools import find_packages, Extension as _Extension, setup
 from distutils.command.build_ext import build_ext
 from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
@@ -23,6 +24,31 @@ def has_option(name):
 
 include_diagnostics = has_option("include-diagnostics")
 force_cythonize = has_option("force-cythonize")
+no_openmp = has_option('no-openmp')
+
+with_openmp = not no_openmp
+
+
+def configure_openmp(ext):
+    # http://www.microsoft.com/en-us/download/confirmation.aspx?id=2092 was required.
+    if os.name == 'nt' and with_openmp:
+        ext.extra_compile_args.append("/openmp")
+    elif platform.system() == 'Darwin':
+        pass
+    elif with_openmp:
+        ext.extra_compile_args.append("-fopenmp")
+        ext.extra_link_args.append("-fopenmp")
+
+
+def Extension(*args, **kwargs):
+    ext = _Extension(*args, **kwargs)
+    return ext
+
+
+def OpenMPExtension(*args, **kwargs):
+    ext = Extension(*args, **kwargs)
+    configure_openmp(ext)
+    return ext
 
 
 
@@ -48,9 +74,11 @@ def make_extensions():
         "profile": include_diagnostics
     }
     extensions = cythonize([
-        Extension(name='glycopeptide_feature_learning._c.data_source', sources=["src/glycopeptide_feature_learning/_c/data_source.pyx"],
+        Extension(name='glycopeptide_feature_learning._c.data_source',
+                  sources=["src/glycopeptide_feature_learning/_c/data_source.pyx"],
                   include_dirs=[numpy.get_include()]),
-        Extension(name='glycopeptide_feature_learning._c.peak_relations', sources=["src/glycopeptide_feature_learning/_c/peak_relations.pyx"],
+        Extension(name='glycopeptide_feature_learning._c.peak_relations',
+                  sources=["src/glycopeptide_feature_learning/_c/peak_relations.pyx"],
                   include_dirs=[numpy.get_include()]),
         Extension(name='glycopeptide_feature_learning._c.amino_acid_classification',
                   sources=["src/glycopeptide_feature_learning/_c/amino_acid_classification.pyx"],
@@ -61,7 +89,7 @@ def make_extensions():
         Extension(name='glycopeptide_feature_learning._c.model_types',
                   sources=["src/glycopeptide_feature_learning/_c/model_types.pyx"],
                   include_dirs=[numpy.get_include()]),
-        Extension(name='glycopeptide_feature_learning.scoring._c.scorer',
+        OpenMPExtension(name='glycopeptide_feature_learning.scoring._c.scorer',
                   sources=["src/glycopeptide_feature_learning/scoring/_c/scorer.pyx"],
                   include_dirs=[numpy.get_include()]),
         Extension(name='glycopeptide_feature_learning.scoring._c.score_set',

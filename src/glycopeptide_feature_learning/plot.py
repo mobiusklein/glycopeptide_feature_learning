@@ -31,10 +31,11 @@ def make_theoretical_spectrum(model_match):
     return scan
 
 
-def mirror_spectra(psm_a, psm_b, ax=None, **kwargs):
-    art = MirrorSpectrumAnnotatorFacet(psm_a, ax=ax)
+def mirror_spectra(psm_a, psm_b, ax=None, usemathtext: bool=True, **kwargs):
+    art = MirrorSpectrumAnnotatorFacet(psm_a, ax=ax, usemathtext=usemathtext)
     art.draw(**kwargs)
-    reflect = MirrorSpectrumAnnotatorFacet(psm_b, ax=art.ax)
+    reflect = MirrorSpectrumAnnotatorFacet(
+        psm_b, ax=art.ax, usemathtext=usemathtext)
     reflect.draw(mirror=True, **kwargs)
     reflect.ax.set_ylim(-1100, 1600)
     for lab in reflect.peak_labels:
@@ -49,7 +50,8 @@ def mirror_spectra(psm_a, psm_b, ax=None, **kwargs):
 
 
 def mirror_predicted_spectrum(model_tree, model_match, **kwargs):
-    m1 = model_tree.evaluate(normalize_scan(model_match.scan), model_match.target)
+    m1 = model_tree.evaluate(normalize_scan(
+        model_match.scan), model_match.target)
     m2 = model_tree.evaluate(
         normalize_scan(
             make_theoretical_spectrum(model_match),
@@ -58,7 +60,23 @@ def mirror_predicted_spectrum(model_tree, model_match, **kwargs):
         model_match.target,
     )
     ax, f1, f2 = mirror_spectra(m1, m2, **kwargs)
-    ax.figure.text(.2, 0.3, fr'$\rho={model_match.total_correlation():0.2f}$', ha='center')
+
+    tot_corr = model_match.total_correlation()
+    pep_corr = model_match.peptide_correlation()
+    gly_corr = model_match.glycan_correlation()
+    use_tex = plt.rcParams['text.usetex']
+    corr_text = (
+        fr'$\rho_{{total}}={tot_corr:0.2f}$\n$\rho_{{peptide}}={pep_corr:0.2f}$\n$\rho_{{glycan}}={gly_corr:0.2f}$'
+    )
+    if use_tex:
+        corr_text = corr_text.replace(r'\n', r'\\').replace(
+            "=", "=&").replace("$", '')
+        corr_text = r"\begin{eqnarray*}" + corr_text + r'\end{eqnarray*}'
+    else:
+        corr_text = corr_text.replace(r'\n', '\n')
+    ax.figure.text(.15, 0.27,
+                   corr_text,
+                   ha="left", va='center')
     xlim = ax.get_xlim()
     ax.plot(xlim, [0, 0], color='black', lw=0.5)
     ax.set_xlim(*xlim)

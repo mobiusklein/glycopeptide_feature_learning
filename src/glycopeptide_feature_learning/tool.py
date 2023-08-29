@@ -75,7 +75,9 @@ def get_training_data(paths: List[os.PathLike],
                 get_opener(train_file, 'rb'))
             if progbar.is_hidden:
                 logger.info("Reading %s (%d spectra read)", os.path.basename(train_file), len(training_instances))
-            for instance in reader:
+            for i, instance in enumerate(reader):
+                if i % 10 == 0 and i and not progbar.is_hidden:
+                    progbar.render_progress()
                 if instance.annotations['ms2_score'] < threshold or instance.annotations['q_value'] > min_q_value:
                     continue
                 if instance.mass_shift.name not in ("Unmodified", "Ammonium"):

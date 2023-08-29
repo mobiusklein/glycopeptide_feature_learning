@@ -23,6 +23,29 @@ from .matching import SpectrumMatchAnnotator
 mass_shifts = MassShiftCollection([Unmodified, Ammonium, Sodium, Potassium])
 
 
+def _typecast(value: str):
+    if not isinstance(value, str):
+        return value
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    try:
+        return float(value)
+    except ValueError:
+        pass
+    lowered = value.lower()
+    if lowered == 'true':
+        return True
+    elif lowered == 'false':
+        return False
+    elif lowered == 'null':
+        return None
+    else:
+        return value
+
+
+
 class RankedPeak(DeconvolutedPeak):
     def __init__(self, neutral_mass, intensity, charge, signal_to_noise, index,
                  rank=-1):
@@ -210,6 +233,10 @@ class AnnotatedMGFDeserializer(ProcessedMGFDeserializer):
         else:
             fname = self._cached_basename
         return "%s.%s" % (fname, title)
+
+    def _annotations(self, scan):
+        annotations = super()._annotations(scan)
+        return {k: _typecast(v) for k, v in annotations.items()}
 
     def _make_scan(self, scan):
         scan = super(AnnotatedMGFDeserializer, self)._make_scan(scan)

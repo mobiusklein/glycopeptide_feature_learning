@@ -28,7 +28,7 @@ class FragmentTypeTest(TestCase):
         model_insts, intensities, total = self.model_cls.build_fragment_intensity_matches(gpsm)
         for m in model_insts:
             X = m._allocate_feature_array()
-            _, offset = m.build_feature_vector(X, 0)
+            offset = m.build_feature_vector(X, 0)
             assert offset == n_features
 
 

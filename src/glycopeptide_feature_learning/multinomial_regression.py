@@ -163,7 +163,7 @@ class _FragmentType(_FragmentTypeBase):
             X[offset + int(self.peak_pair.fragment.glycosylation_size)] = 1
         offset += k_glycosylated
 
-        return X
+        return offset
 
     def as_feature_vector(self):
         X = self._allocate_feature_array()
@@ -434,7 +434,7 @@ except ImportError:
 
 
 class ProlineSpecializingModel(FragmentType):
-    def specialize_proline(self, X, offset):
+    def specialize_proline(self, X, offset, context=None):
         k_charge_cterm_pro = (FragmentCharge_max + 1)
         k_series_cterm_pro = (BackboneFragmentSeriesClassification_max + 1)
         k_glycosylated_proline = BackboneFragment_max_glycosylation_size + 1
@@ -451,12 +451,12 @@ class ProlineSpecializingModel(FragmentType):
         if self.cterm == FragmentTypeClassification.pro:
             X[offset + int(self.peak_pair.fragment.glycosylation_size)] = 1
         offset += k_glycosylated_proline
-        return X, offset
+        return offset
 
     def build_feature_vector(self, X, offset, context=None):
-        X, offset = super(ProlineSpecializingModel, self).build_feature_vector(X, offset)
-        X, offset = self.specialize_proline(X, offset)
-        return X, offset
+        offset = super(ProlineSpecializingModel, self).build_feature_vector(X, offset, context)
+        offset = self.specialize_proline(X, offset, context)
+        return offset
 
     @classmethod
     def feature_names(cls):
@@ -481,7 +481,7 @@ except ImportError as err:
 
 class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
 
-    def encode_stub_information(self, X, offset):
+    def encode_stub_information(self, X, offset, context=None):
         k_glycosylated_stubs = StubFragment_max_glycosylation_size + 1
         k_sequence_composition_stubs = FragmentTypeClassification_max + 1
 
@@ -493,12 +493,12 @@ class StubGlycopeptideCompositionModel(ProlineSpecializingModel):
             for tp, c in ctr:
                 X[offset + tp.value] = c
         offset += k_sequence_composition_stubs
-        return X, offset
+        return offset
 
     def build_feature_vector(self, X, offset, context=None):
-        X, offset = super(StubGlycopeptideCompositionModel, self).build_feature_vector(X, offset)
-        X, offset = self.encode_stub_information(X, offset)
-        return X, offset
+        offset = super(StubGlycopeptideCompositionModel, self).build_feature_vector(X, offset, context)
+        offset = self.encode_stub_information(X, offset, context)
+        return offset
 
     @classmethod
     def feature_names(cls):
@@ -541,13 +541,13 @@ class StubGlycopeptideFucosylationModel(StubGlycopeptideCompositionModel):
             d = k_fucose * (self.charge - 1) + loss_size
             X[offset + d] = 1
         offset += k_fucose_x_charge
-        return X, offset
+        return offset
 
     def build_feature_vector(self, X, offset, context=None):
-        X, offset = super(StubGlycopeptideFucosylationModel,
-                          self).build_feature_vector(X, offset)
-        X, offset = self.encode_stub_fucosylation(X, offset)
-        return X, offset
+        offset = super(StubGlycopeptideFucosylationModel,
+                          self).build_feature_vector(X, offset, context)
+        offset = self.encode_stub_fucosylation(X, offset, context)
+        return offset
 
     @classmethod
     def feature_names(cls):
@@ -611,9 +611,9 @@ class NeighboringAminoAcidsModel(StubGlycopeptideFucosylationModel):
         return X, offset
 
     def build_feature_vector(self, X, offset, context=None):
-        X, offset = super(NeighboringAminoAcidsModel, self).build_feature_vector(X, offset)
-        X, offset = self.encode_neighboring_residues(X, offset)
-        return X, offset
+        offset = super(NeighboringAminoAcidsModel, self).build_feature_vector(X, offset, context)
+        offset = self.encode_neighboring_residues(X, offset, context)
+        return offset
 
     @classmethod
     def feature_names(cls):
@@ -666,7 +666,7 @@ class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth2):
         center = (seq_size / 2)
         return abs(center - index)
 
-    def encode_cleavage_site_distance_from_center(self, X, offset):
+    def encode_cleavage_site_distance_from_center(self, X, offset, context=None):
         k_distance = self.max_cleavage_site_distance_from_center + 1
         k_series = BackboneFragmentSeriesClassification_max + 1
 
@@ -676,12 +676,12 @@ class CleavageSiteCenterDistanceModel(NeighboringAminoAcidsModelDepth2):
             series_offset = self.series.value * k_distance
             X[offset + series_offset + distance] = 1
         offset += (k_distance * k_series)
-        return X, offset
+        return offset
 
     def build_feature_vector(self, X, offset, context=None):
-        X, offset = super(CleavageSiteCenterDistanceModel, self).build_feature_vector(X, offset)
-        X, offset = self.encode_cleavage_site_distance_from_center(X, offset)
-        return X, offset
+        offset = super(CleavageSiteCenterDistanceModel, self).build_feature_vector(X, offset, context)
+        offset = self.encode_cleavage_site_distance_from_center(X, offset, context)
+        return offset
 
     @classmethod
     def feature_names(cls):
@@ -720,7 +720,7 @@ class StubChargeModel(NeighboringAminoAcidsModelDepth2):
             d = k_glycosylated_stubs * (self.charge - 1) + loss_size
             X[offset + d] = 1
         offset += k_glycosylated_stubs_x_charge
-        return X, offset
+        return offset
 
     @classmethod
     def feature_names(cls):
@@ -738,13 +738,13 @@ class StubChargeModel(NeighboringAminoAcidsModelDepth2):
 
         # Directly invoke feature vector construction because super() costs too much
         # in a tight loop
-        X, offset = FragmentType.build_feature_vector(self, X, offset)
-        X, offset = ProlineSpecializingModel.specialize_proline(self, X, offset)
-        X, offset = StubGlycopeptideCompositionModel.encode_stub_information(self, X, offset)
-        X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(self, X, offset)
-        X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(self, X, offset)
-        X, offset = StubChargeModel.encode_stub_charge(self, X, offset)
-        return X, offset
+        offset = FragmentType.build_feature_vector(self, X, offset, context)
+        offset = ProlineSpecializingModel.specialize_proline(self, X, offset, context)
+        offset = StubGlycopeptideCompositionModel.encode_stub_information(self, X, offset, context)
+        offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(self, X, offset, context)
+        offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(self, X, offset, context)
+        offset = StubChargeModel.encode_stub_charge(self, X, offset, context)
+        return offset
 
 
 try:
@@ -759,19 +759,16 @@ except ImportError as err:
 
 class StubChargeModelApproximate(StubChargeModel):
     def build_feature_vector(self, X, offset, context=None):
-        # X, offset = super(StubChargeModel, self).build_feature_vector(X, offset)
-        # X, offset = self.encode_stub_charge(X, offset)
-
         # Directly invoke feature vector construction because super() costs too much
         # in a tight loop
-        X, offset = FragmentType.build_feature_vector(self, X, offset)
-        X, offset = ProlineSpecializingModel.specialize_proline(self, X, offset)
-        X, offset = StubGlycopeptideCompositionModel.encode_stub_information(self, X, offset)
-        X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(self, X, offset)
-        X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(self, X, offset)
-        X, offset = StubChargeModelApproximate.encode_stub_charge_approximate(
-            self, X, offset)
-        return X, offset
+        offset = FragmentType.build_feature_vector(self, X, offset, context)
+        offset = ProlineSpecializingModel.specialize_proline(self, X, offset, context)
+        offset = StubGlycopeptideCompositionModel.encode_stub_information(self, X, offset, context)
+        offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(self, X, offset, context)
+        offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(self, X, offset, context)
+        offset = StubChargeModelApproximate.encode_stub_charge_approximate(
+            self, X, offset, context)
+        return offset
 
     def encode_stub_charge_approximate(self, X, offset):
         k_glycosylated_stubs = (StubFragment_max_glycosylation_size * 2) + 1
@@ -790,7 +787,7 @@ class StubChargeModelApproximate(StubChargeModel):
             d = k_glycosylated_stubs * (self.charge - 1) + loss_size
             X[offset + d] = 1
         offset += k_glycosylated_stubs_x_charge
-        return X, offset
+        return offset
 
 
 try:
@@ -863,9 +860,9 @@ class LabileMonosaccharideAwareModel(StubChargeModel):
         # X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(
         #     self, X, offset, context)
         # X, offset = StubChargeModel.encode_stub_charge(self, X, offset, context)
-        X, offset = StubChargeModel.build_feature_vector(self, X, offset, context)
-        X, offset = LabileMonosaccharideAwareModel.encode_labile_monosaccharides_charge(self, X, offset, context)
-        return X, offset
+        offset = StubChargeModel.build_feature_vector(self, X, offset, context)
+        offset = LabileMonosaccharideAwareModel.encode_labile_monosaccharides_charge(self, X, offset, context)
+        return offset
 
 
 class LabileMonosaccharideAwareModelApproximate(StubChargeModelApproximate):
@@ -883,7 +880,7 @@ class LabileMonosaccharideAwareModelApproximate(StubChargeModelApproximate):
                     "stub glycopeptide:charge %d:labile monosaccharides %d" % (i + 1, j))
         return names
 
-    def encode_labile_monosaccharides_charge(self, X, offset):
+    def encode_labile_monosaccharides_charge(self, X, offset, context=None):
         k_labile_monosaccharides = (
             StubFragment_max_labile_monosaccharides) + 1
         k_stub_charges = FragmentCharge_max + 1
@@ -901,21 +898,26 @@ class LabileMonosaccharideAwareModelApproximate(StubChargeModelApproximate):
         return X, offset
 
     def build_feature_vector(self, X, offset, context=None):
-        # X, offset = FragmentType.build_feature_vector(self, X, offset)
-        # X, offset = ProlineSpecializingModel.specialize_proline(
-        #     self, X, offset)
-        # X, offset = StubGlycopeptideCompositionModel.encode_stub_information(
-        #     self, X, offset)
-        # X, offset = StubGlycopeptideFucosylationModel.encode_stub_fucosylation(
-        #     self, X, offset)
-        # X, offset = NeighboringAminoAcidsModelDepth2.encode_neighboring_residues(
-        #     self, X, offset)
-        # X, offset = StubChargeModelApproximate.encode_stub_charge(
-        #     self, X, offset)
-        X, offset = StubChargeModelApproximate.build_feature_vector(self, X, offset)
-        X, offset = LabileMonosaccharideAwareModelApproximate.encode_labile_monosaccharides_charge(
-            self, X, offset)
-        return X, offset
+        offset = StubChargeModelApproximate.build_feature_vector(self, offset, context)
+        offset = LabileMonosaccharideAwareModelApproximate.encode_labile_monosaccharides_charge(self, X, offset, context)
+        return offset
+
+
+try:
+    from glycopeptide_feature_learning._c.model_types import (
+        LabileMonosaccharideAwareModel_build_feature_vector,
+        LabileMonosaccharideAwareModelApproximate_build_feature_vector,
+        encode_labile_monosaccharides_charge)
+
+    LabileMonosaccharideAwareModel.encode_labile_monosaccharides_charge = encode_labile_monosaccharides_charge
+    LabileMonosaccharideAwareModel.build_feature_vector = LabileMonosaccharideAwareModel_build_feature_vector
+
+    LabileMonosaccharideAwareModelApproximate.encode_labile_monosaccharides_charge = \
+        encode_labile_monosaccharides_charge
+    LabileMonosaccharideAwareModelApproximate.build_feature_vector = \
+        LabileMonosaccharideAwareModelApproximate_build_feature_vector
+except ImportError:
+    pass
 
 
 class AmideBondCrossproductModel(StubGlycopeptideCompositionModel):

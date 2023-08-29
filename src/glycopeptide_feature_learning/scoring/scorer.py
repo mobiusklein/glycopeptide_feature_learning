@@ -54,6 +54,13 @@ class CachedModelPrediction(object):
         return self.__class__, tuple(self)
 
 
+
+def _predict_yhat_from_feature_and_coefs(features: np.ndarray, coefs: np.ndarray) -> np.ndarray:
+    yhat = np.exp(features.dot(coefs))
+    yhat /= (1 + yhat.sum())
+    return yhat
+
+
 class _ModelPredictionCachingBase(object):
     def _transform_matched_peaks(self):
         if self._is_model_cached(self.model_fit):
@@ -69,8 +76,7 @@ class _ModelPredictionCachingBase(object):
 
     def _get_predicted_intensities(self):
         c, intens, t, X = self._transform_matched_peaks()
-        yhat = np.exp(X.dot(self.model_fit.coef))
-        yhat = yhat / (1 + yhat.sum())
+        yhat = _predict_yhat_from_feature_and_coefs(X, self.model_fit.coef)
         return c, intens, t, yhat
 
     def _cache_model_transform(self, model_fit, transform):
@@ -733,7 +739,9 @@ class SplitScorer(HelperMethods, MultinomialRegressionScorerBase, SignatureAware
 
 
 try:
-    from glycopeptide_feature_learning.scoring._c.scorer import (calculate_peptide_score, _calculate_pearson_residuals)
+    from glycopeptide_feature_learning.scoring._c.scorer import (
+        calculate_peptide_score, _calculate_pearson_residuals,
+        predict_yhat_from_feature_and_coefs as _predict_yhat_from_feature_and_coefs)
     MultinomialRegressionScorerBase._calculate_pearson_residuals = _calculate_pearson_residuals
     SplitScorer.calculate_peptide_score = calculate_peptide_score
 except ImportError as err:

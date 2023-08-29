@@ -472,6 +472,8 @@ class KMeansModelSelector(ModelSelectorBase):
 
     def classify(self, spectrum_match) -> int:
         value = classify_ascending_abundance_peptide_Y(spectrum_match)
+        if np.isnan(value):
+            return -1
         return self.kmeans_fit.predict(value)[0]
 
     def to_json(self, include_fit_source: bool = True) -> dict:
