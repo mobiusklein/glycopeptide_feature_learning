@@ -341,7 +341,7 @@ cpdef np.ndarray[feature_dtype_t, ndim=2, mode='c'] encode_classification(cls, l
     k = row.get_feature_count()
     knd[0] = n
     knd[1] = k
-    X = np.PyArray_ZEROS(2, knd, np.NPY_UINT8, 0)
+    X = <np.ndarray[feature_dtype_t, ndim=2, mode='c']>np.PyArray_ZEROS(2, knd, np.NPY_UINT8, 0)
     Xview = X
     row.build_feature_vector(Xview[i, :], 0, context_cache)
     for i in range(1, n):
@@ -662,9 +662,21 @@ cpdef Py_ssize_t encode_stub_fucosylation(_FragmentType self, feature_dtype_t[::
 
     if self._is_stub_glycopeptide:
         frag = <StubFragment>self.peak_pair.fragment
-        loss_size = count_deoxyhexose(frag.glycosylation)
-        if loss_size >= k_fucose:
-            loss_size = k_fucose - 1
+        if context is not None:
+            tmp = PyDict_GetItem(context, "count_deoxyhexose")
+            if tmp == NULL:
+                expected = count_deoxyhexose(self.sequence.glycan_composition)
+                PyDict_SetItem(context, 'count_deoxyhexose', PyInt_FromLong(expected))
+            else:
+                expected = PyInt_AsLong(<object>tmp)
+        else:
+            expected = 1
+        if expected:
+            loss_size = count_deoxyhexose(frag.glycosylation)
+            if loss_size >= k_fucose:
+                loss_size = k_fucose - 1
+        else:
+            loss_size = 0
         d = k_fucose * (self.charge - 1) + loss_size
         X[offset + d] = 1
     offset += k_fucose_x_charge
