@@ -1,5 +1,6 @@
 
 cimport cython
+from libcpp.utility cimport pair
 
 from ms_deisotope._c.peak_set cimport DeconvolutedPeak, DeconvolutedPeakSet
 
@@ -10,6 +11,11 @@ from glycopeptidepy._c.structure.fragment cimport (FragmentBase, PeptideFragment
 from glycan_profiling._c.structure.fragment_match_map cimport (PeakFragmentPair, FragmentMatchMap)
 
 from numpy cimport npy_uint32 as uint32_t, npy_uint16 as uint16_t, npy_int16 as int16_t, npy_int8 as int8_t
+
+cdef struct aa_masses:
+    double first
+    double second
+    double third
 
 
 cpdef set get_peak_index(FragmentMatchMap self)
@@ -37,7 +43,7 @@ cdef class FeatureBase(object):
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, object structure=*, TargetProperties props=*)
     cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
-                              FragmentMatchMap solution_map, structure=*, set peak_indices=*)
+                              FragmentMatchMap solution_map, structure=*, set peak_indices=*) noexcept
 
 
 cdef class MassOffsetFeature(FeatureBase):
@@ -57,10 +63,11 @@ cdef class LinkFeature(MassOffsetFeature):
 
     cdef inline bint _amino_acid_in_fragment(self, PeptideFragment fragment)
     cdef inline bint _amino_acid_in_list(self, list aas)
+    cdef inline bint _amino_acid_in_masses(self, aa_masses& aas) noexcept nogil
 
     cpdef bint amino_acid_in_fragment(self, PeptideFragment fragment)
     cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
-                              FragmentMatchMap solution_map, structure=*, set peak_indices=*)
+                              FragmentMatchMap solution_map, structure=*, set peak_indices=*) noexcept
 
 cdef class ComplementFeature(MassOffsetFeature):
     cdef inline bint _test_relative(self, DeconvolutedPeak peak1, DeconvolutedPeak peak2, double reference_mass) nogil
@@ -99,8 +106,10 @@ cdef class FittedFeatureBase(object):
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=*, TargetProperties props=*)
     cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
-                              FragmentMatchMap solution_map, structure=*, set peak_indices=*)
+                              FragmentMatchMap solution_map, structure=*, set peak_indices=*) noexcept
+
     cpdef double _feature_probability(self, double p=*)
+    cdef double _cfeature_probability(self, double p=*) noexcept nogil
 
 
 cdef class FragmentationFeatureBase(object):
@@ -111,7 +120,7 @@ cdef class FragmentationFeatureBase(object):
 
     cpdef list find_matches(self, DeconvolutedPeak peak, DeconvolutedPeakSet peak_list, structure=*, TargetProperties props=*)
     cpdef bint is_valid_match(self, size_t from_peak, size_t to_peak,
-                              FragmentMatchMap solution_map, structure=*, set peak_indices=*)
+                              FragmentMatchMap solution_map, structure=*, set peak_indices=*) noexcept
 
 
 cdef class FragmentationModelBase(object):
@@ -149,6 +158,8 @@ cdef class PeakRelation(object):
         public int to_charge
 
     cpdef tuple peak_key(self)
+
+    cdef pair[size_t, size_t] _cpeak_key(self)
 
     @staticmethod
     cdef PeakRelation _create(DeconvolutedPeak from_peak, DeconvolutedPeak to_peak, feature, IonSeriesBase series)

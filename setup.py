@@ -79,7 +79,7 @@ def make_extensions():
                   include_dirs=[numpy.get_include()]),
         Extension(name='glycopeptide_feature_learning._c.peak_relations',
                   sources=["src/glycopeptide_feature_learning/_c/peak_relations.pyx"],
-                  include_dirs=[numpy.get_include()]),
+                  include_dirs=[numpy.get_include()], language='c++'),
         Extension(name='glycopeptide_feature_learning._c.amino_acid_classification',
                   sources=["src/glycopeptide_feature_learning/_c/amino_acid_classification.pyx"],
                   include_dirs=[numpy.get_include()]),

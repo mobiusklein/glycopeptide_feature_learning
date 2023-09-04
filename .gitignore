@@ -3,6 +3,7 @@
 *.so
 *.nfs*
 src/glycopeptide_feature_learning/_c/*.c
+src/glycopeptide_feature_learning/_c/*.cpp
 src/glycopeptide_feature_learning/_c/*.html
 src/glycopeptide_feature_learning/scoring/_c/*.c
 src/glycopeptide_feature_learning/scoring/_c/*.html
