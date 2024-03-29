@@ -121,6 +121,18 @@ class _ModelPredictionCachingBase(object):
         return reliability
 
 
+def spectral_angle(y, yhat) -> float:
+    """
+    The angle between two vectors where 0 indicates the vectors are identical.
+
+    Without the inverse cosine transformation * 2/pi, this is just the dot product
+    similarity.
+    """
+    num = y.dot(yhat)
+    den = np.sqrt(y.dot(y) * yhat.dot(yhat))
+    return np.arccos(num / den) * 2 / np.pi
+
+
 class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyMixin):
 
     partition_key: Optional[int] = -1
@@ -249,15 +261,27 @@ class MultinomialRegressionScorerBase(_ModelPredictionCachingBase, MassAccuracyM
     def total_correlation(self):
         return self._calculate_correlation_coef()
 
+    def total_spectral_angle(self, use_reliability=False, base_reliability=0.5):
+        p, yhat = self._get_intensity_observed_expected(use_reliability, base_reliability)
+        return spectral_angle(p, yhat)
+
     def peptide_correlation(self):
         c, inten, t, y, rel = self.get_predicted_intensities_series(
             ['b', 'y'], True)
         return np.corrcoef(inten, y)[1, 0]
 
+    def peptide_spectral_angle(self):
+        c, inten, t, y, rel = self.get_predicted_intensities_series(["b", "y"], True)
+        return spectral_angle(inten, y)
+
     def glycan_correlation(self):
         c, inten, t, y, rel = self.get_predicted_intensities_series(
             ['stub_glycopeptide'], True)
         return np.corrcoef(inten, y)[1, 0]
+
+    def glycan_spectral_angle(self):
+        c, inten, t, y, rel = self.get_predicted_intensities_series(["stub_glycopeptide"], True)
+        return spectral_angle(inten, y)
 
     def peptide_reliability(self):
         result = self.get_predicted_intensities_series(
@@ -801,6 +825,15 @@ class MixtureSplitScorer(_ModelMixtureBase, SplitScorer):
     def total_correlation(self):
         return self._mixture_apply(lambda x: super(MixtureSplitScorer, x).total_correlation())
 
+    def peptide_spectral_angle(self):
+        return self._mixture_apply(lambda x: super(MixtureSplitScorer, x).peptide_spectral_angle())
+
+    def glycan_spectral_angle(self):
+        return self._mixture_apply(lambda x: super(MixtureSplitScorer, x).glycan_spectral_angle())
+
+    def total_spectral_angle(self, use_reliability=False, base_reliability=0.5):
+        return self._mixture_apply(lambda x: super(MixtureSplitScorer, x).total_spectral_angle(use_reliability, base_reliability))
+
 
 class SplitScorerTree(PredicateTree):
     _scorer_type = MixtureSplitScorer
@@ -922,6 +955,17 @@ class MixturePartialSplitScorer(_ModelMixtureBase, PartialSplitScorer):
     def total_correlation(self):
         return self._mixture_apply(lambda x: super(MixturePartialSplitScorer, x).total_correlation())
 
+    def peptide_spectral_angle(self):
+        return self._mixture_apply(lambda x: super(MixturePartialSplitScorer, x).peptide_spectral_angle())
+
+    def glycan_spectral_angle(self):
+        return self._mixture_apply(lambda x: super(MixturePartialSplitScorer, x).glycan_spectral_angle())
+
+    def total_spectral_angle(self, use_reliability=False, base_reliability=0.5):
+        return self._mixture_apply(
+            lambda x: super(MixturePartialSplitScorer, x).total_spectral_angle(use_reliability, base_reliability)
+        )
+
 
 class PartialSplitScorerTree(PredicateTree):
     _scorer_type = MixturePartialSplitScorer
@@ -931,8 +975,11 @@ class PartialSplitScorerTree(PredicateTree):
 class PartitionedPartialSplitScorer(_MultiModelCache, PartialSplitScorer):
     model_selectors: SplitModelFit
 
-    _peptide_correlation = None
-    _glycan_correlation = None
+    _peptide_correlation: Optional[float] = None
+    _glycan_correlation: Optional[float] = None
+
+    _peptide_spectral_angle: Optional[float] = None
+    _glycan_spectral_angle: Optional[float] = None
 
     def __init__(self, scan, sequence, mass_shift=None, model_selectors=None, partition=None):
         super().__init__(scan, sequence, mass_shift)
@@ -1089,6 +1136,26 @@ class PartitionedPartialSplitScorer(_MultiModelCache, PartialSplitScorer):
 
         c, all_intens, t, all_yhat = out
         return all_intens, all_yhat
+
+    def peptide_spectral_angle(self):
+        if self._peptide_spectral_angle is not None:
+            return self._peptide_spectral_angle
+        peptide_model = self.model_selectors.get_peptide_model(self)
+        self.model_fit = peptide_model
+        value = super().peptide_spectral_angle()
+        self.model_fit = None
+        self._peptide_spectral_angle = value
+        return value
+
+    def glycan_spectral_angle(self):
+        if self._glycan_spectral_angle is not None:
+            return self._glycan_spectral_angle
+        glycan_model = self.model_selectors.get_glycan_model(self)
+        self.model_fit = glycan_model
+        value = super().glycan_spectral_angle()
+        self.model_fit = None
+        self._glycan_spectral_angle = value
+        return value
 
 
 class PartitionedPredicateTree(PredicateTreeBase):

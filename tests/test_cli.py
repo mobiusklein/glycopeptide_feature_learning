@@ -122,6 +122,8 @@ def test_correlation():
         assert metrics.keys() == expected_metrics.keys()
 
         for metric_name, values in metrics.items():
+            if metric_name not in expected_metrics:
+                continue
             expected_values = expected_metrics[metric_name]
             if values.dtype.kind != 'f':
                 assert np.all(values == expected_values), f"{metric_name} does not match"

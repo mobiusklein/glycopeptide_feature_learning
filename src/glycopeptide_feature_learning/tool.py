@@ -655,6 +655,8 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
     glycan_reliabilities = Deque()
     glycan_fragments = Deque()
     partition_keys = Deque()
+    peptide_spectral_angle = Deque()
+    glycan_spectral_angle = Deque()
 
     progbar = click.progressbar(
         enumerate(test_instances), length=len(test_instances), show_eta=True, label='Matching Peaks',
@@ -677,6 +679,10 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
             correlations.append(match.total_correlation())
             peptide_correlations.append(match.peptide_correlation())
             glycan_correlations.append(match.glycan_correlation())
+
+            peptide_spectral_angle.append(match.peptide_spectral_angle())
+            glycan_spectral_angle.append(match.glycan_spectral_angle())
+
             scan_ids.append(scan.id)
             data_files.append(scan.title)
             glycopeptides.append(str(scan.target))
@@ -695,23 +701,32 @@ def calculate_correlation(paths, model_path, outpath, threshold=0.0, error_toler
     logger.info("Median Correlation: %0.5f", np.nanmedian(correlations))
     logger.info("Median Glycan Correlation: %0.5f", np.nanmedian(glycan_correlations))
     logger.info("Median Peptide Correlation: %0.5f", np.nanmedian(peptide_correlations))
+
     logger.info("Median Glycan Reliability Sum: %0.5f", np.nanmedian(glycan_reliabilities))
     logger.info("Median Peptide Reliability Sum: %0.5f", np.nanmedian(peptide_reliabilities))
 
+    logger.info("Median Glycan SA: %0.5f", np.nanmedian(glycan_spectral_angle))
+    logger.info("Median Peptide SA: %0.5f", np.nanmedian(peptide_spectral_angle))
+
     with click.open_file(outpath, 'wb') as fh:
-        pickle.dump({
-            "scan_id": np.array(scan_ids),
-            "correlation": np.array(correlations),
-            "peptide_correlation": np.array(peptide_correlations),
-            "glycan_correlation": np.array(glycan_correlations),
-            "glycan_reliabilities": np.array(glycan_reliabilities),
-            "peptide_reliabilities": np.array(peptide_reliabilities),
-            "peptide_fragment_count": np.array(peptide_fragments),
-            "glycan_fragment_count": np.array(glycan_fragments),
-            "data_file": np.array(data_files),
-            "glycopeptide": np.array(glycopeptides),
-            "partition_keys": np.array(partition_keys)
-        }, fh)
+        pickle.dump(
+            {
+                "scan_id": np.array(scan_ids),
+                "correlation": np.array(correlations),
+                "peptide_correlation": np.array(peptide_correlations),
+                "glycan_correlation": np.array(glycan_correlations),
+                "glycan_reliabilities": np.array(glycan_reliabilities),
+                "peptide_reliabilities": np.array(peptide_reliabilities),
+                "peptide_fragment_count": np.array(peptide_fragments),
+                "glycan_fragment_count": np.array(glycan_fragments),
+                "data_file": np.array(data_files),
+                "glycopeptide": np.array(glycopeptides),
+                "partition_keys": np.array(partition_keys),
+                "peptide_spectral_angle": np.array(peptide_spectral_angle),
+                "glycan_spectral_angle": np.array(glycan_spectral_angle),
+            },
+            fh,
+        )
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
