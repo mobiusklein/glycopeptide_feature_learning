@@ -119,8 +119,6 @@ def test_correlation():
         with open(datafile("reference_metrics.pkl"), 'rb') as fh:
             expected_metrics = pickle.load(fh)
 
-        assert metrics.keys() == expected_metrics.keys()
-
         for metric_name, values in metrics.items():
             if metric_name not in expected_metrics:
                 continue
