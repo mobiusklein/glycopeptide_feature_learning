@@ -152,6 +152,7 @@ def status_msgs(*msgs):
 
 
 setup(name='glycopeptide_feature_learning',
+      version='0.1.0',
       zip_safe=False,
       packages=find_packages("src"),
       package_dir={"": "src"},
