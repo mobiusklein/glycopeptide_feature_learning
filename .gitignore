@@ -2,10 +2,10 @@
 *.pyd
 *.so
 *.nfs*
-src/glycopeptide_feature_learning/_c/*.c
-src/glycopeptide_feature_learning/_c/*.html
-src/glycopeptide_feature_learning/scoring/_c/*.c
-src/glycopeptide_feature_learning/scoring/_c/*.html
+src/*/_c/*.c
+src/*/_c/*.html
+src/*/scoring/_c/*.c
+src/*/scoring/_c/*.html
 /data/
 ext/
 ref/
@@ -19,3 +19,5 @@ htmlcov
 .coverage
 glycresoft-log
 .vscode/
+dist/*
+build/*
