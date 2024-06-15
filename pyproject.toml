@@ -14,7 +14,5 @@ requires = ["setuptools",
             "glycopeptidepy >= 0.0.24",
             "glycresoft >= 0.4.23.post1",
             "numpy==1.23.2; python_version >= '3.10'",
-            "oldest-supported-numpy; python_version >= '3.8' and python_version < '3.10'",
-            "numpy==1.16.1; python_version <= '3.7' and python_version >= '3'",
-            "numpy==1.13.3; python_version=='2.7'",
+            "numpy==1.22.0; python_version >= '3.8' and python_version < '3.10'",
            ]
