@@ -2,7 +2,7 @@ import pickle
 
 from ms_deisotope.data_source import get_opener
 
-from glycan_profiling.tandem.spectrum_match import MultiScoreSpectrumMatch
+from glycresoft.tandem.spectrum_match import MultiScoreSpectrumMatch
 
 from glycopeptide_feature_learning.data_source import AnnotatedMGFDeserializer
 from glycopeptide_feature_learning.scoring.base import ModelScoreSet

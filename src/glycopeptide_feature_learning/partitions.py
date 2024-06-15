@@ -16,8 +16,8 @@ from glycopeptidepy.structure.glycan import GlycosylationType
 from glypy.utils import make_struct
 from glypy.utils.enum import EnumValue
 
-from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan, FrozenMonosaccharideResidue
-from glycan_profiling.tandem.glycopeptide.dynamic_generation.mixture import KMeans
+from glycresoft.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan, FrozenMonosaccharideResidue
+from glycresoft.tandem.glycopeptide.dynamic_generation.mixture import KMeans
 
 from glycopeptide_feature_learning.multinomial_regression import MultinomialRegressionFit
 

@@ -19,7 +19,7 @@ from glycopeptidepy.structure.fragment import IonSeries
 from ms_deisotope.data_source import get_opener
 
 # Also initializes GlycReSoft's logging config
-from glycan_profiling.cli.validators import RelativeMassErrorParam
+from glycresoft.cli.validators import RelativeMassErrorParam
 
 from glycopeptide_feature_learning import (
     data_source, peak_relations,
@@ -124,7 +124,7 @@ def partition_training_data(training_instances: Deque[data_source.AnnotatedScan]
 
 
 def save_partitions(partition_map, output_directory):
-    from glycan_profiling.output.text_format import AnnotatedMGFSerializer
+    from glycresoft.output.text_format import AnnotatedMGFSerializer
 
     try:
         os.makedirs(output_directory)

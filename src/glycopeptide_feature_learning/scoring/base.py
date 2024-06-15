@@ -1,7 +1,7 @@
 from typing import Any, Dict, Iterator, List, Optional, Type
 
-from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase
-from glycan_profiling.tandem.spectrum_match import Unmodified
+from glycresoft.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase
+from glycresoft.tandem.spectrum_match import Unmodified
 
 from glycopeptide_feature_learning.multinomial_regression import MultinomialRegressionFit
 from glycopeptide_feature_learning.partitions import SplitModelFit, partition_cell_spec

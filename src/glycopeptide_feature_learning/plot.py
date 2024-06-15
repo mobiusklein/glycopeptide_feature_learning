@@ -2,7 +2,7 @@ import numpy as np
 
 import ms_deisotope
 
-from glycan_profiling.plotting.spectral_annotation import (
+from glycresoft.plotting.spectral_annotation import (
     plt,
     normalize_scan,
     MirrorSpectrumAnnotatorFacet

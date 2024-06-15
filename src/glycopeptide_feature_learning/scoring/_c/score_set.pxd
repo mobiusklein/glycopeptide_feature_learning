@@ -2,7 +2,7 @@ cimport cython
 
 from cpython.object cimport PyObject
 
-from glycan_profiling._c.tandem.spectrum_match cimport ScoreSet
+from glycresoft._c.tandem.spectrum_match cimport ScoreSet
 
 
 cdef class ModelScoreSet(ScoreSet):

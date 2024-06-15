@@ -6,10 +6,10 @@ except ImportError:
 import ms_deisotope
 from ms_deisotope.output import ProcessedMzMLDeserializer
 
-from glycan_profiling.task import TaskBase
-from glycan_profiling import serialize
-from glycan_profiling.structure import FragmentCachingGlycopeptide, DecoyFragmentCachingGlycopeptide
-from glycan_profiling.tandem.glycopeptide.dynamic_generation.journal import (
+from glycresoft.task import TaskBase
+from glycresoft import serialize
+from glycresoft.structure import FragmentCachingGlycopeptide, DecoyFragmentCachingGlycopeptide
+from glycresoft.tandem.glycopeptide.dynamic_generation.journal import (
     JournalSetLoader, JournalFileWriter, JournalFileReader, SolutionSetGrouper)
 
 

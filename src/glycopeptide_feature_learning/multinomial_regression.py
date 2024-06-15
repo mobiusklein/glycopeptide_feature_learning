@@ -17,9 +17,9 @@ from glycopeptidepy.structure.fragment import IonSeries
 
 from ms_deisotope import DeconvolutedPeak
 
-from glycan_profiling.structure.fragment_match_map import PeakFragmentPair
-from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
-from glycan_profiling.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase
+from glycresoft.structure.fragment_match_map import PeakFragmentPair
+from glycresoft.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
+from glycresoft.tandem.glycopeptide.scoring.base import GlycopeptideSpectrumMatcherBase
 
 from .amino_acid_classification import (
     AminoAcidClassification, classify_amide_bond_frank, classify_residue_frank)

@@ -1,6 +1,6 @@
 from ms_deisotope._c.peak_set cimport DeconvolutedPeak, DeconvolutedPeakSet
 
-from glycan_profiling._c.structure.fragment_match_map cimport (
+from glycresoft._c.structure.fragment_match_map cimport (
     FragmentMatchMap, PeakFragmentPair)
 
 from glycopeptidepy._c.structure.base cimport AminoAcidResidueBase, SequencePosition

@@ -1,8 +1,8 @@
 
-from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial import (
+from glycresoft.tandem.glycopeptide.scoring.coverage_weighted_binomial import (
     CoverageWeightedBinomialScorer)
 
-from glycan_profiling.plotting import spectral_annotation
+from glycresoft.plotting import spectral_annotation
 
 
 def match_scan_to_sequence(scan, sequence, mass_accuracy=2e-5):

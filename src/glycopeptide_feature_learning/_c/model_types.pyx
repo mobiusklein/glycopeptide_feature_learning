@@ -26,7 +26,7 @@ from brainpy._c.double_vector cimport (
     double_vector_append,
     double_vector_to_list)
 
-from glycan_profiling._c.structure.fragment_match_map cimport (
+from glycresoft._c.structure.fragment_match_map cimport (
     FragmentMatchMap, PeakFragmentPair)
 
 from glycopeptidepy._c.structure.base cimport AminoAcidResidueBase, SequencePosition
@@ -41,7 +41,7 @@ from glypy.utils.cenum cimport EnumValue, IntEnumValue, EnumMeta
 from glypy.structure.glycan_composition import FrozenMonosaccharideResidue
 from glypy._c.structure.glycan_composition cimport _CompositionBase
 
-from glycan_profiling.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
+from glycresoft.tandem.glycopeptide.core_search import approximate_internal_size_of_glycan
 
 from glycopeptidepy.structure.fragment import IonSeries
 

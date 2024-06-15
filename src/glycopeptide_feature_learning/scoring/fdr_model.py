@@ -1,7 +1,7 @@
 from typing import List
 import numpy as np
 
-from glycan_profiling.tandem.target_decoy import svm
+from glycresoft.tandem.target_decoy import svm
 
 
 class CorrelationPeptideSVMModel(svm.PeptideScoreSVMModel):

@@ -3,7 +3,7 @@ cimport cython
 from cpython.object cimport PyObject
 from cpython.dict cimport PyDict_GetItem, PyDict_SetItem
 
-from glycan_profiling._c.tandem.spectrum_match cimport ScoreSet
+from glycresoft._c.tandem.spectrum_match cimport ScoreSet
 
 
 DEF NUM_SCORES = 15

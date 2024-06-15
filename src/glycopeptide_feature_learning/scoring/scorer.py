@@ -7,10 +7,10 @@ import numpy as np
 
 from glycopeptidepy import IonSeries
 
-from glycan_profiling.tandem.glycopeptide.scoring.coverage_weighted_binomial import (
+from glycresoft.tandem.glycopeptide.scoring.coverage_weighted_binomial import (
     CoverageWeightedBinomialScorer)
-from glycan_profiling.tandem.glycopeptide.scoring.simple_score import SignatureAwareCoverageScorer
-from glycan_profiling.tandem.glycopeptide.scoring.precursor_mass_accuracy import MassAccuracyMixin
+from glycresoft.tandem.glycopeptide.scoring.simple_score import SignatureAwareCoverageScorer
+from glycresoft.tandem.glycopeptide.scoring.precursor_mass_accuracy import MassAccuracyMixin
 
 from glycopeptide_feature_learning.multinomial_regression import (
     MultinomialRegressionFit, least_squares_scale_coefficient)

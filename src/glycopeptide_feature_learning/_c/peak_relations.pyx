@@ -20,7 +20,7 @@ from ms_deisotope._c.peak_set cimport DeconvolutedPeak, DeconvolutedPeakSet
 from glycopeptidepy._c.structure.base cimport (AminoAcidResidueBase, ModificationBase)
 from glycopeptidepy._c.structure.fragment cimport (FragmentBase, PeptideFragment, IonSeriesBase)
 
-from glycan_profiling._c.structure.fragment_match_map cimport (PeakFragmentPair, FragmentMatchMap, ByPeakIndexIndex)
+from glycresoft._c.structure.fragment_match_map cimport (PeakFragmentPair, FragmentMatchMap, ByPeakIndexIndex)
 
 from glycopeptidepy.structure import Modification, AminoAcidResidue
 from glycopeptidepy.structure.sequence_composition import AminoAcidSequenceBuildingBlock

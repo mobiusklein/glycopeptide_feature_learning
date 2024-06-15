@@ -7,7 +7,7 @@ from glycopeptidepy._c.structure.base cimport (AminoAcidResidueBase, Modificatio
 from glycopeptidepy._c.structure.sequence_methods cimport _PeptideSequenceCore
 from glycopeptidepy._c.structure.fragment cimport (FragmentBase, PeptideFragment, IonSeriesBase)
 
-from glycan_profiling._c.structure.fragment_match_map cimport (PeakFragmentPair, FragmentMatchMap)
+from glycresoft._c.structure.fragment_match_map cimport (PeakFragmentPair, FragmentMatchMap)
 
 from numpy cimport npy_uint32 as uint32_t, npy_uint16 as uint16_t, npy_int16 as int16_t, npy_int8 as int8_t
 
