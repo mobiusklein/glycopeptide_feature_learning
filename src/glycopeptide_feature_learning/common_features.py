@@ -5,6 +5,8 @@ from glycopeptidepy.structure.fragment import IonSeries
 from glycopeptidepy.structure.sequence_composition import (
     AminoAcidSequenceBuildingBlock)
 
+from . import peak_relations
+
 amino_acid_blocks = [
     'Q(Gln->pyro-Glu)',
     'T(O-Glycosylation)',
@@ -49,34 +51,38 @@ def build_building_block_set(gpsms):
     return linking_amino_acids
 
 
-def make_feature_specs():
-    from .peak_relations import MassOffsetFeature, LinkFeature, ComplementFeature
+def get_peak_relation_features():
     features = {
-        MassOffsetFeature(
-            0.0, name='charge-diff'): lambda x: x.feature.from_charge != x.feature.to_charge,
-        MassOffsetFeature(
-            name='HexNAc', offset=glypy.monosaccharide_residues.HexNAc.mass()): lambda x: True,
+        peak_relations.MassOffsetFeature(0.0, name="charge-diff"): lambda x: x.feature.from_charge
+        != x.feature.to_charge,
+        peak_relations.MassOffsetFeature(
+            name="HexNAc", offset=glypy.monosaccharide_residues.HexNAc.mass()
+        ): lambda x: True,
     }
 
     stub_features = {
-        MassOffsetFeature(
-            name='Hex', offset=glypy.monosaccharide_residues.Hex.mass()): lambda x: True,
-        MassOffsetFeature(
-            0.0, name='charge-diff'): lambda x: x.feature.from_charge != x.feature.to_charge,
-        MassOffsetFeature(
-            name='HexNAc', offset=glypy.monosaccharide_residues.HexNAc.mass()): lambda x: True,
-        MassOffsetFeature(
-            name='Fuc', offset=glypy.monosaccharide_residues.Fuc.mass()): lambda x: True,
+        peak_relations.MassOffsetFeature(name="Hex", offset=glypy.monosaccharide_residues.Hex.mass()): lambda x: True,
+        peak_relations.MassOffsetFeature(0.0, name="charge-diff"): lambda x: x.feature.from_charge
+        != x.feature.to_charge,
+        peak_relations.MassOffsetFeature(
+            name="HexNAc", offset=glypy.monosaccharide_residues.HexNAc.mass()
+        ): lambda x: True,
+        peak_relations.MassOffsetFeature(name="Fuc", offset=glypy.monosaccharide_residues.Fuc.mass()): lambda x: True,
     }
 
-    backbone_features = {}
+    link_features = {}
     for link in amino_acid_blocks:
-        feat = LinkFeature(link)
-        backbone_features[feat] = lambda x: True
-    backbone_features[ComplementFeature(0, name="Complement")] = lambda x: True
-    backbone_features[ComplementFeature(
-        glypy.monosaccharide_residues.HexNAc.mass(), name="Complement plus HexNAc")] = lambda x: True
-    return features, backbone_features, stub_features
+        feat = peak_relations.LinkFeature(link)
+        link_features[feat] = lambda x: True
+
+    link_features[peak_relations.ComplementFeature(0, name="Complement")] = lambda x: True
+    link_features[
+        peak_relations.ComplementFeature(glypy.monosaccharide_residues.HexNAc.mass(), name="Complement plus HexNAc")
+    ] = lambda x: True
+    link_features[
+        peak_relations.ComplementFeature(-glypy.monosaccharide_residues.HexNAc.mass(), name="Complement minus HexNAc")
+    ] = lambda x: True
+    return features, stub_features, link_features
 
 
 def fit_fragmentation_model(gpsms, common_features, backbone_features, stub_features):

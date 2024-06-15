@@ -1,4 +1,4 @@
-from glycopeptidepy.structure import residue, fragment
+from glycopeptidepy.structure import residue
 from glypy.utils import Enum
 from glycopeptidepy.utils import memoize
 
