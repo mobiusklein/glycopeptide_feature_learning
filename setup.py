@@ -151,19 +151,59 @@ def status_msgs(*msgs):
     print('*' * 75)
 
 
-setup(name='glycopeptide_feature_learning',
-      version='0.1.0',
-      zip_safe=False,
-      packages=find_packages("src"),
-      package_dir={"": "src"},
-      ext_modules=make_extensions(),
-      include_package_data=True,
-      package_data={
-          "glycopeptide_feature_learning": ["src/glycopeptide_feature_learning/data/*"],
-      },
-      entry_points={
-          'console_scripts': [
-              "glycopeptide-feature-learning = glycopeptide_feature_learning.tool:cli"
-          ],
-      },
-      cmdclass=cmdclass)
+with open("src/glycopeptide_feature_learning/version.py") as version_file:
+    version = None
+    for line in version_file.readlines():
+        if "version = " in line:
+            version = line.split(" = ")[1].replace('"', "").strip()
+            print("Version is: %r" % (version,))
+            break
+    else:
+        print("Cannot determine version")
+
+
+requirements = []
+with open("requirements.txt") as requirements_file:
+    requirements.extend(requirements_file.readlines())
+
+try:
+    with open("README.md") as readme_file:
+        long_description = readme_file.read()
+except Exception as e:
+    print(e)
+    long_description = ""
+
+setup(
+    name="glycopeptide_feature_learning",
+    version=version,
+    zip_safe=False,
+    packages=find_packages("src"),
+    package_dir={"": "src"},
+    ext_modules=make_extensions(),
+    install_requires=requirements,
+    include_package_data=True,
+    author=", ".join(["Joshua Klein"]),
+    author_email="jaklein@bu.edu",
+    description="Glycopeptide fragmentation modeling tools",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: Apache Software License",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
+    ],
+    python_requires=">3.8",
+    package_data={
+        "glycopeptide_feature_learning": ["src/glycopeptide_feature_learning/data/*"],
+    },
+    entry_points={
+        "console_scripts": ["glycopeptide-feature-learning = glycopeptide_feature_learning.tool:cli"],
+    },
+    cmdclass=cmdclass,
+    project_urls={
+        # "Documentation": "https://mobiusklein.github.io/glycresoft",
+        "Source Code": "https://github.com/mobiusklein/glycopeptide_feature_learning",
+        "Issue Tracker": "https://github.com/mobiusklein/glycopeptide_feature_learning/issues",
+    },
+)

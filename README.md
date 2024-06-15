@@ -1,1 +1,4 @@
-A bit of temporarily displaced MS/MS feature learning methods derived from UniNovo
+# glycopeptide_feature_learning
+
+Tools for modeling how glycopeptides fragment during collisional dissociation for mass spectra.
+

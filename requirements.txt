@@ -1,4 +1,4 @@
-glypy
-glycopeptidepy
-ms_deisotope
-glycresoft
+ms_deisotope >= 0.0.53
+glypy >= 1.0.6
+glycopeptidepy >= 0.0.26
+glycresoft >= 0.4.23
